@@ -439,15 +439,43 @@ const Sprites = (() => {
       dot(c, x, y, s, 7.75, 1, 0.5, 15, '#c8c8c8');                 // 鏡面
       dot(c, x, y, s, 6.5, 9, 3, 2.5, '#f1e4d0');                    // 合わせた両手
     },
-    // 白い船（3×2 タイル分。原点は左上）
+    // 白い船（4×3 タイル分。原点は左上）。正面から見た、左右完全対称の船。灯りはひとつもない
     ship(c, x, y, s) {
-      const u = s / 16;
-      c.fillStyle = '#f4f4f4';
-      c.beginPath(); c.moveTo(x, y + 20 * u); c.lineTo(x + 48 * u, y + 20 * u); c.lineTo(x + 42 * u, y + 30 * u); c.lineTo(x + 6 * u, y + 30 * u); c.closePath(); c.fill();
-      c.fillRect(x + 23 * u, y - 6 * u, 2 * u, 26 * u);
-      c.beginPath(); c.moveTo(x + 22 * u, y - 4 * u); c.lineTo(x + 10 * u, y + 17 * u); c.lineTo(x + 22 * u, y + 17 * u); c.closePath(); c.fill();
-      c.beginPath(); c.moveTo(x + 26 * u, y - 4 * u); c.lineTo(x + 38 * u, y + 17 * u); c.lineTo(x + 26 * u, y + 17 * u); c.closePath(); c.fill();
-      c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = u; c.strokeRect(x + 23 * u, y - 6 * u, 2 * u, 26 * u);
+      const u = s / 16, X = v => x + v * u, Y = v => y + v * u;
+      const P = (pts, fill, stroke, lw = 1) => {
+        c.beginPath(); pts.forEach(([a, b], i) => i ? c.lineTo(X(a), Y(b)) : c.moveTo(X(a), Y(b))); c.closePath();
+        if (fill) { c.fillStyle = fill; c.fill(); }
+        if (stroke) { c.strokeStyle = stroke; c.lineWidth = lw * u; c.stroke(); }
+      };
+      // 水面の影と霧
+      c.fillStyle = 'rgba(0, 0, 20, .35)'; c.beginPath(); c.ellipse(X(32), Y(46), 30 * u, 4 * u, 0, 0, Math.PI * 2); c.fill();
+      c.save(); c.shadowColor = 'rgba(200, 220, 255, .9)'; c.shadowBlur = 10 * u;
+      // 3 本のマスト（中央と、鏡に映したような左右）
+      for (const mx of [12, 32, 52]) { c.fillStyle = '#e8ecf4'; c.fillRect(X(mx - 0.8), Y(mx === 32 ? -14 : -4), 1.6 * u, (mx === 32 ? 44 : 34) * u); }
+      // 帆（左右対称に広がる）
+      P([[32, -12], [22, -2], [24, 14], [32, 12]], '#f7f9fc', '#b8c2d6');
+      P([[32, -12], [42, -2], [40, 14], [32, 12]], '#f7f9fc', '#b8c2d6');
+      P([[12, -2], [5, 6], [6, 18], [12, 16]], '#f2f5fa', '#b8c2d6');
+      P([[52, -2], [59, 6], [58, 18], [52, 16]], '#f2f5fa', '#b8c2d6');
+      // 船体（台形）と舷側の帯
+      P([[2, 30], [62, 30], [50, 45], [14, 45]], '#f4f6fa', '#9aa6bd', 1.2);
+      c.restore();
+      P([[4, 31.5], [60, 31.5], [58.6, 34], [5.4, 34]], '#cfd6e4');
+      c.fillStyle = '#b8c2d6'; c.fillRect(X(31.6), Y(34), 0.8 * u, 11 * u);                 // 竜骨（鏡面）
+      // 神殿のような船室
+      P([[20, 30], [44, 30], [44, 19], [20, 19]], '#fbfcff', '#9aa6bd');
+      P([[18, 19], [46, 19], [32, 9]], '#fbfcff', '#9aa6bd');
+      for (const wx of [23, 27, 35, 39]) {                                                       // 灯りのない窓
+        P([[wx, 29], [wx + 2.4, 29], [wx + 2.4, 23], [wx + 1.2, 21.6], [wx, 23]], '#1b2133');
+      }
+      // 扉と、鏡面の紋章（円を縦の線が二分する）
+      P([[30, 30], [34, 30], [34, 24], [32, 22.4], [30, 24]], '#2a3247');
+      c.strokeStyle = '#7f8aa3'; c.lineWidth = 1 * u;
+      c.beginPath(); c.arc(X(32), Y(15), 2.8 * u, 0, Math.PI * 2); c.stroke();
+      c.beginPath(); c.moveTo(X(32), Y(11.6)); c.lineTo(X(32), Y(18.4)); c.stroke();
+      // 船べりの霧
+      c.fillStyle = 'rgba(220, 230, 245, .35)';
+      for (const [fx, fr] of [[10, 5], [22, 6], [42, 6], [54, 5]]) { c.beginPath(); c.ellipse(X(fx), Y(45), fr * u, 2 * u, 0, 0, Math.PI * 2); c.fill(); }
     },
   };
 

@@ -178,7 +178,7 @@ const Maps = (() => {
         { x: 19, y: 4, sprite: 'innkeeper', on: 'bump', scene: f => f.c2_met ? 'c2_inn' : 'c2_inn_first' },
         // 夜
         { x: 23, y: 8, on: 'step', when: f => f.night && !f.c2_lens, scene: 'c2_warehouse' },
-        { x: 21, y: 9, sprite: 'guard', on: 'bump', when: f => f.night, scene: 'c2_guard_night' },
+        { x: 21, y: 9, sprite: 'guard', on: 'bump', when: f => f.night, scene: f => f.c2_lens ? 'c2_guard_night' : 'c2_guard_night0' },
         { x: 13, y: 7, sprite: 'twins', on: 'bump', when: f => f.night, scene: f => (f.c2_rescued && !f.c2_clue2) ? 'c2_twins_clue' : 'c2_twins_night' },
         { x: 28, y: 10, on: 'step', when: f => f.night && f.c2_kidnap && !f.c2_rescued, warp: { map: 'cellar', x: 2, y: 1, dir: 'right' } },
         { x: 24, y: 21, sprite: 'thief', on: 'bump', when: f => f.night && f.c2_clue3 && !f.c2_chase, scene: 'c2_chase' },
@@ -186,8 +186,8 @@ const Maps = (() => {
         { x: 25, y: 20, on: 'step', when: f => f.night && f.c2_reveal && !f.c2_boss, warp: { map: 'top', x: 4, y: 6, dir: 'up' } },
         { x: 25, y: 20, on: 'bump', when: f => !(f.night && f.c2_reveal && !f.c2_boss), text: '灯台の扉には、鍵がかかっている。' },
         // 白い船（夜だけ湾に停まる。正体が分かったあとは灯台の島のそばへ）
-        { x: 9, y: 19, sprite: 'ship', when: f => f.night && f.c2_lens && !f.c2_reveal },
-        { x: 16, y: 19, sprite: 'ship', when: f => f.night && f.c2_reveal && !f.c2_boss },
+        { x: 8, y: 19, sprite: 'ship', when: f => f.night && f.c2_lens && !f.c2_reveal },
+        { x: 15, y: 19, sprite: 'ship', when: f => f.night && f.c2_reveal && !f.c2_boss },
       ],
     },
 

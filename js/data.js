@@ -123,7 +123,7 @@ const GameData = (() => {
       win: '湿気……に……やられた……',
     },
     iodoform: {
-      name: 'ヨードホルム三兄弟', sprite: 'iodoTrio', hp: 60, atk: 7, exp: 25, money: 150, ch: 2, mid: true,
+      name: 'ヨードホルム三兄弟', sprite: 'iodoTrio', hp: 100, atk: 7, exp: 30, money: 180, ch: 2, mid: true,
       tag: 'enol', topics: ['ハロホルム', 'α-ハロゲン化', 'エノラート', '互変異性'],
       start: '3 つのヨウ素で 1 つの心！',
       hit: ['ぐあっ、結晶にひびが！', 'し、昇華してしまう！'], miss: ['黄色い沈殿の勝利だ！', 'この消毒薬の匂いをかげ！'],

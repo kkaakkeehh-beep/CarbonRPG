@@ -499,12 +499,11 @@
   // =================================================================
   function questionPool(B) {
     const E = ENEMIES[B.key], d = S.diff, ch = E.ch || 1;
-    const diffs = E.boss ? [d, Math.min(4, d + 1)] : (B.key === 'duo' || E.mid) ? [d] : [d, Math.max(1, d - 1)];
+    const diffs = E.boss ? [d, Math.min(4, d + 1)] : B.key === 'duo' ? [d] : [d, Math.max(1, d - 1)];
     let pool = Questions.LIST.filter(q => q.ch === ch && diffs.includes(q.diff));
     // ボスの形態や中ボスの得意分野に合わせて絞る（足りなければ絞らない）
     const tag = B.form ? E.forms[B.form].tag : E.tag;
     if (tag) { const t = pool.filter(q => q.tag === tag); if (t.length >= 4) pool = t; }
-    if (E.topics) { const t = pool.filter(q => E.topics.includes(q.topic)); if (t.length >= 3) pool = t; }
     return pool;
   }
   function pickQuestion(B) {
@@ -513,6 +512,9 @@
     // いまの難易度の問題を優先し、未出題のものから選ぶ
     let cand = pool.filter(q => !S.used[q.id] && q.diff === S.diff);
     if (!cand.length) cand = pool.filter(q => !S.used[q.id]);
+    // 中ボスなどの得意分野は、未出題のものがあれば優先する
+    const E = ENEMIES[B.key];
+    if (E.topics) { const pref = pool.filter(q => !S.used[q.id] && E.topics.includes(q.topic)); if (pref.length) cand = pref; }
     if (!cand.length) { pool.forEach(q => delete S.used[q.id]); cand = pool; }
     const q = cand[Math.floor(Math.random() * cand.length)];
     S.used[q.id] = true;
