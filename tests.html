@@ -136,7 +136,7 @@
     check(`問題データの形式（${Questions.LIST.length} 問）`, !bad.length, bad.join('\n'));
     for (let d = 1; d <= 4; d++) {
       const n = Questions.pickSet(1, d).length;
-      check(`第1章・${Questions.DIFFS[d].name}: 10 問`, n === 10, `${n} 問`);
+      check(`第1章・${Questions.DIFFS[d].name}: 20 問`, n === 20, `${n} 問`);
     }
     const smiBad = [];
     for (const q of Questions.LIST.filter(q => q.smiles)) {
@@ -145,7 +145,7 @@
     check('問題の SMILES がすべて読める', !smiBad.length, smiBad.join('\n'));
     // 立体の記号と SMILES の対応（本ゲームの骨格では X が CIP 1 位）
     const cfgOf = smi => smi.includes('[C@@H]') ? 'R' : smi.includes('[C@H]') ? 'S' : null;
-    const stereoQs = { 'c1-1-01': 'R', 'c1-1-07': 'R', 'c1-2-07': 'R', 'c1-2-10': 'S', 'c1-3-09': 'R' };
+    const stereoQs = { 'c1-1-01': 'R', 'c1-1-07': 'R', 'c1-2-07': 'R', 'c1-2-10': 'S', 'c1-3-09': 'R', 'c1-2-18': 'S' };
     const stBad = Object.entries(stereoQs).filter(([id, c]) => cfgOf(Questions.LIST.find(q => q.id === id).smiles) !== c);
     check('問題文の立体と SMILES が一致', !stBad.length, JSON.stringify(stBad));
 

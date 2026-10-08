@@ -526,6 +526,7 @@
     if (B.state !== 'q' || B.skills.has(id)) return;
     const c = comp(id), sk = c.skill.id;
     B.skills.add(id);
+    flash(`${c.name}の「${c.skill.name}」！ ${c.skill.desc}`);
     if (sk === 'heal') S.hp = Math.min(S.maxHp, S.hp + 12);
     if (sk === 'power') B.power = true;
     if (sk === 'stink') B.stink = true;
@@ -544,8 +545,17 @@
     if (B.state !== 'q' || !S.items[id]) return;
     if (id === 'coffee') { if (S.hp >= S.maxHp) return; S.hp = Math.min(S.maxHp, S.hp + ITEMS.coffee.heal); }
     if (id === 'book') removeWrong(1);
+    flash(`${ITEMS[id].name}を使った！ ${ITEMS[id].desc}`);
     S.items[id]--;
     render();
+  }
+
+  function flash(text) {
+    document.querySelectorAll('.toast').forEach(t => t.remove());
+    const el = document.createElement('div');
+    el.className = 'toast good'; el.textContent = text;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2200);
   }
 
   function vBattle() {
@@ -562,12 +572,18 @@
       if (B.state === 'q') {
         const choices = B.order.map(i => `<button class="choice" data-act="answer" data-arg="${i}" ${B.removed.has(i) ? 'disabled' : ''}>${esc(q.choices[i])}</button>`).join('');
         const skills = S.party.map(id => { const c = comp(id), used = B.skills.has(id);
-          return `<button class="skill" style="--ac:${c.color}" data-act="skill" data-arg="${id}" ${used ? 'disabled' : ''} title="${esc(c.skill.desc)}">${c.name}「${c.skill.name}」</button>`; }).join('');
-        const items = ['coffee', 'book'].filter(id => S.items[id]).map(id => `<button class="skill item" data-act="item" data-arg="${id}" title="${esc(ITEMS[id].desc)}">${ITEMS[id].name} ×${S.items[id]}</button>`).join('');
+          return `<button class="skill" style="--ac:${c.color}" data-act="skill" data-arg="${id}" ${used ? 'disabled' : ''}>
+            <span class="sk-name">${c.name}「${c.skill.name}」${used ? '<span class="sk-used">使用済み</span>' : ''}</span>
+            <span class="sk-desc">${esc(c.skill.desc)}</span></button>`; }).join('');
+        const items = ['coffee', 'book'].filter(id => S.items[id]).map(id => {
+          const full = id === 'coffee' && S.hp >= S.maxHp;
+          return `<button class="skill item" data-act="item" data-arg="${id}" ${full ? 'disabled' : ''}>
+            <span class="sk-name">${ITEMS[id].name} ×${S.items[id]}${full ? '<span class="sk-used">HP 満タン</span>' : ''}</span>
+            <span class="sk-desc">${esc(ITEMS[id].desc)}</span></button>`; }).join('');
         const flags = [B.power ? '背面攻撃 準備中' : '', B.guard ? '立体障害で守っている' : '', B.stink ? '悪臭で敵がひるんでいる' : ''].filter(Boolean).map(t => `<span class="chip ok">${t}</span>`).join('');
         body = win(`${qbox}<div class="timer"><div class="bar time"><div id="qtime" style="width:${B.timeLeft / B.timeCap * 100}%"></div></div><span id="qtnum" class="small">${Math.ceil(B.timeLeft)}</span></div>`, 'qwin')
           + `<div class="choices">${choices}</div>`
-          + `<div class="skills">${skills}${items}</div>${flags ? `<div class="status">${flags}</div>` : ''}`;
+          + `<div class="skills-head small dim">仲間の技（バトルごとに 1 回ずつ）・どうぐ</div><div class="skills">${skills}${items}</div>${flags ? `<div class="status">${flags}</div>` : ''}`;
       } else {
         const r = B.result;
         const choices = B.order.map(i => `<div class="choice shown ${i === q.a ? 'right' : i === r.choice ? 'wrong' : ''}">${i === q.a ? '○ ' : i === r.choice ? '× ' : ''}${esc(q.choices[i])}</div>`).join('');

@@ -271,10 +271,20 @@ p { margin: .4em 0; }
 .choice.shown { cursor: default; opacity: .55; }
 .choice.right { border-color: var(--good); color: var(--good); opacity: 1; }
 .choice.wrong { border-color: var(--bad); color: var(--bad); opacity: 1; }
-.skills { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 3px 10px; }
-.skill { font: inherit; font-size: 13px; color: var(--ac, var(--text)); background: var(--win); border: 2px solid var(--ac, #888); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.skills-head { margin: 0 6px 4px; }
+.skills { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; margin: 0 3px 10px; }
+.skill {
+  font: inherit; text-align: left; color: var(--text); background: var(--win); cursor: pointer;
+  border: 2px solid var(--ac, #888); border-radius: 8px; padding: 6px 10px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.skill:hover:not(:disabled) { background: #151a33; }
 .skill.item { --ac: var(--accent); }
-.skill:disabled { opacity: .3; cursor: not-allowed; }
+.skill:disabled { opacity: .35; cursor: not-allowed; }
+.sk-name { color: var(--ac, var(--text)); font-size: 14px; }
+.sk-desc { font-size: 12px; line-height: 1.5; color: var(--text); }
+.sk-used { margin-left: 6px; font-size: 11px; color: var(--dim); border: 1px solid var(--dim); border-radius: 4px; padding: 0 4px; }
+.toast.good { border-color: var(--good); color: var(--good); }
 .explain { color: var(--good); border-left: 3px solid var(--good); padding-left: 10px; font-size: 14px; line-height: 1.7; }
 .bad-text { color: var(--bad); }
 .dlog { white-space: pre-line; margin: 8px 0; min-height: 3em; }

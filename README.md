@@ -40,7 +40,7 @@ js/maps.js        マップとイベント（文字で描いたタイル）
 js/story.js       第1章の台本
 js/sprites.js     タイルとキャラクターの描画（画像ファイルなし）
 js/data.js        仲間・敵・アイテム
-js/questions.js   問題（難易度 4 段階 × 各 10 問、第1章分）
+js/questions.js   問題（難易度 4 段階 × 各 20 問、第1章分）
 js/mol.js         構造式の描画（SmilesDrawer）
 js/chem.js        反応エンジン（最初の試作で使ったもの。いまのゲームでは未使用）
 lib/              SmilesDrawer 2.1.7（MIT License）
