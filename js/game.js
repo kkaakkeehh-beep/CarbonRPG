@@ -283,8 +283,8 @@
       return `<li class="shop-row"><span><b>${it.name}</b>　${yen(it.price)}<br><span class="small dim">${it.desc}（持っている数: ${S.items[id] || 0}）</span></span>
         <button class="btn small-btn" data-act="buy" data-arg="${id}" ${can ? '' : 'disabled'}>買う</button></li>`; }).join('');
     return `<div class="menu win">
-      <h3>購買部</h3>
-      <p class="small">「いらっしゃい！ 研究費はちゃんと残しておくんだよ」</p>
+      <h3>${esc(UI.shopInfo.name)}</h3>
+      <p class="small">${esc(UI.shopInfo.line)}</p>
       <p>研究費 <b class="accent">${yen(S.money)}</b></p>
       <ul class="shop-list">${rows}</ul>
       <div class="center"><button class="btn" data-act="closeShop">とじる</button></div>
@@ -335,10 +335,17 @@
   }
   function message(lines, done) { UI.msg = Array.isArray(lines) ? [...lines] : [lines]; UI.msgDone = done || null; UI.held = null; renderOverlay(); }
   const busy = () => !!(UI.scene || UI.msg || UI.menu || UI.shop || UI.choice);
+  const SHOP_DEFAULT = { name: '購買部', line: '「いらっしゃい！ 研究費はちゃんと残しておくんだよ」' };
+  function openShop(info) {
+    UI.shopInfo = typeof info === 'object' ? info : SHOP_DEFAULT;
+    UI.shop = true; UI.held = null; Sound.se('blip');
+    renderOverlay();
+  }
   function choose(i) {
     const o = UI.choice && UI.choice[+i];
     if (!o) return;
     UI.choice = null;
+    if (o.shop) { UI.scene = null; return openShop(o.shop); }
     const sc = UI.scene; UI.scene = null;
     if (o.go) playScene(o.go, sc && sc.onDone);
     else { renderOverlay(); if (sc && sc.onDone) sc.onDone(); }
@@ -469,7 +476,7 @@
   function trigger(ev) {
     if (ev.scene) return playScene(resolve(ev.scene, S.flags));
     if (ev.text) return message(ev.text);
-    if (ev.shop) { UI.shop = true; UI.held = null; Sound.se('blip'); return renderOverlay(); }
+    if (ev.shop) return openShop(ev.shop);
     if (ev.chest) {
       if (S.flags[ev.chest.flag]) return message('宝箱はからっぽだ。');
       S.flags[ev.chest.flag] = true;
