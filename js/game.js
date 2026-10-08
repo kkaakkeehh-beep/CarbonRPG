@@ -947,10 +947,10 @@
       body = win(`${lines.map(l => `<p>${esc(l)}</p>`).join('')}<div class="center"><button class="btn big" data-act="bNext">${B.state === 'intro' ? 'たたかう' : 'つぎへ'}</button>
         ${B.state === 'intro' && B.random ? '<button class="btn" data-act="run">にげる</button>' : ''}</div>`, 'msg');
     } else if (B.state === 'levelup') {
-      const opts = S.party.map(id => {
+      const opts = S.party.map((id, k) => {
         const c = comp(id), lv = skillLv(id), max = lv >= SKILL_MAX;
         return `<button class="skill up" style="--ac:${c.color}" data-act="upgrade" data-arg="${id}" ${max ? 'disabled' : ''}>
-          <span class="sk-name">${c.name}「${c.skill.name}」 Lv${lv}${max ? '（最大）' : ` → Lv${lv + 1}`}</span>
+          <span class="sk-name"><span class="sk-key">${k + 1}</span>${c.name}「${c.skill.name}」 Lv${lv}${max ? '（最大）' : ` → Lv${lv + 1}`}</span>
           <span class="sk-desc">いま: ${esc(skillAt(id).desc)}</span>
           ${max ? '' : `<span class="sk-desc accent">強化後: ${esc(skillAt(id, lv + 1).desc)}</span>`}</button>`;
       }).join('');
@@ -1231,6 +1231,12 @@
     if (UI.screen === 'battle') {
       const B = UI.battle;
       if (B && B.state === 'q' && ['1', '2', '3', '4'].includes(e.key)) { const i = B.order[+e.key - 1]; if (!B.removed.has(i)) answer(i); }
+      // レベルアップ：1〜4 キーで強化する技を選ぶ（技がすべて最大なら Enter で進む）
+      else if (B && B.state === 'levelup' && !e.repeat) {
+        const id = S.party[+e.key - 1];
+        if (id && skillLv(id) < SKILL_MAX) upgradeSkill(id);
+        else if (['Enter', ' ', 'z', 'Z'].includes(e.key) && S.party.every(p => skillLv(p) >= SKILL_MAX)) { e.preventDefault(); upgradeSkill(''); }
+      }
       else if (['Enter', ' ', 'z', 'Z'].includes(e.key) && B && !['q', 'levelup'].includes(B.state)) { e.preventDefault(); if (!finishTyping()) battleNext(); }
       return;
     }

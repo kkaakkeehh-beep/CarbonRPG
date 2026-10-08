@@ -314,6 +314,7 @@ p { margin: .4em 0; }
 .skill.item { --ac: var(--accent); }
 .skill:disabled { opacity: .35; cursor: not-allowed; }
 .sk-name { color: var(--ac, var(--text)); font-size: 14px; }
+.sk-key { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; margin-right: 6px; border: 1px solid var(--dim); border-radius: 4px; font-size: 11px; color: var(--dim); vertical-align: 1px; }
 .sk-desc { font-size: 12px; line-height: 1.5; color: var(--text); }
 .sk-used { margin-left: 6px; font-size: 11px; color: var(--dim); border: 1px solid var(--dim); border-radius: 4px; padding: 0 4px; }
 .toast.good { border-color: var(--good); color: var(--good); }

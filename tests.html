@@ -3,17 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CarbonRPG 反応エンジンのテスト</title>
+  <title>CarbonRPG のテスト</title>
   <style>
     body { background: #0a0d1c; color: #eee; font-family: monospace; padding: 16px; }
     .ok { color: #7ee787; } .ng { color: #ff7b72; } pre { white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h1>反応エンジンのテスト</h1>
+  <h1>CarbonRPG のテスト</h1>
   <div id="out"></div>
   <script src="lib/smiles-drawer.min.js"></script>
-  <script src="js/chem.js"></script>
   <script src="js/questions.js"></script>
   <script src="js/data.js"></script>
   <script src="js/sprites.js"></script>
@@ -23,106 +22,10 @@
   <script>
     const out = document.getElementById('out');
     let pass = 0, fail = 0;
-    const near = (a, b, tol = 0.6) => Math.abs((a || 0) - b) <= tol;
     function check(label, cond, detail) {
       cond ? pass++ : fail++;
       out.insertAdjacentHTML('beforeend', `<div class="${cond ? 'ok' : 'ng'}">${cond ? '✔' : '✘'} ${label}${cond ? '' : `<pre>${detail}</pre>`}</div>`);
     }
-    // 何ターンも同じ条件で回す
-    function run(flask, c, turns = 6) { for (let i = 0; i < turns; i++) flask = Chem.react(flask, c).flask; return flask; }
-    const C = (reagent, solvent, temp = 'rt', extra = {}) => ({ reagent, solvent, temp, humid: false, ag: false, crown: false, ...extra });
-    const show = f => JSON.stringify(f, (k, v) => typeof v === 'number' ? Math.round(v * 10) / 10 : v);
-
-    // 1 第一級 + NaN3/DMF → SN2 100%
-    let f = run({ 'nBu:Br:-': 100 }, C('NaN3', 'DMF'));
-    check('1-ブロモブタン + NaN₃/DMF → 1-アジドブタン 100%', near(f['nBu:N3:-'], 100), show(f));
-
-    // 2 第一級 + t-BuOK → E2 主
-    f = run({ 'nBu:Br:-': 100 }, C('tBuOK', 'THF'));
-    check('1-ブロモブタン + t-BuOK → 1-ブテン 85%', near(f['alk:1-butene'], 85), show(f));
-
-    // 3 (R)-2-ブロモブタン + NaN3/DMF → (S) 体のみ
-    f = run({ 'sBu:Br:R': 100 }, C('NaN3', 'DMF'));
-    check('(R)-2-ブロモブタン + NaN₃/DMF → (S)-アジド 100%', near(f['sBu:N3:S'], 100) && !f['sBu:N3:R'], show(f));
-
-    // 4 第二級 + NaOEt/EtOH → E2 80%
-    f = run({ 'sBu:Br:R': 100 }, C('NaOEt', 'EtOH'), 12);
-    const alk = (f['alk:E-2-butene'] || 0) + (f['alk:Z-2-butene'] || 0) + (f['alk:1-butene'] || 0);
-    check('2-ブロモブタン + NaOEt/EtOH → アルケン 80% / (S)-エーテル 20%', near(alk, 80) && near(f['sBu:OEt:S'], 20), show(f));
-
-    // 5 2-ブロモ-2-メチルブタン: EtO⁻ → Zaitsev 70%、t-BuO⁻ → Hofmann 72%
-    f = run({ 'tAm:Br:-': 100 }, C('NaOEt', 'EtOH'), 12);
-    check('tert-アミルBr + NaOEt → 2-メチル-2-ブテン 70%', near(f['alk:2m2b'], 70), show(f));
-    f = run({ 'tAm:Br:-': 100 }, C('tBuOK', 'THF'));
-    check('tert-アミルBr + t-BuOK → 2-メチル-1-ブテン 72%', near(f['alk:2m1b'], 72), show(f));
-    f = run({ 'tAm:Br:-': 100 }, C('tBuOK', 'MeOH'));
-    check('t-BuOK を MeOH 中で使うと MeO⁻ になり Zaitsev 主', (f['alk:2m2b'] || 0) > (f['alk:2m1b'] || 0), show(f));
-
-    // 6 t-BuBr 加溶媒分解（MeOH）: SN1 80 / E1 20、加熱で E1 増
-    f = run({ 'tBu:Br:-': 100 }, C(null, 'MeOH'), 12);
-    check('t-BuBr / MeOH / 室温 → MTBE 80%', near(f['tBu:OMe:-'], 80), show(f));
-    f = run({ 'tBu:Br:-': 100 }, C(null, 'MeOH', 'reflux'), 12);
-    check('t-BuBr / MeOH / 還流 → MTBE が減る', (f['tBu:OMe:-'] || 0) < 70, show(f));
-    f = run({ 'tBu:Br:-': 100 }, C('NaOEt', 'MeOH'), 12);
-    check('t-BuBr + アルコキシド → イソブテン 100%（Williamson は失敗）', near(f['alk:isobutylene'], 100), show(f));
-    f = run({ 'tBu:Br:-': 100 }, C(null, 'DMSO'));
-    check('t-BuBr / DMSO のみ → 反応しない', near(f['tBu:Br:-'], 100), show(f));
-
-    // 7 (R)-2-ブタノール
-    const sBuOH = { 'sBu:OH:R': 100 };
-    f = run(sBuOH, C('NaN3', 'DMF'));
-    check('(R)-2-ブタノール + NaN₃ → 反応しない（OH は脱離しない）', near(f['sBu:OH:R'], 100), show(f));
-    f = run(run(sBuOH, C('TsCl', 'DMF'), 2), C('NaN3', 'DMF'));
-    check('TsCl → NaN₃: (S)-アジド 100%（保持→反転）', near(f['sBu:N3:S'], 100), show(f));
-    f = run(run(sBuOH, C('PBr3', 'THF'), 3), C('NaN3', 'DMF'));
-    check('PBr₃ → NaN₃: (R)-アジド（反転→反転＝保持）', near(f['sBu:N3:R'], 100, 1), show(f));
-    f = run(run(sBuOH, C('HBr', 'H2O'), 8), C('NaN3', 'DMF'));
-    check('HBr → NaN₃: 部分ラセミ化（(S) 35%）', near(f['sBu:N3:S'], 35, 1), show(f));
-    f = run(sBuOH, C('Mitsunobu', 'THF'));
-    check('光延反応 / THF → (S)-アジド 100%', near(f['sBu:N3:S'], 100), show(f));
-    f = run(sBuOH, C('TsCl', 'MeOH'));
-    check('TsCl を MeOH 中で使う → 溶媒がトシル化されて失敗', near(f['sBu:OH:R'], 100), show(f));
-
-    // 8 ボス (R)-3-メチル-2-ブタノール
-    const boss = { 'm2b:OH:R': 100 };
-    f = run(run(boss, C('PBr3', 'THF'), 3), C('NaN3', 'DMSO'), 10);
-    check('ボス: PBr₃ → NaN₃ で (R)-アジド', near(f['m2b:N3:R'], 100, 1), show(f));
-    f = run(run(run(boss, C('TsCl', 'DMF'), 2), C('NaI', 'acetone'), 1), C('NaN3', 'DMSO'), 10);
-    check('ボス: TsCl → NaI(1回) → NaN₃ で (R)-アジド主（保持→反転→反転）', near(f['m2b:N3:R'], 72, 1) && near(f['m2b:N3:S'], 28, 1), show(f));
-    f = run({ 'sBu:I:R': 100 }, C('NaI', 'acetone'), 12);
-    check('(R)-2-ヨードブタン + NaI を続けるとラセミ化', near(f['sBu:I:R'], 50, 1), show(f));
-    f = run(boss, C('HBr', 'H2O'), 8);
-    check('ボス: HBr → 転位した 2-ブロモ-2-メチルブタン 63%', near(f['tAm:Br:-'], 63, 1), show(f));
-    f = run(boss, C('H2SO4', 'H2O', 'reflux'), 8);
-    check('ボス: H₂SO₄/加熱 → 転位を経て 2-メチル-2-ブテン主', (f['alk:2m2b'] || 0) > 60, show(f));
-
-    // 9 アルケンへの HBr 付加（Markovnikov）
-    f = run({ 'alk:2m1b': 100 }, C('HBr', 'H2O'));
-    check('2-メチル-1-ブテン + HBr → 2-ブロモ-2-メチルブタン', near(f['tAm:Br:-'], 100), show(f));
-
-    // 10 エステルのけん化は立体保持
-    f = run({ 'sBu:OAc:S': 100 }, C('NaOH', 'H2O'));
-    check('酢酸 (S)-2-ブチル + NaOH → (S)-2-ブタノール（保持）', near(f['sBu:OH:S'], 100), show(f));
-
-    // 11 湿気: TsCl の速度が半分
-    f = Chem.react(sBuOH, C('TsCl', 'DMF', 'rt', { humid: true })).flask;
-    check('湿気があると TsCl は 50% しか進まない', near(f['sBu:OTs:R'], 50), show(f));
-
-    // 12 名前と SMILES
-    const d = Chem.describe('sBu:N3:S');
-    check('名前: (S)-2-アジドブタン', d.name === '(S)-2-アジドブタン', d.name);
-    check('SMILES: (R)-2-ブロモブタン = C[C@@H](Br)CC', Chem.describe('sBu:Br:R').smiles === 'C[C@@H](Br)CC', Chem.describe('sBu:Br:R').smiles);
-
-    // 合計が 100% に保たれる
-    let okSum = true;
-    for (const start of [{ 'tBu:Br:-': 100 }, { 'm2b:OH:R': 100 }, { 'sBu:Br:R': 100 }]) {
-      for (const r of [null, 'NaOEt', 'tBuOK', 'HBr', 'NaN3', 'PBr3']) {
-        const g = run(start, C(r, 'EtOH', 'reflux'), 3);
-        const s = Object.values(g).reduce((a, b) => a + b, 0);
-        if (Math.abs(s - 100) > 0.5) { okSum = false; console.log(r, s, g); }
-      }
-    }
-    check('物質収支: 合計がつねに 100%', okSum, 'console を参照');
 
     // ---- 問題データ ----
     const ids = new Set(), bad = [];
