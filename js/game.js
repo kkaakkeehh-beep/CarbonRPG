@@ -489,7 +489,7 @@
     UI.battle = {
       key, random, name: E.name, sprite: E.sprite, hp, maxHp: hp, atk: E.atk, phase: 0,
       state: 'intro', lines: [`${E.name}があらわれた！`, `${E.name}「${E.start}」`],
-      q: null, order: [], removed: new Set(), streak: 0, power: 0, guard: 0, stink: 0,
+      q: null, order: [], removed: new Set(), streak: 0, power: 0, guard: 0, stink: 0, dr: 0,
       uses: Object.fromEntries(S.party.map(id => [id, skillAt(id).uses])),
       timeMax: S.diff >= 4 ? 120 : 90, timeLeft: 0, queue: queue ? [...queue] : null, levels: 0,
     };
@@ -556,7 +556,7 @@
       if (E.practice) {
         lines.push(`${choice < 0 ? '時間切れ。' : '不正解。'}（練習なのでダメージはない）`);
       } else {
-        let dmg = Math.max(1, B.atk - B.stink);
+        let dmg = Math.max(1, B.atk - B.stink - B.dr);
         if (S.cfg === 'S') dmg = Math.max(1, Math.round(dmg * 0.75));
         if (B.guard) { dmg = 0; B.guard--; lines.push('ブトキが立ちはだかった！'); }
         S.hp = Math.max(0, S.hp - dmg);
@@ -641,9 +641,9 @@
     else Sound.se('blip');
     if (sk === 'power') B.power = L.v;
     if (sk === 'stink') B.stink = Math.max(B.stink, L.v);
-    if (sk === 'guard') B.guard++;
+    if (sk === 'guard') { B.guard++; B.dr = Math.max(B.dr, L.v); }
     if (sk === 'time') { B.timeLeft += L.v; B.timeCap = Math.max(B.timeCap, B.timeLeft); }
-    if (sk === 'fifty') removeWrong(L.v);
+    if (sk === 'fifty') { removeWrong(L.v); if (L.t) { B.timeLeft += L.t; B.timeCap = Math.max(B.timeCap, B.timeLeft); } }
     render();
   }
   function removeWrong(n) {
@@ -748,7 +748,7 @@
           return `<button class="skill item" data-act="item" data-arg="${id}" ${full ? 'disabled' : ''}>
             <span class="sk-name">${ITEMS[id].name} ×${S.items[id]}${full ? '<span class="sk-used">HP 満タン</span>' : ''}</span>
             <span class="sk-desc">${esc(ITEMS[id].desc)}</span></button>`; }).join('');
-        const flags = [B.power ? '背面攻撃 準備中' : '', B.guard ? `立体障害で守っている（${B.guard}）` : '', B.stink ? `悪臭で敵がひるんでいる（−${B.stink}）` : ''].filter(Boolean).map(t => `<span class="chip ok">${t}</span>`).join('');
+        const flags = [B.power ? '背面攻撃 準備中' : '', B.guard ? '立体障害で守っている' : '', B.dr ? `被ダメージ −${B.dr}` : '', B.stink ? `悪臭で敵がひるんでいる（−${B.stink}）` : ''].filter(Boolean).map(t => `<span class="chip ok">${t}</span>`).join('');
         body = win(`${qbox}<div class="timer"><div class="bar time"><div id="qtime" style="width:${B.timeLeft / B.timeCap * 100}%"></div></div><span id="qtnum" class="small">${Math.ceil(B.timeLeft)}</span></div>`, 'qwin')
           + `<div class="${grid}">${choices}</div>`
           + (E.practice ? '' : `<div class="skills-head small dim">仲間の技・どうぐ</div><div class="skills">${skills}${items}</div>`)
