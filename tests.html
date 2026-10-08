@@ -253,6 +253,21 @@
     }
     check('台本の参照先（敵・台詞）', !scBad.length, scBad.join('\n'));
 
+    // ---- いまの目的：物語の順にフラグを立てても、クリアまで目的が途切れず、印の場所がマップの中にある ----
+    const goalOrder = ['started', 'elder', 'f_entry', 'sisters', 'duo', 'boss', 'clear', 'c2_arrive', 'c2_met', 'c2_lens', 'c2_pier', 'c2_kidnap', 'c2_rescued',
+      'c2_clue2', 'c2_clue3', 'c2_chase', 'c2_reveal', ...c3Order];
+    const goalBad = [];
+    goalOrder.forEach((k, i) => {
+      const base = Object.fromEntries(goalOrder.slice(0, i + 1).map(x => [x, true]));
+      for (const night of [false, true]) {
+        const g = Maps.goalOf({ ...base, night });
+        if (k === 'c3_boss') { if (g) goalBad.push('クリア後にも目的が残っている'); continue; }
+        if (!g || !g.t || !g.at.length) { goalBad.push(`${k} のあとに目的がない`); continue; }
+        for (const [mp, x, y] of g.at) { const m = Maps.MAPS[mp]; if (!m || !(m.grid[y] && m.grid[y][x])) goalBad.push(`${k}: 印 ${mp} (${x},${y}) がマップ外`); }
+      }
+    });
+    check('いまの目的が物語の最後まで途切れない', !goalBad.length, goalBad.join('\n'));
+
     out.insertAdjacentHTML('afterbegin', `<h2 class="${fail ? 'ng' : 'ok'}" id="summary">${pass} 件成功 / ${fail} 件失敗</h2>`);
   </script>
 </body>

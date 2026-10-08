@@ -40,6 +40,9 @@
     for (const k of Object.keys(d)) if (s[k] === undefined) s[k] = d[k];
     for (const id of s.party) if (!s.skillLv[id]) s.skillLv[id] = 1;
     for (const id of Object.keys(ITEMS)) if (s.items[id] === undefined) s.items[id] = 0;
+    // 問題の ID が変わったときに、ノートや出題の記録に残った古い ID を消す（練習で読み込めず止まらないように）
+    const ids = new Set(Questions.LIST.map(q => q.id));
+    for (const book of [s.notebook, s.used]) for (const id of Object.keys(book)) if (!ids.has(id)) delete book[id];
     return s;
   }
   function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* 保存できない環境でも遊べる */ } }
@@ -279,12 +282,16 @@
   // 第 2 章は昼と夜、第 3 章は残っている柱の数をマップ名に添える
   const mapTitle = () => map().name + (map().ch === 2 ? (S.flags.night ? '（夜）' : '（昼）')
     : map().ch === 3 && !S.flags.c3_boss ? `　柱 ${Maps.pillarsLit(S.flags)}/6` : '');
+  // いまの目的（どこへ行けばよいかを HUD に出す）
+  const goalText = () => { const g = Maps.goalOf(S.flags); return g ? g.t : ''; };
   function vWorld() {
+    const gt = goalText();
     return `<div class="world">
       <div class="hud">
         <span><b class="mapname">${mapTitle()}</b></span>
         <span class="hp-box">${hudStatus()}</span>
         <span class="hud-btns"><span class="money">研究費 ${yen(S.money)}</span>${muteBtn()}<button class="btn small-btn" data-act="menu">メニュー</button></span>
+        <span class="goal"${gt ? '' : ' hidden'}><b>目的</b><span class="goal-t">${esc(gt)}</span></span>
       </div>
       <div class="stage">
         <canvas id="cv" width="${VW * TILE}" height="${VH * TILE}"></canvas>
@@ -375,6 +382,7 @@
       <h3>${heroName()}　Lv${S.lv}　HP ${S.hp}/${S.maxHp}</h3>
       <p class="small">次のレベルまで 経験値 ${expToNext(S.lv) - S.exp}　｜　研究費 ${yen(S.money)}</p>
       <p class="small">難易度: ${Questions.DIFFS[S.diff].name}　｜　${st}</p>
+      ${goalText() ? `<p class="small accent">目的: ${esc(goalText())}</p>` : ''}
       ${S.party.length ? `<p class="small">${heroFormula(S.party)}</p><ul class="mlist">${party}</ul>` : ''}
       <h3>どうぐ</h3><ul class="mlist">${items}</ul>
       <div class="center">
@@ -467,6 +475,8 @@
     if (m) m.textContent = `研究費 ${yen(S.money)}`;
     const nm = document.querySelector('.hud .mapname');
     if (nm) nm.textContent = mapTitle();
+    const gl = document.querySelector('.hud .goal');
+    if (gl) { const gt = goalText(); gl.hidden = !gt; gl.querySelector('.goal-t').textContent = gt; }
   }
 
   // =================================================================
@@ -538,6 +548,20 @@
     }
     const colors = S.party.length ? S.party.map(id => comp(id).color) : null;
     Sprites.drawChar(ctx, 'hero', (hx - camX) * TILE, (hy - camY) * TILE, TILE, { colors, dir: S.dir });
+    drawGoalMarks(camX, camY);
+  }
+  // 目的の場所に、上下に揺れる黄色い矢印を出す（会話中は出さない）
+  function drawGoalMarks(camX, camY) {
+    const g = Maps.goalOf(S.flags);
+    if (!g || busy()) return;
+    const bob = reduceMotion ? 0 : Math.round(Math.sin(performance.now() / 180) * 2);
+    for (const [mp, x, y] of g.at) {
+      if (mp !== S.map || (x === S.x && y === S.y)) continue;
+      // 画面のいちばん上の行（村の北の門など）でも矢印が見えるように、上端で止める
+      const cx = (x - camX) * TILE + TILE / 2, ty = Math.max(10, (y - camY) * TILE - 6) + bob;
+      ctx.beginPath(); ctx.moveTo(cx - 6, ty - 8); ctx.lineTo(cx + 6, ty - 8); ctx.lineTo(cx, ty); ctx.closePath();
+      ctx.fillStyle = '#ffd75e'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#3a2a00'; ctx.stroke();
+    }
   }
 
   function loop() {

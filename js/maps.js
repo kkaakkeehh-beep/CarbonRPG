@@ -26,6 +26,52 @@ const Maps = (() => {
     : ['柱の光が消えている。', '表面に、塩素がびっしりと付加している……。'];
   // 家督争い：アニリン家に勝ったあとで負けても、メタ伯爵からやり直せる
   const familyScene = f => f.c3_emblem ? (f.c3_boss ? 'c3_family_end' : 'c3_family_after') : f.c3_duel1 ? 'c3_family2' : 'c3_family';
+
+  // ---- いまの目的（HUD に出す文と、マップの上に印をつける場所 [map, x, y]） ----
+  const G = (t, ...at) => ({ t, at });
+  const INN = ['port', 19, 4];
+  // 第 2 章は昼と夜で出来事が変わる。時間が合わないときは、宿の主人に印をつける
+  const atNight = (f, t, ...at) => f.night ? G(t, ...at) : G(`${t}。まずアルドール亭で「夜まで休む」`, INN);
+  const atDay = (f, t, ...at) => f.night ? G(`${t}。まずアルドール亭で「朝まで休む」`, INN) : G(t, ...at);
+  function goalOf(f) {
+    if (!f.started) return null;
+    // 第 1 章
+    if (!f.elder) return G('村の東、六角形の屋根の庵で、長老ベンゼンに会う', ['town', 16, 4]);
+    if (!f.f_entry) return G('村の北の門から、求核の森へ向かう', ['town', 10, 0], ['town', 11, 0]);
+    if (!f.boss) {
+      if (!f.sisters) return G('森の西の花畑から聞こえる声の主を探す', ['forest', 5, 4], ['forest', 6, 4]);
+      if (!f.duo) return G('霧の手前に立つ、メソ団員の 2 人組を倒す', ['forest', 14, 8], ['forest', 15, 8]);
+      return G('晴れた霧の奥へ進み、森を荒らす幹部を探す', ['forest', 14, 3]);
+    }
+    // 第 2 章
+    if (!f.c2_boss) {
+      if (!f.c2_arrive) return G('村の東の街道から、カルボニル港へ向かう', ['town', 21, 5]);
+      if (!f.c2_met) return G('港の広場、噴水のそばにいるケトー卿に会う', ['port', 14, 7]);
+      if (!f.c2_lens) return atNight(f, '夜の倉庫街（港の東）を調べる', ['port', 23, 8]);
+      if (!f.c2_pier) return atDay(f, '昼、ケトー卿を探す。浜辺の西の桟橋にいるらしい', ['port', 6, 15]);
+      if (!f.c2_kidnap) return atDay(f, '昼、広場の西の市場で起きている騒ぎを見に行く', ['port', 6, 8]);
+      if (!f.c2_rescued) return atNight(f, '夜、倉庫街の奥の階段から地下へ下り、アセトン婆さんを探す', ['port', 28, 10], ['cellar', 17, 11]);
+      if (!f.c2_clue2) return atNight(f, '夜の広場にいる双子に、話を聞く', ['port', 13, 7]);
+      if (!f.c2_clue3) return atDay(f, '昼、南東の島の灯台守に、話を聞く', ['port', 23, 20]);
+      if (!f.c2_chase) return atNight(f, '夜、灯台のふもとへ行く', ['port', 24, 21]);
+      if (!f.c2_reveal) return atDay(f, '昼、広場の北にあるケトー卿の屋敷を訪ねる', ['port', 12, 3], ['mansion', 6, 3]);
+      return atNight(f, '夜、灯台の扉から頂上へ登る', ['port', 25, 20], ['top', 4, 2]);
+    }
+    // 第 3 章
+    if (!f.ch3) return G('港の船着き場にいるグリニャに話しかけ、芳香族の王国へ', ['port', 12, 15]);
+    if (!f.c3_boss) {
+      if (!f.c3_gate) return G('浜から北の坂を上り、城門へ', ['shore', 14, 1], ['shore', 15, 1]);
+      if (!f.c3_radika1) return G('南の城門区へ行き、街で話を聞く', ['capital', 16, 21]);
+      if (!f.c3_emblem) return G('城門区の東の広場で言い争う、2 つの家の者に話しかける', ['capital', 25, 26]);
+      if (!f.c3_mid) return G('メタの紋章でメタ区（北西）の門を通り、臭素の匂いのもとを探す', ['capital', 10, 8], ['capital', 5, 4], ['workshop', 5, 2]);
+      if (!f.c3_king2) return G('王宮へ行き、ナフタ王に話を聞く', ['capital', 16, 12], ['palace', 6, 2]);
+      if (!f.c3_tempo) return G('城の外、浜の東にある古い塔でテンポに会う', ['capital', 16, 29], ['shore', 27, 5], ['tempo', 4, 3]);
+      if (!f.c3_lastpillar) return G('王宮の北、パラ区の門へ', ['shore', 14, 1], ['capital', 16, 5]);
+      return G('光の塔を登り、頂上のラジカを止める', ['capital', 16, 3], ['ltower', 1, 1], ['ltop', 4, 3]);
+    }
+    return null;
+  }
+
   const MAPS = {
     lab: {
       name: 'カルボニア中央研究所',
@@ -46,7 +92,7 @@ const Maps = (() => {
         B: { rest: true },
       },
       events: [
-        { x: 5, y: 3, sprite: 'prof', on: 'bump', scene: f => f.clear ? 'lab_prof3' : f.elder ? 'lab_prof2' : 'lab_prof' },
+        { x: 5, y: 3, sprite: 'prof', on: 'bump', scene: f => f.c3_boss ? 'lab_prof_c3end' : f.ch3 ? 'lab_prof_c3' : f.c2_boss ? 'lab_prof_c2end' : f.clear ? 'lab_prof3' : f.elder ? 'lab_prof2' : 'lab_prof' },
         { x: 5, y: 8, on: 'step', warp: { map: 'town', x: 5, y: 12, dir: 'down' } },
       ],
     },
@@ -187,7 +233,8 @@ const Maps = (() => {
         { x: 6, y: 8, sprite: 'methylBoss', on: 'bump', when: f => !f.night && f.c2_pier && !f.c2_kidnap, scene: 'c2_kidnap' },
         { x: 6, y: 8, sprite: 'granny', on: 'bump', when: f => !f.night && (!f.c2_kidnap || f.c2_rescued), scene: f => f.c2_rescued ? 'c2_granny2' : 'c2_granny' },
         { x: 8, y: 8, sprite: 'twins', on: 'bump', when: f => !f.night, scene: 'c2_twins_day' },
-        { x: 12, y: 15, sprite: 'grignard', on: 'bump', when: f => !f.night && !f.ch3, scene: f => f.c2_boss ? 'c3_board' : 'c2_grignard' },
+        // 第 3 章が始まったあとも、グリニャの船で港と王国の浜を行き来できる
+        { x: 12, y: 15, sprite: 'grignard', on: 'bump', when: f => !f.night, scene: f => f.ch3 ? 'c3_ferry' : f.c2_boss ? 'c3_board' : 'c2_grignard' },
         { x: 23, y: 20, sprite: 'keeper', on: 'bump', when: f => !f.night && !f.c2_boss, scene: f => (f.c2_clue2 && !f.c2_clue3) ? 'c2_lecture' : 'c2_keeper' },
         { x: 19, y: 4, sprite: 'innkeeper', on: 'bump', scene: f => f.c2_met ? 'c2_inn' : 'c2_inn_first' },
         // 夜
@@ -555,5 +602,5 @@ const Maps = (() => {
     },
   };
 
-  return { MAPS, pillarsLit };
+  return { MAPS, pillarsLit, goalOf };
 })();
