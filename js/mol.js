@@ -12,6 +12,25 @@ const Mol = (() => {
   function svgTag(smiles, w, h, cls = '') {
     return `<svg class="mol ${cls}" data-smiles="${smiles}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"></svg>`;
   }
+  // 原子の数に合わせて描く枠の大きさを決める（大きな分子が小さく潰れないように）
+  function autoTag(smiles, cls = '', minW = 120, maxW = 300) {
+    const n = (smiles.replace(/\[[^\]]*\]/g, 'X').match(/Cl|Br|[A-Z]|[cnosp]/g) || []).length;
+    const w = Math.round(Math.min(maxW, Math.max(minW, 40 + n * 13)));
+    const h = Math.round(Math.min(150, Math.max(70, w * 0.55)));
+    return svgTag(smiles, w, h, cls);
+  }
+
+  // SmilesDrawer は正方形の viewBox を作るので、横に長い分子が小さくなる。
+  // 描いた範囲にぴったり合わせ、小さな分子は大きくしすぎない（最大 1.6 倍）
+  function fitView(el, w, h) {
+    let b;
+    try { b = el.getBBox(); } catch (e) { return; }
+    if (!b || !b.width || !b.height) return;
+    const pad = 4, bw = b.width + pad * 2, bh = b.height + pad * 2;
+    const scale = Math.min(w / bw, h / bh, 1.6);
+    const vw = w / scale, vh = h / scale;
+    el.setAttribute('viewBox', `${b.x + b.width / 2 - vw / 2} ${b.y + b.height / 2 - vh / 2} ${vw} ${vh}`);
+  }
 
   function drawAll(root) {
     const els = root.querySelectorAll('svg[data-smiles]');
@@ -32,10 +51,11 @@ const Mol = (() => {
           drawer.draw(tree, el, 'dq');
           el.setAttribute('width', w); el.setAttribute('height', h);
           el.style.width = w + 'px'; el.style.height = h + 'px';
+          fitView(el, w, h);
         },
         () => { el.outerHTML = `<code class="mol-fallback">${smi}</code>`; });
     });
   }
 
-  return { svgTag, drawAll };
+  return { svgTag, autoTag, drawAll };
 })();

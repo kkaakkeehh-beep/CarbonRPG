@@ -173,7 +173,20 @@
       q.cs.forEach((smi, i) => smi && SmilesDrawer.parse(smi, () => {}, () => smiBad.push(`${q.id} 選択肢${i}: ${smi}`)));
       if (new Set(q.cs.filter(Boolean)).size !== q.cs.filter(Boolean).length) smiBad.push(`${q.id}: 同じ構造式が重複`);
     }
-    check('問題の SMILES がすべて読める', !smiBad.length, smiBad.join('\n'));
+    // 名前つきの構造式（問題文の mols、選択肢の cm）
+    for (const q of Questions.LIST) {
+      for (const m of q.mols || []) {
+        if (!Array.isArray(m) || m.length !== 2 || !m[0]) smiBad.push(`${q.id}: mols の形が不正`);
+        else SmilesDrawer.parse(m[1], () => {}, () => smiBad.push(`${q.id} mols ${m[0]}: ${m[1]}`));
+      }
+      if (q.cm) {
+        if (q.cm.length !== 4) smiBad.push(`${q.id}: cm が 4 つではない`);
+        if (q.cs) smiBad.push(`${q.id}: cs と cm を同時に使っている`);
+        q.cm.forEach((smi, i) => smi && SmilesDrawer.parse(smi, () => {}, () => smiBad.push(`${q.id} cm${i}: ${smi}`)));
+      }
+    }
+    check('問題の SMILES がすべて読める（構造式で答える問題・名前つきの構造式）', !smiBad.length, smiBad.join('\n'));
+    check(`名前つきの構造式を添えた問題（${Questions.LIST.filter(q => q.mols || q.cm).length} 問）`, Questions.LIST.filter(q => q.mols || q.cm).length >= 130, '');
     // 立体の記号と SMILES の対応（本ゲームの骨格では X が CIP 1 位）
     const cfgOf = smi => smi.includes('[C@@H]') ? 'R' : smi.includes('[C@H]') ? 'S' : null;
     const stereoQs = { 'c1-1-01': 'R', 'c1-1-07': 'R', 'c1-2-07': 'R', 'c1-2-10': 'S', 'c1-3-09': 'R', 'c1-2-18': 'S' };

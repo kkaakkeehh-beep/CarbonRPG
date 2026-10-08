@@ -903,8 +903,13 @@
 
   // ---- バトル画面 -------------------------------------------------
   // 選択肢 1 つ分の中身（構造式の問題なら構造式、結果表示では名前も添える）
+  // 問題文に出てくる化合物の構造式（名前つきで並べる）
+  const molsRow = (q, maxW = 300) => q.mols ? `<div class="q-mols">${q.mols.map(([label, smi]) =>
+    `<figure>${Mol.autoTag(smi, '', 120, maxW)}<figcaption>${esc(label)}</figcaption></figure>`).join('')}</div>` : '';
   function choiceInner(q, i, reveal) {
     const smi = q.cs && q.cs[i];
+    // cm: 名前はそのまま見せて、構造式を添える
+    if (!smi && q.cm && q.cm[i]) return `<span class="c-text">${esc(q.choices[i])}</span>${Mol.autoTag(q.cm[i], 'c-mol', 110, 260)}`;
     if (!smi) return esc(q.choices[i]);
     const note = q.cl && q.cl[i] ? `<span class="c-note">${esc(q.cl[i])}</span>` : '';
     return `${Mol.svgTag(smi, 170, 100)}${note}${reveal ? `<span class="c-name">${esc(q.choices[i])}</span>` : ''}`;
@@ -933,8 +938,8 @@
     } else {
       const q = B.q;
       const head = `<div class="q-head"><span class="chip dim">${esc(Questions.DIFFS[q.diff].name)}</span><span class="chip dim">${esc(q.topic)}</span>${q.cs ? '<span class="chip ok">構造式で答える</span>' : ''}${S.notebook[q.id] ? '<span class="chip bad">復習ノートの問題</span>' : ''}</div>`;
-      const qbox = `${head}<p class="q-text">${esc(q.q)}</p>${q.smiles ? `<div class="q-mol">${Mol.svgTag(q.smiles, 220, 130, 'big')}</div>` : ''}`;
-      const grid = q.cs ? 'choices struct' : 'choices';
+      const qbox = `${head}<p class="q-text">${esc(q.q)}</p>${q.smiles ? `<div class="q-mol">${Mol.svgTag(q.smiles, 220, 130, 'big')}</div>` : ''}${molsRow(q)}`;
+      const grid = q.cs ? 'choices struct' : q.cm ? 'choices withmol' : 'choices';
       if (B.state === 'q') {
         const choices = B.order.map((i, k) => `<button class="choice" data-act="answer" data-arg="${i}" ${B.removed.has(i) ? 'disabled' : ''}><span class="c-key">${k + 1}</span>${choiceInner(q, i, false)}</button>`).join('');
         const skills = S.party.map(id => { const c = comp(id), L = skillAt(id), left = B.uses[id];
@@ -990,9 +995,9 @@
       return `<tr><td>${esc(t)}</td><td class="num">${v.c}/${v.t}</td><td class="rate"><div class="bar ${r >= 70 ? 'hp' : r >= 40 ? 'yield' : 'enemy'}"><div style="width:${r}%"></div></div></td><td class="num">${r}%</td></tr>`; }).join('');
     const cards = qs.map(q => `<details class="note-q">
         <summary><span class="chip dim">${esc(q.topic)}</span><span class="chip dim">${esc(Questions.DIFFS[q.diff].name)}</span> ${esc(q.q)} <span class="small bad-text">×${S.notebook[q.id]}</span></summary>
-        ${q.smiles ? `<div class="q-mol">${Mol.svgTag(q.smiles, 200, 120)}</div>` : ''}
+        ${q.smiles ? `<div class="q-mol">${Mol.svgTag(q.smiles, 200, 120)}</div>` : ''}${molsRow(q, 240)}
         <p>正解: <b class="accent">${esc(q.choices[q.a])}</b></p>
-        ${q.cs && q.cs[q.a] ? `<div class="q-mol">${Mol.svgTag(q.cs[q.a], 180, 100)}</div>` : ''}
+        ${(q.cs && q.cs[q.a]) || (q.cm && q.cm[q.a]) ? `<div class="q-mol">${Mol.svgTag((q.cs && q.cs[q.a]) || q.cm[q.a], 180, 100)}</div>` : ''}
         <p class="explain">${esc(q.explain)}</p>
       </details>`).join('');
     return `<h2 class="screen-title">復習ノート</h2>
