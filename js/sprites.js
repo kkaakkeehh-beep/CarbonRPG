@@ -33,6 +33,8 @@ const Sprites = (() => {
 
   // ---- タイル --------------------------------------------------
   const GRASS = '#3f8f3f';
+  const PATHLIKE = new Set([',', '=', 'D', 'E']);
+  const WATERLIKE = new Set(['~', '=']);
   function grassBase(ctx, x, y, s, tx, ty, base = GRASS) {
     dot(ctx, x, y, s, 0, 0, 16, 16, base);
     for (let i = 0; i < 5; i++) {
@@ -51,26 +53,59 @@ const Sprites = (() => {
         dot(c, x, y, s, gx + 1, gy + 1, 1, 3, '#256b2c');
       }
     },
-    ',': (c, x, y, s, tx, ty) => {
-      dot(c, x, y, s, 0, 0, 16, 16, '#c8a96b');
-      for (let i = 0; i < 3; i++) dot(c, x, y, s, Math.floor(hash(tx, ty, i) * 14), Math.floor(hash(tx, ty, i + 3) * 14), 2, 1, '#a88a50');
+    ',': (c, x, y, s, tx, ty, nb) => {
+      grassBase(c, x, y, s, tx, ty);
+      const road = d => PATHLIKE.has(nb(...d));
+      const N = road([0, -1]), S = road([0, 1]), W = road([-1, 0]), E = road([1, 0]);
+      // 道の本体（つながっていない辺は 2 ドット内側に寄せる）
+      const l = W ? 0 : 2, r = E ? 16 : 14, t = N ? 0 : 2, b = S ? 16 : 14;
+      dot(c, x, y, s, l, t, r - l, b - t, '#c8a96b');
+      // 角を丸める
+      if (!N && !W) dot(c, x, y, s, l, t, 1, 1, GRASS);
+      if (!N && !E) dot(c, x, y, s, r - 1, t, 1, 1, GRASS);
+      if (!S && !W) dot(c, x, y, s, l, b - 1, 1, 1, GRASS);
+      if (!S && !E) dot(c, x, y, s, r - 1, b - 1, 1, 1, GRASS);
+      // ふちの影と、ところどころの小石
+      if (!N) dot(c, x, y, s, l + 1, t, r - l - 2, 1, '#b39457');
+      if (!W) dot(c, x, y, s, l, t + 1, 1, b - t - 2, '#b39457');
+      for (let i = 0; i < 3; i++) dot(c, x, y, s, 3 + Math.floor(hash(tx, ty, i) * 10), 3 + Math.floor(hash(tx, ty, i + 3) * 10), 2, 1, '#a88a50');
+      // 草がはみ出したふち
+      for (const [side, on] of [['N', !N], ['S', !S], ['W', !W], ['E', !E]]) {
+        if (!on) continue;
+        for (let i = 0; i < 3; i++) {
+          const k = 3 + Math.floor(hash(tx, ty, i + 20 + side.charCodeAt(0)) * 10);
+          if (side === 'N') dot(c, x, y, s, k, t, 1, 1, '#4f9d4f');
+          if (side === 'S') dot(c, x, y, s, k, b - 1, 1, 1, '#4f9d4f');
+          if (side === 'W') dot(c, x, y, s, l, k, 1, 1, '#4f9d4f');
+          if (side === 'E') dot(c, x, y, s, r - 1, k, 1, 1, '#4f9d4f');
+        }
+      }
     },
     'T': (c, x, y, s, tx, ty) => {
       grassBase(c, x, y, s, tx, ty);
-      dot(c, x, y, s, 7, 11, 3, 5, '#6b4423');
-      circle(c, x, y, s, 8, 7, 7, '#1f5c2b');
-      circle(c, x, y, s, 6, 5.5, 3, '#2e7d3a');
+      const ox = (hash(tx, ty, 31) - 0.5) * 2, r = 6.3 + hash(tx, ty, 32) * 1.4;
+      const dark = hash(tx, ty, 33) < 0.5 ? '#1f5c2b' : '#1b5427';
+      dot(c, x, y, s, 7 + ox, 11, 3, 5, '#6b4423');
+      circle(c, x, y, s, 8 + ox, 7.2, r, dark);
+      circle(c, x, y, s, 6 + ox, 5.4, r * 0.42, '#2e7d3a');
+      circle(c, x, y, s, 10.5 + ox, 9, r * 0.25, '#246b31');
     },
-    '~': (c, x, y, s, tx, ty) => {
+    '~': (c, x, y, s, tx, ty, nb) => {
       dot(c, x, y, s, 0, 0, 16, 16, '#2f6fbf');
       const o = Math.floor(hash(tx, ty) * 6);
-      dot(c, x, y, s, 2 + o, 4, 5, 1, '#7fb2ee');
+      dot(c, x, y, s, 2 + o, 6, 5, 1, '#7fb2ee');
       dot(c, x, y, s, 8 - o / 2, 11, 5, 1, '#7fb2ee');
+      const land = d => !WATERLIKE.has(nb(...d));
+      if (land([0, -1])) { dot(c, x, y, s, 0, 0, 16, 2, '#2a5fa6'); dot(c, x, y, s, 0, 2, 16, 1, '#cfe6ff'); }
+      if (land([0, 1])) { dot(c, x, y, s, 0, 13, 16, 1, '#cfe6ff'); dot(c, x, y, s, 0, 14, 16, 2, '#5a8a4a'); }
+      if (land([-1, 0])) dot(c, x, y, s, 0, 0, 1, 16, '#cfe6ff');
+      if (land([1, 0])) dot(c, x, y, s, 15, 0, 1, 16, '#cfe6ff');
     },
     '=': (c, x, y, s) => {
       dot(c, x, y, s, 0, 0, 16, 16, '#2f6fbf');
-      for (let i = 0; i < 4; i++) dot(c, x, y, s, 1, i * 4, 14, 3, '#9a6a3a');
-      dot(c, x, y, s, 0, 0, 1, 16, '#5e3d1f'); dot(c, x, y, s, 15, 0, 1, 16, '#5e3d1f');
+      for (let i = 0; i < 4; i++) { dot(c, x, y, s, 2, i * 4, 12, 3, '#a8763f'); dot(c, x, y, s, 2, i * 4 + 3, 12, 1, '#7a5230'); }
+      dot(c, x, y, s, 1, 0, 1, 16, '#5e3d1f'); dot(c, x, y, s, 14, 0, 1, 16, '#5e3d1f');
+      for (const yy of [1, 7, 13]) { dot(c, x, y, s, 0, yy, 2, 2, '#4a2f16'); dot(c, x, y, s, 14, yy, 2, 2, '#4a2f16'); }
     },
     'f': (c, x, y, s, tx, ty) => {
       grassBase(c, x, y, s, tx, ty);
@@ -153,7 +188,8 @@ const Sprites = (() => {
   };
   const SOLID = new Set(['T', '~', 'M', 'r', '#', 'B', 'S', 'F', 'W', 'R', 'h', 'E']);
 
-  function drawTile(ctx, ch, x, y, s, tx, ty) { (TILE[ch] || TILE['.'])(ctx, x, y, s, tx, ty); }
+  // nb(dx, dy) はとなりのタイルの文字を返す（マップの外は木とみなす）
+  function drawTile(ctx, ch, x, y, s, tx, ty, nb = () => '.') { (TILE[ch] || TILE['.'])(ctx, x, y, s, tx, ty, nb); }
 
   // ---- キャラクター ---------------------------------------------
   // 人型の基本形

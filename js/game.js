@@ -352,7 +352,7 @@
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       let ch = m.grid[y][x];
       if (ch === 'M' && passableTile('M')) ch = 'm';
-      Sprites.drawTile(g, ch, x * TILE, y * TILE, TILE, x, y);
+      Sprites.drawTile(g, ch, x * TILE, y * TILE, TILE, x, y, (dx, dy) => (m.grid[y + dy] && m.grid[y + dy][x + dx]) || 'T');
     }
     mapCache = { key, canvas: c };
     return c;
