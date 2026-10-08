@@ -134,10 +134,18 @@
       if (!q.explain) bad.push(`${q.id}: 解説がない`);
     }
     check(`問題データの形式（${Questions.LIST.length} 問）`, !bad.length, bad.join('\n'));
-    for (let d = 1; d <= 4; d++) {
-      const n = Questions.pickSet(1, d).length;
-      check(`第1章・${Questions.DIFFS[d].name}: 20 問以上（${n} 問）`, n >= 20, `${n} 問`);
+    for (const ch of [1, 2]) for (let d = 1; d <= 4; d++) {
+      const n = Questions.pickSet(ch, d).length;
+      check(`第${ch}章・${Questions.DIFFS[d].name}: 20 問以上（${n} 問）`, n >= 20, `${n} 問`);
     }
+    // 第 2 章のボスが形態ごとに出せる問題があるか
+    const tagBad = [];
+    for (let d = 1; d <= 4; d++) for (const tag of ['keto', 'enol']) {
+      const n = Questions.LIST.filter(q => q.ch === 2 && q.tag === tag && (q.diff === d || q.diff === Math.min(4, d + 1))).length;
+      if (n < 4) tagBad.push(`難易度 ${d} の ${tag}: ${n} 問`);
+    }
+    check('第2章ボス: ケト形・エノール形の問題が各難易度に 4 問以上', !tagBad.length, tagBad.join('\n'));
+    check('第2章の問題すべてに tag（keto / enol）', Questions.LIST.filter(q => q.ch === 2).every(q => ['keto', 'enol'].includes(q.tag)), '');
     const smiBad = [];
     for (const q of Questions.LIST.filter(q => q.smiles)) {
       SmilesDrawer.parse(q.smiles, () => {}, () => smiBad.push(`${q.id}: ${q.smiles}`));
@@ -162,14 +170,16 @@
     // ---- マップと台本 ----
     const mapBad = [];
     const sceneIds = new Set(Object.keys(Story.SCENES));
-    const flagsAll = { elder: true, sisters: true, duo: true, boss: true, f_entry: true, started: true };
+    const flagsAll = { elder: true, sisters: true, duo: true, boss: true, f_entry: true, started: true,
+      c2_met: true, c2_lens: true, c2_pier: true, c2_kidnap: true, c2_rescued: true, c2_clue2: true, c2_clue3: true, c2_chase: true, c2_reveal: true };
+    const flagSets = [{}, flagsAll, { ...flagsAll, night: true }, { night: true }, { c2_lens: true }, { c2_clue2: true }];
     for (const [id, m] of Object.entries(Maps.MAPS)) {
       const W = m.grid[0].length;
       m.grid.forEach((row, y) => { if (row.length !== W) mapBad.push(`${id}: ${y} 行目の幅が ${row.length}（期待 ${W}）`); });
       [...m.grid.join('')].forEach(ch => { if (!Sprites.TILE_IDS.includes(ch)) mapBad.push(`${id}: 未定義のタイル ${ch}`); });
       for (const e of m.events) {
         if (!(m.grid[e.y] && m.grid[e.y][e.x])) mapBad.push(`${id}: イベント (${e.x},${e.y}) がマップ外`);
-        for (const f of [{}, flagsAll]) {
+        for (const f of flagSets) {
           const sc = typeof e.scene === 'function' ? e.scene(f) : e.scene;
           if (sc && !sceneIds.has(sc)) mapBad.push(`${id}: 台本 ${sc} がない`);
         }
@@ -183,9 +193,18 @@
     const scBad = [];
     for (const [id, steps] of Object.entries(Story.SCENES)) for (const st of steps) {
       if (st.do === 'battle' && !GameData.ENEMIES[st.e]) scBad.push(`${id}: 敵 ${st.e} がない`);
+      if (st.do === 'choice') for (const o of st.opts) if (o.go && !Story.SCENES[o.go]) scBad.push(`${id}: 選択肢の先 ${o.go} がない`);
+      if (st.do === 'warp') { const m = Maps.MAPS[st.map]; if (!m) scBad.push(`${id}: ワープ先 ${st.map} がない`); else if (Sprites.SOLID.has(m.grid[st.y][st.x])) scBad.push(`${id}: ワープ先 (${st.x},${st.y}) が壁`); }
       if (!st.do && !st.t) scBad.push(`${id}: 台詞が空`);
     }
     for (const k of GameData.RANDOM_ENEMIES) if (!GameData.ENEMIES[k]) scBad.push(`ランダム敵 ${k} がない`);
+    for (const [id, m] of Object.entries(Maps.MAPS)) for (const k of (m.encounters && m.encounters.enemies) || []) if (!GameData.ENEMIES[k]) scBad.push(`${id} のエンカウント敵 ${k} がない`);
+    // 話しかけるイベントは、となりのどこかに歩ける場所がある（囲まれて届かない人がいない）
+    for (const [id, m] of Object.entries(Maps.MAPS)) for (const e of m.events) {
+      if (e.on !== 'bump') continue;
+      const open = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const r = m.grid[e.y + dy]; return r && r[e.x + dx] && !Sprites.SOLID.has(r[e.x + dx]); });
+      if (!open) scBad.push(`${id}: ${e.sprite || 'イベント'} (${e.x},${e.y}) のまわりに歩ける場所がない`);
+    }
     check('台本の参照先（敵・台詞）', !scBad.length, scBad.join('\n'));
 
     out.insertAdjacentHTML('afterbegin', `<h2 class="${fail ? 'ng' : 'ok'}" id="summary">${pass} 件成功 / ${fail} 件失敗</h2>`);

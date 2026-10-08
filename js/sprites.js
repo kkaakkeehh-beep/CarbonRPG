@@ -33,8 +33,8 @@ const Sprites = (() => {
 
   // ---- タイル --------------------------------------------------
   const GRASS = '#3f8f3f';
-  const PATHLIKE = new Set([',', '=', 'D', 'E']);
-  const WATERLIKE = new Set(['~', '=']);
+  const PATHLIKE = new Set([',', '=', 'D', 'E', 'o']);
+  const WATERLIKE = new Set(['~', '=', 'p']);
   function grassBase(ctx, x, y, s, tx, ty, base = GRASS) {
     dot(ctx, x, y, s, 0, 0, 16, 16, base);
     for (let i = 0; i < 5; i++) {
@@ -185,8 +185,100 @@ const Sprites = (() => {
       dot(c, x, y, s, 3, 3, 10, 13, '#5a3a1e');
       dot(c, x, y, s, 10, 9, 1, 2, '#f2cc60');
     },
+
+    // ---- 第 2 章（港） ----
+    'o': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#9a958c');
+      for (let r = 0; r < 4; r++) for (let k = 0; k < 2; k++) {
+        const ox = (r % 2) * 4 + k * 8;
+        dot(c, x, y, s, ox + 0.5, r * 4 + 0.5, 7, 3, hash(tx * 3 + k, ty * 5 + r) < 0.5 ? '#aaa59b' : '#b3ada2');
+      }
+    },
+    's': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#e3cf9a');
+      for (let i = 0; i < 4; i++) dot(c, x, y, s, Math.floor(hash(tx, ty, i) * 15), Math.floor(hash(tx, ty, i + 4) * 15), 1, 1, '#c9b27a');
+    },
+    'p': (c, x, y, s) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#2f6fbf');
+      for (let i = 0; i < 4; i++) { dot(c, x, y, s, 0, i * 4, 16, 3, '#a8763f'); dot(c, x, y, s, 0, i * 4 + 3, 16, 1, '#7a5230'); }
+      dot(c, x, y, s, 3, 0, 1, 16, '#8a5f33'); dot(c, x, y, s, 12, 0, 1, 16, '#8a5f33');
+    },
+    'O': (c, x, y, s) => {
+      TILE['o'](c, x, y, s, 0, 0);
+      circle(c, x, y, s, 8, 8, 7, '#8b93a3', '#555');
+      circle(c, x, y, s, 8, 8, 5, '#5fa8e8');
+      dot(c, x, y, s, 7, 3, 2, 6, '#cfe6ff');
+    },
+    'K': (c, x, y, s, tx, ty) => {
+      TILE['o'](c, x, y, s, tx, ty);
+      dot(c, x, y, s, 1, 6, 14, 9, '#7a5230');
+      for (let i = 0; i < 4; i++) dot(c, x, y, s, i * 4, 1, 4, 5, i % 2 ? '#f4f4f4' : '#d9534f');
+      const cols = ['#f2cc60', '#7ee787', '#ff9b6a', '#d2a8ff'];
+      for (let i = 0; i < 3; i++) circle(c, x, y, s, 4 + i * 4, 9, 1.6, cols[Math.floor(hash(tx, ty, i) * 4)]);
+    },
+    'G': (c, x, y, s) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#5a4a3a');
+      for (let i = 0; i < 4; i++) dot(c, x, y, s, 1 + i * 4, 1, 2, 15, '#8a8f99');
+      dot(c, x, y, s, 0, 6, 16, 2, '#6e7686');
+    },
+    'w': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#6d6a66');
+      dot(c, x, y, s, 0, 15, 16, 1, '#5d5a56'); dot(c, x, y, s, 15, 0, 1, 16, '#5d5a56');
+      if (hash(tx, ty) < 0.3) dot(c, x, y, s, 4, 6, 3, 1, '#5d5a56');
+    },
+    'X': (c, x, y, s, tx, ty) => {
+      TILE['w'](c, x, y, s, tx, ty);
+      dot(c, x, y, s, 1, 2, 14, 13, '#9a6a3a');
+      dot(c, x, y, s, 1, 2, 14, 1, '#b98a52'); dot(c, x, y, s, 1, 8, 14, 1, '#6b4423');
+      dot(c, x, y, s, 7, 2, 1, 13, '#6b4423');
+    },
+    'L': (c, x, y, s, tx, ty, nb) => {
+      TILE['s'](c, x, y, s, tx, ty);
+      const top = nb(0, -1) !== 'L';
+      dot(c, x, y, s, 3, 0, 10, 16, '#f4f4f4');
+      dot(c, x, y, s, 3, 5, 10, 3, '#d9534f'); dot(c, x, y, s, 3, 12, 10, 3, '#d9534f');
+      if (top) { dot(c, x, y, s, 2, 0, 12, 4, '#3c4256'); dot(c, x, y, s, 5, 1, 6, 3, '#ffe066'); }
+    },
+    '>': (c, x, y, s) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#3c3a37');
+      for (let i = 0; i < 4; i++) dot(c, x, y, s, 2 + i, 2 + i * 3, 12 - i * 2, 2, i % 2 ? '#7a756e' : '#8f8a82');
+    },
+    '<': (c, x, y, s) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#3c3a37');
+      for (let i = 0; i < 4; i++) dot(c, x, y, s, 5 - i, 2 + i * 3, 6 + i * 2, 2, i % 2 ? '#8f8a82' : '#a6a199');
+    },
+    'c': (c, x, y, s) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#7a2c3a');
+      dot(c, x, y, s, 1, 1, 14, 14, '#923a4a');
+      dot(c, x, y, s, 7, 7, 2, 2, '#f2cc60');
+    },
+    'k': (c, x, y, s) => {
+      TILE['_'](c, x, y, s);
+      dot(c, x, y, s, 1, 4, 14, 9, '#6b4423');
+      dot(c, x, y, s, 1, 4, 14, 2, '#8a5f33');
+      dot(c, x, y, s, 3, 2, 4, 3, '#f4f4f4'); dot(c, x, y, s, 10, 1, 2, 4, '#2a2a2a');
+    },
+    'd': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#5a4a3a');
+      for (let i = 0; i < 4; i++) dot(c, x, y, s, Math.floor(hash(tx, ty, i) * 15), Math.floor(hash(tx, ty, i + 4) * 15), 2, 1, '#4a3c2e');
+    },
+    'q': (c, x, y, s) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#8b93a3');
+      dot(c, x, y, s, 0, 0, 16, 1, '#a3abba'); dot(c, x, y, s, 0, 0, 1, 16, '#a3abba');
+    },
+    '|': (c, x, y, s) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#1d2a4a');
+      dot(c, x, y, s, 0, 6, 16, 2, '#c9ced8'); dot(c, x, y, s, 0, 12, 16, 2, '#c9ced8');
+      for (let i = 0; i < 3; i++) dot(c, x, y, s, 1 + i * 6, 6, 2, 10, '#c9ced8');
+    },
+    'Y': (c, x, y, s) => {
+      TILE['q'](c, x, y, s);
+      circle(c, x, y, s, 8, 8, 6.5, '#3c4256', '#222');
+      circle(c, x, y, s, 8, 8, 4, '#ffe066');
+      circle(c, x, y, s, 8, 8, 2, '#fff8c8');
+    },
   };
-  const SOLID = new Set(['T', '~', 'M', 'r', '#', 'B', 'S', 'F', 'W', 'R', 'h', 'E']);
+  const SOLID = new Set(['T', '~', 'M', 'r', '#', 'B', 'S', 'F', 'W', 'R', 'h', 'E', 'O', 'K', 'G', 'X', 'L', 'k', '|', 'Y']);
 
   // nb(dx, dy) はとなりのタイルの文字を返す（マップの外は木とみなす）
   function drawTile(ctx, ch, x, y, s, tx, ty, nb = () => '.') { (TILE[ch] || TILE['.'])(ctx, x, y, s, tx, ty, nb); }
@@ -292,6 +384,71 @@ const Sprites = (() => {
     sign(c, x, y, s) { dot(c, x, y, s, 7, 8, 2, 8, '#6b4423'); dot(c, x, y, s, 2, 3, 12, 6, '#a2763f'); dot(c, x, y, s, 3, 5, 10, 1, '#6b4423'); },
     chest(c, x, y, s) { dot(c, x, y, s, 2, 6, 12, 9, '#9a6a3a'); dot(c, x, y, s, 2, 6, 12, 3, '#7a4b25'); dot(c, x, y, s, 7, 8, 2, 3, '#f2cc60'); },
     chestOpen(c, x, y, s) { dot(c, x, y, s, 2, 9, 12, 6, '#9a6a3a'); dot(c, x, y, s, 2, 4, 12, 3, '#7a4b25'); dot(c, x, y, s, 3, 9, 10, 2, '#3a2412'); },
+
+    // ---- 第 2 章 ----
+    ketoh(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#6b4a2f', hair: '#3a2a1a' });
+      dot(c, x, y, s, 4, 0, 8, 2, '#1a1a1a'); dot(c, x, y, s, 5, -2, 6, 2, '#1a1a1a'); // シルクハット
+      circle(c, x, y, s, 9.5, 4.5, 1.4, null, '#f2cc60');                               // 片眼鏡
+      dot(c, x, y, s, 7, 8, 2, 4, '#f4f4f4');
+    },
+    thief(c, x, y, s) {
+      poly(c, x, y, s, [[3, 7], [13, 7], [15, 15], [1, 15]], '#1a1a2e');
+      person(c, x, y, s, { cloth: '#2a2a40', hair: '#1a1a1a' });
+      dot(c, x, y, s, 5, 3.5, 6, 2, '#111'); dot(c, x, y, s, 6, 4, 1, 1, '#ffe066'); dot(c, x, y, s, 9, 4, 1, 1, '#ffe066');
+      dot(c, x, y, s, 4, 0, 8, 2, '#1a1a2e');
+    },
+    kidA(c, x, y, s) { c.save(); c.translate(x + s * 0.15, y + s * 0.3); person(c, 0, 0, s * 0.7, { cloth: '#f2cc60', hair: '#7a4b25', long: true }); c.restore(); },
+    kidB(c, x, y, s) { c.save(); c.translate(x + s * 0.15, y + s * 0.3); person(c, 0, 0, s * 0.7, { cloth: '#79c0ff', hair: '#2a2a2a' }); c.restore(); },
+    director: (c, x, y, s) => person(c, x, y, s, { cloth: '#6a7fb5', hair: '#9a9a9a', long: true, glasses: true }),
+    grignard(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#f4f4f4', hair: '#3a2a1a' });
+      for (let i = 0; i < 3; i++) dot(c, x, y, s, 4, 8.5 + i * 2, 8, 1, '#2f6fbf');
+      dot(c, x, y, s, 4, 0, 8, 2, '#2f6fbf');
+    },
+    granny: (c, x, y, s) => { person(c, x, y, s, { cloth: '#7a5aa0', hair: '#d0d0d0' }); dot(c, x, y, s, 5, 9, 6, 5, '#f4f4f4'); },
+    twins(c, x, y, s) {
+      c.save(); c.translate(x - s * 0.05, y + s * 0.25); person(c, 0, 0, s * 0.72, { cloth: '#7ee787', hair: '#5a3a1e' }); c.restore();
+      c.save(); c.translate(x + s * 0.4, y + s * 0.25); person(c, 0, 0, s * 0.72, { cloth: '#7ee787', hair: '#5a3a1e' }); c.restore();
+    },
+    menthone: (c, x, y, s) => person(c, x, y, s, { cloth: '#4fa86a', dress: true, hair: '#c9a27a', long: true }),
+    methylBoss: (c, x, y, s) => { person(c, x, y, s, { cloth: '#a0522d', hair: '#2a2a2a' }); dot(c, x, y, s, 3, 8, 10, 3, '#a0522d'); },
+    keeper(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#3b4a6b', hair: '#f4f4f4' });
+      poly(c, x, y, s, [[5.5, 6], [10.5, 6], [8, 9.5]], '#f4f4f4');
+      dot(c, x, y, s, 12, 9, 3, 4, '#ffe066'); dot(c, x, y, s, 12, 8, 3, 1, '#555');
+    },
+    innkeeper: (c, x, y, s) => { person(c, x, y, s, { cloth: '#b5651d', hair: '#2a2a2a' }); dot(c, x, y, s, 5, 9, 6, 5, '#f4f4f4'); },
+    iodo(c, x, y, s) {
+      const u = s / 16;
+      poly(c, x, y, s, [[8, 1], [14, 5], [14, 12], [8, 15.5], [2, 12], [2, 5]], '#f2d43c', '#b8961a');
+      poly(c, x, y, s, [[8, 1], [14, 5], [8, 8], [2, 5]], '#fbe77a');
+      dot(c, x, y, s, 5.5, 8.5, 1.2, 2, '#3a2a00'); dot(c, x, y, s, 9.5, 8.5, 1.2, 2, '#3a2a00');
+      void u;
+    },
+    iodoTrio(c, x, y, s) {
+      c.save(); c.translate(x - s * 0.35, y + s * 0.15); CHAR.iodo(c, 0, 0, s * 0.8); c.restore();
+      c.save(); c.translate(x + s * 0.55, y + s * 0.15); CHAR.iodo(c, 0, 0, s * 0.8); c.restore();
+      CHAR.iodo(c, x + s * 0.1, y - s * 0.05, s * 0.85);
+    },
+    achiral(c, x, y, s) {
+      poly(c, x, y, s, [[8, 6], [13.5, 16], [2.5, 16]], '#f4f4f4', '#bbb');
+      dot(c, x, y, s, 5, 2, 6, 6, '#f1e4d0');
+      dot(c, x, y, s, 5, 1, 6, 2, '#e8e8e8');
+      dot(c, x, y, s, 6, 4, 1, 1, '#222'); dot(c, x, y, s, 9, 4, 1, 1, '#222');
+      dot(c, x, y, s, 7.75, 1, 0.5, 15, '#c8c8c8');                 // 鏡面
+      dot(c, x, y, s, 6.5, 9, 3, 2.5, '#f1e4d0');                    // 合わせた両手
+    },
+    // 白い船（3×2 タイル分。原点は左上）
+    ship(c, x, y, s) {
+      const u = s / 16;
+      c.fillStyle = '#f4f4f4';
+      c.beginPath(); c.moveTo(x, y + 20 * u); c.lineTo(x + 48 * u, y + 20 * u); c.lineTo(x + 42 * u, y + 30 * u); c.lineTo(x + 6 * u, y + 30 * u); c.closePath(); c.fill();
+      c.fillRect(x + 23 * u, y - 6 * u, 2 * u, 26 * u);
+      c.beginPath(); c.moveTo(x + 22 * u, y - 4 * u); c.lineTo(x + 10 * u, y + 17 * u); c.lineTo(x + 22 * u, y + 17 * u); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(x + 26 * u, y - 4 * u); c.lineTo(x + 38 * u, y + 17 * u); c.lineTo(x + 26 * u, y + 17 * u); c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = u; c.strokeRect(x + 23 * u, y - 6 * u, 2 * u, 26 * u);
+    },
   };
 
   function drawChar(ctx, id, x, y, s, o) { (CHAR[id] || CHAR.victim)(ctx, x, y, s, o); }

@@ -80,6 +80,18 @@ const Sound = (() => {
       bass: T(`
       A2 . . . E3 . . .  F2 . . . C3 . . .  D2 . . . A2 . . .  E2 . . . B2 . . .
       A2 . . . E3 . . .  D2 . . . A2 . . .  E2 . . . E2 . . .  A2 . . . E3 . . .`) },
+    port: { bpm: 112, lead: T(`
+      D5 . F#5 A5 . F#5 D5 .  E5 . G5 B5 . G5 E5 .  F#5 . A5 D6 . A5 F#5 .  E5 . C#5 E5 . . . .
+      D5 . F#5 A5 . B5 A5 .  G5 . E5 G5 . F#5 E5 .  D5 . E5 F#5 . E5 C#5 .  D5 . . . . . . .`),
+      bass: T(`
+      D3 . A3 . D3 . A3 .  E3 . B3 . E3 . B3 .  D3 . A3 . D3 . A3 .  A2 . E3 . A2 . E3 .
+      D3 . A3 . G3 . D3 .  E3 . B3 . A2 . E3 .  B2 . F#3 . A2 . E3 .  D3 . A3 . D3 . . .`) },
+    night: { bpm: 76, lead: T(`
+      B4 . . D5 . . F#5 .  E5 . . D5 . . C#5 .  B4 . . . . . . .  A4 . . C#5 . . E5 .
+      D5 . . C#5 . . B4 .  A4 . . F#4 . . . .  G4 . . B4 . . A#4 .  B4 . . . . . . .`),
+      bass: T(`
+      B2 . . . F#3 . . .  G2 . . . D3 . . .  B2 . . . F#3 . . .  A2 . . . E3 . . .
+      G2 . . . D3 . . .  D2 . . . A2 . . .  E2 . . . F#2 . . .  B1 . . . F#2 . . .`) },
     battle: { bpm: 152, lead: T(`
       E5 E5 G5 E5 B5 . A5 G5  F#5 F#5 A5 F#5 D6 . B5 A5  E5 E5 G5 E5 B5 . C6 B5  A5 G5 F#5 D5 E5 . . .`),
       bass: T(`

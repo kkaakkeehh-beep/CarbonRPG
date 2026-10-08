@@ -31,7 +31,7 @@
     return {
       diff, party: [], cfg: null, hp: BASE_HP, maxHp: BASE_HP, lv: 1, exp: 0, money: 0, skillLv: {},
       items: { coffee: 1, energy: 0, book: 0 }, map: 'lab', x: 5, y: 5, dir: 'up',
-      flags: {}, used: {}, stats: { correct: 0, total: 0 }, notebook: {}, topics: {},
+      flags: {}, used: {}, stats: { correct: 0, total: 0 }, chStats: {}, notebook: {}, topics: {}, ch: 1,
     };
   }
   // 古いセーブにない項目を補う
@@ -107,7 +107,11 @@
   }
   function musicFor() {
     if (UI.screen === 'battle') return UI.battle && ENEMIES[UI.battle.key].boss ? 'boss' : UI.battle && UI.battle.key === 'practice' ? 'town' : 'battle';
-    if (UI.screen === 'world') return S.map === 'forest' && !S.flags.boss ? 'forest' : 'town';
+    if (UI.screen === 'world') {
+      if (S.map === 'forest') return S.flags.boss ? 'town' : 'forest';
+      if (MAPS[S.map].ch === 2) return S.flags.night ? 'night' : 'port';
+      return 'town';
+    }
     if (UI.screen === 'over' || UI.screen === 'clear') return null;
     return 'town';
   }
@@ -118,7 +122,7 @@
     const has = !!loadSave();
     return `<div class="title-screen">
       <h1 class="logo">CarbonRPG</h1>
-      <p class="subtitle">炭素の勇者 ── 第1章「求核の森」</p>
+      <p class="subtitle">炭素の勇者 ── 第2章「カルボニル港」まで</p>
       ${win(`<p class="story">炭素の国カルボニア。原子たちは手を取り合い、分子となって穏やかに暮らしていた。</p>
         <p class="story">ところがある日、森の分子たちが次々と「平ら」にされ、利き手を失いはじめた。</p>
         <p class="story">闇の組織「メソ教団」。その名が、ささやかれている。</p>`, 'msg')}
@@ -171,7 +175,7 @@
   function vWorld() {
     return `<div class="world">
       <div class="hud">
-        <span><b>${map().name}</b></span>
+        <span><b>${map().name}${map().ch === 2 ? (S.flags.night ? '（夜）' : '（昼）') : ''}</b></span>
         <span class="hp-box">${hudStatus()}</span>
         <span class="hud-btns"><span class="money">研究費 ${yen(S.money)}</span>${muteBtn()}<button class="btn small-btn" data-act="menu">メニュー</button></span>
       </div>
@@ -199,6 +203,10 @@
     stopTyping();
     if (UI.menu) { ov.innerHTML = vMenu(); return; }
     if (UI.shop) { ov.innerHTML = vShop(); return; }
+    if (UI.choice) {
+      ov.innerHTML = `<div class="dialog choice-box">${UI.choice.map((o, i) => `<button class="btn" data-act="choose" data-arg="${i}">${i + 1}. ${esc(o.t)}</button>`).join('')}</div>`;
+      return;
+    }
     const line = currentLine();
     if (!line) { ov.innerHTML = ''; return; }
     ov.innerHTML = `<div class="dialog" data-act="advance">
@@ -291,6 +299,9 @@
       const st = sc.steps[sc.i];
       if (st.do === 'flag') { S.flags[st.f] = true; save(); sc.i++; continue; }
       if (st.do === 'heal') { S.hp = S.maxHp; sc.i++; continue; }
+      if (st.do === 'night' || st.do === 'day') { S.flags.night = st.do === 'night'; sc.i++; save(); if (UI.screen === 'world') render(); continue; }
+      if (st.do === 'warp') { S.map = st.map; S.x = st.x; S.y = st.y; S.dir = st.dir || S.dir; UI.move = null; sc.i++; save(); render(); continue; }
+      if (st.do === 'choice') { sc.i++; UI.choice = st.opts; renderOverlay(); return; }
       if (st.do === 'bond') {
         const lines = S.party.map(id => ({ w: comp(id).name, t: comp(id).bond }));
         sc.steps.splice(sc.i, 1, ...lines);
@@ -298,7 +309,12 @@
       }
       if (st.do === 'party') { sc.i++; UI.pick = []; UI.screen = 'party'; render(); return; }
       if (st.do === 'battle') { sc.i++; startBattle(st.e, false); return; }
-      if (st.do === 'clear') { sc.i++; UI.scene = null; S.flags.clear = true; save(); UI.screen = 'clear'; render(); Sound.se('clear'); return; }
+      if (st.do === 'clear') {
+        sc.i++; UI.scene = null;
+        const ch = MAPS[S.map].ch || 1;
+        S.flags[ch === 1 ? 'clear' : `clear${ch}`] = true; UI.clearCh = ch;
+        save(); UI.screen = 'clear'; render(); Sound.se('clear'); return;
+      }
       sc.i++;
     }
     if (sc && sc.i >= sc.steps.length) {
@@ -308,12 +324,21 @@
     if (UI.screen === 'world') { renderOverlay(); refreshHud(); }
   }
   function advance() {
+    if (UI.choice) return;
     if (finishTyping()) return;
     if (UI.msg) { UI.msg.shift(); if (!UI.msg.length) { const cb = UI.msgDone; UI.msg = null; UI.msgDone = null; if (cb) cb(); } renderOverlay(); return; }
     if (UI.scene) { UI.scene.i++; runCommands(); }
   }
   function message(lines, done) { UI.msg = Array.isArray(lines) ? [...lines] : [lines]; UI.msgDone = done || null; UI.held = null; renderOverlay(); }
-  const busy = () => !!(UI.scene || UI.msg || UI.menu || UI.shop);
+  const busy = () => !!(UI.scene || UI.msg || UI.menu || UI.shop || UI.choice);
+  function choose(i) {
+    const o = UI.choice && UI.choice[+i];
+    if (!o) return;
+    UI.choice = null;
+    const sc = UI.scene; UI.scene = null;
+    if (o.go) playScene(o.go, sc && sc.onDone);
+    else { renderOverlay(); if (sc && sc.onDone) sc.onDone(); }
+  }
 
   function refreshHud() {
     const hp = document.querySelector('.hud .hp-box');
@@ -373,6 +398,7 @@
     camY = H <= VH ? -(VH - H) / 2 : Math.max(0, Math.min(H - VH, camY));
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.drawImage(mapCanvas(), Math.round(-camX * TILE), Math.round(-camY * TILE));
+    if (S.flags.night && m.ch === 2) { ctx.fillStyle = 'rgba(10, 18, 52, 0.55)'; ctx.fillRect(0, 0, cv.width, cv.height); }
     for (const e of activeEvents()) {
       if (!e.sprite) continue;
       const sx = (e.x - camX) * TILE, sy = (e.y - camY) * TILE;
@@ -412,12 +438,13 @@
   function afterStep() {
     const ev = eventAt(S.x, S.y, 'step');
     if (ev) { UI.held = null; return trigger(ev); }
-    if (map().encounters && tileAt(S.x, S.y) === 'g' && S.flags.f_entry && !S.flags.boss) {
+    const enc = map().encounters;
+    if (enc && enc.tiles.includes(tileAt(S.x, S.y)) && (!enc.when || enc.when(S.flags))) {
       UI.steps++;
       if (UI.steps > 4 && Math.random() < 1 / 10) {
         UI.steps = 0; UI.held = null;
-        const e = RANDOM_ENEMIES[Math.floor(Math.random() * RANDOM_ENEMIES.length)];
-        startBattle(e, true);
+        const list = enc.enemies || RANDOM_ENEMIES;
+        startBattle(list[Math.floor(Math.random() * list.length)], true);
       }
     }
   }
@@ -428,7 +455,7 @@
     const [dx, dy] = DIRS[S.dir], fx = S.x + dx, fy = S.y + dy;
     const ev = eventAt(fx, fy, 'bump');
     if (ev) return trigger(ev);
-    const ins = map().inspect && map().inspect[tileAt(fx, fy)];
+    const ins = resolve(map().inspect && map().inspect[tileAt(fx, fy)], S.flags);
     if (ins) {
       if (ins.rest) { S.hp = S.maxHp; save(); refreshHud(); Sound.se('heal'); return message(['ベッドで仮眠をとった。', 'HP が全回復した。（セーブしました）']); }
       return message(ins);
@@ -451,6 +478,10 @@
       if (S.flags.elder) return warp({ map: 'forest', x: 15, y: 22, dir: 'up' });
       return playScene('gate_block', () => { S.y = 1; S.dir = 'down'; });
     }
+    if (ev.eastGate) {
+      if (S.flags.clear) { S.ch = Math.max(S.ch || 1, 2); return warp({ map: 'port', x: 1, y: 5, dir: 'right' }); }
+      return message('東の街道は、森の件が片づいてからにしよう。');
+    }
     if (ev.warp) return warp(ev.warp);
   }
 
@@ -466,14 +497,19 @@
   // =================================================================
   // 問題バトル
   // =================================================================
-  function questionPool(key) {
-    const d = S.diff;
-    const diffs = ENEMIES[key].boss ? [d, Math.min(4, d + 1)] : key === 'duo' ? [d] : [d, Math.max(1, d - 1)];
-    return Questions.LIST.filter(q => q.ch === 1 && diffs.includes(q.diff));
+  function questionPool(B) {
+    const E = ENEMIES[B.key], d = S.diff, ch = E.ch || 1;
+    const diffs = E.boss ? [d, Math.min(4, d + 1)] : (B.key === 'duo' || E.mid) ? [d] : [d, Math.max(1, d - 1)];
+    let pool = Questions.LIST.filter(q => q.ch === ch && diffs.includes(q.diff));
+    // ボスの形態や中ボスの得意分野に合わせて絞る（足りなければ絞らない）
+    const tag = B.form ? E.forms[B.form].tag : E.tag;
+    if (tag) { const t = pool.filter(q => q.tag === tag); if (t.length >= 4) pool = t; }
+    if (E.topics) { const t = pool.filter(q => E.topics.includes(q.topic)); if (t.length >= 3) pool = t; }
+    return pool;
   }
   function pickQuestion(B) {
     if (B.queue) { const id = B.queue.shift(); return Questions.LIST.find(q => q.id === id); }
-    const pool = questionPool(B.key);
+    const pool = questionPool(B);
     // いまの難易度の問題を優先し、未出題のものから選ぶ
     let cand = pool.filter(q => !S.used[q.id] && q.diff === S.diff);
     if (!cand.length) cand = pool.filter(q => !S.used[q.id]);
@@ -494,6 +530,7 @@
       timeMax: S.diff >= 4 ? 120 : 90, timeLeft: 0, queue: queue ? [...queue] : null, levels: 0,
     };
     if (queue) UI.battle.lines = [`${E.name}「${E.start}」`, `ノートの問題 ${queue.length} 問に挑戦する。`];
+    if (E.forms) { const F = E.forms.keto; Object.assign(UI.battle, { form: 'keto', name: F.name, sprite: F.sprite, answered: 0 }); }
     UI.screen = 'battle';
     if (!queue) Sound.se('encounter');
     render();
@@ -530,6 +567,7 @@
     const lines = [];
     if (!E.practice) {
       S.stats.total++;
+      const cs = S.chStats[E.ch || 1] || (S.chStats[E.ch || 1] = { c: 0, t: 0 }); cs.t++; if (ok) cs.c++;
       const tp = S.topics[q.topic] || (S.topics[q.topic] = { c: 0, t: 0 });
       tp.t++; if (ok) tp.c++;
     }
@@ -541,7 +579,7 @@
       B.hp = Math.max(0, B.hp - dmg);
       lines.push(`正解！ ${B.name}に ${dmg} のダメージ！${S.cfg === 'R' && B.streak > 1 && !E.practice ? `（${B.streak} 連続正解）` : ''}`);
       if (S.notebook[q.id]) { delete S.notebook[q.id]; lines.push('復習ノートの問題を克服した！'); }
-      if (B.hp > 0) lines.push(`${B.name}「${taunt(E.hit)}」`);
+      if (B.hp > 0) lines.push(`${B.name}「${taunt((B.form ? E.forms[B.form] : E).hit)}」`);
       UI.fx.push({ t: 'enemyHit', v: dmg }); Sound.se('ok'); setTimeout(() => Sound.se('hit'), 120);
       for (const [i, ph] of (E.phases || []).entries()) {
         if (B.phase < i + 1 && B.hp / B.maxHp <= ph.at && B.hp > 0) {
@@ -564,8 +602,16 @@
         lines.push('この問題を復習ノートに書きとめた。');
         if (dmg > 0) UI.fx.push({ t: 'heroHit', v: dmg });
       }
-      lines.push(`${B.name}「${taunt(E.miss)}」`);
+      lines.push(`${B.name}「${taunt((B.form ? E.forms[B.form] : E).miss)}」`);
       Sound.se('ng'); if (!E.practice) setTimeout(() => Sound.se('hurt'), 150);
+    }
+    // ケト形とエノール形の入れ替わり（数問ごと）
+    if (E.forms && B.hp > 0 && S.hp > 0 && ++B.answered % E.switchEvery === 0) {
+      B.form = B.form === 'keto' ? 'enol' : 'keto';
+      const F = E.forms[B.form];
+      lines.push(`${F.name}「${F.into}」`, `（エノラスの姿が変わった。出題の分野が変わる）`);
+      B.name = F.name; B.sprite = F.sprite;
+      UI.fx.push({ t: 'swap' });
     }
     B.result = { ok, choice, lines };
     B.state = 'result';
@@ -693,6 +739,13 @@
         if (b) { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
       }
       if (f.t === 'heroHeal') pop(document.querySelector('.hero-bar'), `+${f.v}`, 'heal');
+      if (f.t === 'swap') {
+        const w = document.createElement('div');
+        w.className = 'whiteout soft';
+        document.body.appendChild(w);
+        setTimeout(() => w.remove(), 700);
+        Sound.se('encounter');
+      }
       if (f.t === 'transform') {
         const w = document.createElement('div');
         w.className = 'whiteout';
@@ -814,15 +867,20 @@
   }
 
   const TITLES = [[90, '不斉の勇者'], [75, '求核の剣士'], [60, '見習い化学者'], [0, 'ラセミの迷い子']];
+  const CHAPTERS = { 1: '第1章「求核の森」', 2: '第2章「カルボニル港」' };
+  const NEXT = { 1: '第2章「カルボニル港」', 2: '第3章「芳香族の王国」' };
+  const clearCh = () => UI.clearCh || (S.flags.clear2 ? 2 : 1);
   function clearResult() {
-    const st = S.stats, rate = st.total ? Math.round(st.correct / st.total * 100) : 0;
+    const ch = clearCh();
+    const cs = S.chStats[ch], st = cs ? { correct: cs.c, total: cs.t } : S.stats;
+    const rate = st.total ? Math.round(st.correct / st.total * 100) : 0;
     const title = TITLES.find(([th]) => rate >= th)[1];
     return { st, rate, title };
   }
   // ネタバレを含まない共有用の文面
   function shareText() {
     const { st, rate, title } = clearResult();
-    return `CarbonRPG 第1章「求核の森」をクリア！\n`
+    return `CarbonRPG ${CHAPTERS[clearCh()]}をクリア！\n`
       + `難易度：${Questions.DIFFS[S.diff].name}／正答率 ${rate}%（${st.correct}/${st.total} 問）\n`
       + `称号：${title}${S.cfg ? `　(${S.cfg})-カーボ Lv${S.lv}` : ''}\n#CarbonRPG #有機化学`;
   }
@@ -831,7 +889,8 @@
     const text = shareText();
     const xUrl = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(GAME_URL)}`;
     const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(GAME_URL)}&text=${encodeURIComponent(text)}`;
-    return `<h2 class="screen-title">第1章「求核の森」クリア！</h2>
+    const ch = clearCh();
+    return `<h2 class="screen-title">${CHAPTERS[ch]}クリア！</h2>
       ${win(`<p class="center">難易度: ${Questions.DIFFS[S.diff].name}</p>
         <p class="center big-cfg">正答率 ${rate}%</p><p class="center small">${st.correct} / ${st.total} 問正解</p>
         <p class="center">称号「<span class="accent">${title}</span>」</p>
@@ -845,8 +904,8 @@
           <button class="btn" data-act="shareCopy">文面をコピー</button>
         </div>
         <p class="small dim">ストーリーのネタバレは含まれません。</p>`)}
-      <p class="center dim">第2章「カルボニル港」へ続く……（未実装）</p>
-      <div class="center"><button class="btn" data-act="clearNote">復習ノートを見る</button><button class="btn big" data-act="toTitle">タイトルへ</button></div>`;
+      ${ch === 1 ? `<div class="center"><button class="btn big" data-act="toCh2">▶ ${NEXT[1]}へ進む</button></div>` : `<p class="center dim">${NEXT[ch]}へ続く……（未実装）</p>`}
+      <div class="center"><button class="btn" data-act="clearNote">復習ノートを見る</button><button class="btn" data-act="toTitle">タイトルへ</button></div>`;
   }
   function fallbackCopy(t) {
     const ta = document.createElement('textarea');
@@ -921,6 +980,13 @@
     openNote() { UI.menu = false; UI.screen = 'note'; render(); },
     closeNote() { UI.screen = 'world'; render(); },
     clearNote() { UI.noteFromClear = true; UI.screen = 'note'; render(); },
+    choose(i) { choose(i); },
+    toCh2() {
+      S.ch = 2; S.hp = S.maxHp; UI.clearCh = null;
+      S.map = 'town'; S.x = 19; S.y = 5; S.dir = 'right';
+      save(); UI.screen = 'world'; render();
+      if (!S.flags.ch2) playScene('c2_start');
+    },
     practice() {
       const ids = shuffle(Object.keys(S.notebook)).slice(0, 10);
       if (ids.length) startBattle('practice', false, ids);
@@ -979,6 +1045,7 @@
       return;
     }
     if (UI.screen !== 'world') return;
+    if (UI.choice && ['1', '2', '3', '4'].includes(e.key)) { choose(+e.key - 1); return; }
     if (KEYDIR[e.key]) { e.preventDefault(); if (!busy()) UI.held = KEYDIR[e.key]; return; }
     if (['Enter', ' ', 'z', 'Z'].includes(e.key)) { e.preventDefault(); if (!e.repeat) action(); return; }
     if (['x', 'X', 'Escape'].includes(e.key)) { e.preventDefault(); if (UI.shop) actions.closeShop(); else actions.menu(); }
@@ -988,5 +1055,7 @@
 
   render();
   requestAnimationFrame(loop);
-  window.__carbon = { get S() { return S; }, UI, actions, render, startBattle, warp, playScene };
+  // 動作確認用（アニメーションを待たずに 1 歩進める）
+  const debugStep = dir => { if (busy()) return; tryMove(dir); if (UI.move) { UI.move = null; afterStep(); } };
+  window.__carbon = { get S() { return S; }, UI, actions, render, startBattle, warp, playScene, step: debugStep, action };
 })();
