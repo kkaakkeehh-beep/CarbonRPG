@@ -38,7 +38,7 @@
 
 ### テスト
 
-`tests.html` をブラウザで開くと、反応エンジンのテスト（28 件）が走ります。
+`tests.html` をブラウザで開くと、反応エンジンと問題データのテスト（35 件）が走ります。
 
 ```bash
 py -m http.server 8765
@@ -54,6 +54,7 @@ style.css         ドット絵風 UI
 js/chem.js        反応エンジン（DOM 非依存）
 js/data.js        カード・仲間・戦闘データ
 js/mol.js         構造式の描画（SmilesDrawer）
+js/questions.js   バトルで出す問題（難易度 4 段階 × 各 10 問、第1章分）
 js/game.js        画面とターン進行
 lib/              SmilesDrawer 2.1.7（MIT License）
 tests.html        エンジンのテスト

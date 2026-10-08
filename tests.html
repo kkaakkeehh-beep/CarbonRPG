@@ -12,7 +12,9 @@
 <body>
   <h1>反応エンジンのテスト</h1>
   <div id="out"></div>
+  <script src="lib/smiles-drawer.min.js"></script>
   <script src="js/chem.js"></script>
+  <script src="js/questions.js"></script>
   <script>
     const out = document.getElementById('out');
     let pass = 0, fail = 0;
@@ -116,6 +118,32 @@
       }
     }
     check('物質収支: 合計がつねに 100%', okSum, 'console を参照');
+
+    // ---- 問題データ ----
+    const ids = new Set(), bad = [];
+    for (const q of Questions.LIST) {
+      if (ids.has(q.id)) bad.push(`${q.id}: id が重複`);
+      ids.add(q.id);
+      if (!Questions.DIFFS[q.diff]) bad.push(`${q.id}: diff が不正`);
+      if (q.choices.length !== 4 || new Set(q.choices).size !== 4) bad.push(`${q.id}: 選択肢が 4 つの異なる値ではない`);
+      if (!(q.a >= 0 && q.a < q.choices.length)) bad.push(`${q.id}: 正解の添字が範囲外`);
+      if (!q.explain) bad.push(`${q.id}: 解説がない`);
+    }
+    check(`問題データの形式（${Questions.LIST.length} 問）`, !bad.length, bad.join('\n'));
+    for (let d = 1; d <= 4; d++) {
+      const n = Questions.pickSet(1, d).length;
+      check(`第1章・${Questions.DIFFS[d].name}: 10 問`, n === 10, `${n} 問`);
+    }
+    const smiBad = [];
+    for (const q of Questions.LIST.filter(q => q.smiles)) {
+      SmilesDrawer.parse(q.smiles, () => {}, () => smiBad.push(`${q.id}: ${q.smiles}`));
+    }
+    check('問題の SMILES がすべて読める', !smiBad.length, smiBad.join('\n'));
+    // 立体の記号と SMILES の対応（本ゲームの骨格では X が CIP 1 位）
+    const cfgOf = smi => smi.includes('[C@@H]') ? 'R' : smi.includes('[C@H]') ? 'S' : null;
+    const stereoQs = { 'c1-1-01': 'R', 'c1-1-07': 'R', 'c1-2-07': 'R', 'c1-2-10': 'S', 'c1-3-09': 'R' };
+    const stBad = Object.entries(stereoQs).filter(([id, c]) => cfgOf(Questions.LIST.find(q => q.id === id).smiles) !== c);
+    check('問題文の立体と SMILES が一致', !stBad.length, JSON.stringify(stBad));
 
     out.insertAdjacentHTML('afterbegin', `<h2 class="${fail ? 'ng' : 'ok'}" id="summary">${pass} 件成功 / ${fail} 件失敗</h2>`);
   </script>
