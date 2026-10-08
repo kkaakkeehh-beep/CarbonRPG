@@ -12,6 +12,8 @@
 //   scene: 台本の ID（関数なら f を受け取って ID を返す）/ warp / chest / text
 // =============================================================
 const Maps = (() => {
+  // 子どもたちは、ケトー卿の居場所をそれとなく教えてくれる
+  const kidsScene = f => f.c2_reveal ? 'c2_kids2' : f.c2_chase ? 'c2_kids_home' : (f.c2_lens && !f.c2_pier) ? 'c2_kids_pier' : 'c2_kids';
   const MAPS = {
     lab: {
       name: 'カルボニア中央研究所',
@@ -163,10 +165,10 @@ const Maps = (() => {
         { x: 12, y: 3, on: 'bump', when: f => f.night, text: '屋敷の門は、固く閉ざされている。' },
         { x: 4, y: 3, on: 'bump', scene: f => f.night ? 'c2_orph_night' : f.c2_reveal ? 'c2_director2' : 'c2_director' },
         // 昼の人びと
-        { x: 14, y: 7, sprite: 'ketoh', on: 'bump', when: f => !f.night && !f.c2_reveal && !(f.c2_lens && !f.c2_pier), scene: f => f.c2_met ? 'c2_ketoh2' : 'c2_ketoh' },
+        { x: 14, y: 7, sprite: 'ketoh', on: 'bump', when: f => !f.night && !f.c2_reveal && !f.c2_chase && !(f.c2_lens && !f.c2_pier), scene: f => f.c2_met ? 'c2_ketoh2' : 'c2_ketoh' },
         { x: 6, y: 15, sprite: 'ketoh', on: 'bump', when: f => !f.night && f.c2_lens && !f.c2_pier, scene: 'c2_pier' },
-        { x: 16, y: 10, sprite: 'kidA', on: 'bump', when: f => !f.night, scene: f => f.c2_reveal ? 'c2_kids2' : 'c2_kids' },
-        { x: 17, y: 10, sprite: 'kidB', on: 'bump', when: f => !f.night, scene: f => f.c2_reveal ? 'c2_kids2' : 'c2_kids' },
+        { x: 16, y: 10, sprite: 'kidA', on: 'bump', when: f => !f.night, scene: kidsScene },
+        { x: 17, y: 10, sprite: 'kidB', on: 'bump', when: f => !f.night, scene: kidsScene },
         { x: 6, y: 4, sprite: 'director', on: 'bump', when: f => !f.night, scene: f => f.c2_reveal ? 'c2_director2' : 'c2_director' },
         { x: 2, y: 8, sprite: 'menthone', on: 'bump', when: f => !f.night, scene: f => f.c2_reveal ? 'c2_menthone2' : 'c2_menthone' },
         { x: 4, y: 8, sprite: 'methylBoss', on: 'bump', when: f => !f.night && !(f.c2_pier && !f.c2_kidnap), scene: f => f.c2_reveal ? 'c2_methyl2' : 'c2_methyl' },
