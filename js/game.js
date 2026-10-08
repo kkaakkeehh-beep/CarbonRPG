@@ -1,21 +1,32 @@
 // =============================================================
-// game.js — 画面・ターン進行
+// game.js — 画面の切り替え、マップ探索、台本の再生、問題バトル、セーブ
 // =============================================================
 (() => {
-  const { CARDS, COMPANIONS, BASIC_DECK, BATTLES, RANKS } = GameData;
+  const { COMPANIONS, ITEMS, ENEMIES, RANDOM_ENEMIES } = GameData;
+  const { MAPS } = Maps;
+  const { SCENES } = Story;
+  const TILE = 32, VW = 15, VH = 11, STEP_MS = 140;
+  const SAVE_KEY = 'carbonrpg-save-v2';
+  const BASE_HP = 30;
   const app = document.getElementById('app');
-  const BASE_HP = 50, HAND = 6, ENERGY = 3, HEAL = 10;
-  const SOLVENT_GROUPS = [['非プロトン性', ['DMSO', 'DMF', 'acetone', 'THF']], ['プロトン性', ['MeOH', 'EtOH', 'tBuOH', 'H2O']]];
 
-  let S = null;
+  let S = null;   // セーブされる状態
+  const UI = { screen: 'title', scene: null, msg: null, menu: false, battle: null, move: null, held: null, steps: 0 };
 
   // ---- 小物 -----------------------------------------------------
-  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-  const pick = a => a[Math.floor(Math.random() * a.length)];
   const comp = id => COMPANIONS.find(c => c.id === id);
-  const name = k => Chem.describe(k).name;
-  const fmt = v => v >= 99.5 ? '100' : v < 0.5 && v > 0 ? '<1' : String(Math.round(v));
-  const battle = () => BATTLES[S.bi];
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const opp = c => c === 'R' ? 'S' : 'R';
+  const fill = t => t.replace(/〈自分〉/g, S && S.cfg ? `(${S.cfg})` : '').replace(/〈逆〉/g, S && S.cfg ? `(${opp(S.cfg)})` : '');
+  const resolve = (v, ...a) => typeof v === 'function' ? v(...a) : v;
+  const map = () => MAPS[S.map];
+
+  function freshState(diff) {
+    return { diff, party: [], cfg: null, hp: BASE_HP, maxHp: BASE_HP, items: { coffee: 1, book: 0 }, map: 'lab', x: 5, y: 5, dir: 'up', flags: {}, used: {}, stats: { correct: 0, total: 0 } };
+  }
+  function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* 保存できない環境でも遊べる */ } }
+  function loadSave() { try { const j = localStorage.getItem(SAVE_KEY); return j ? JSON.parse(j) : null; } catch (e) { return null; } }
 
   // ---- カーボの立体（CIP） ----------------------------------------
   // スロット: 0 上(紙面) / 1 左下(紙面) / 2 くさび(手前) / 3 破線(奥)
@@ -30,15 +41,11 @@
     const det = a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0]);
     return det < 0 ? 'R' : 'S';
   }
-  function heroFormula(party) {
-    const sorted = [...party].sort((a, b) => cmpRank(comp(b).rank, comp(a).rank));
-    return 'C' + sorted.map(id => `(${comp(id).group})`).join('');
-  }
+  const heroFormula = party => 'C' + [...party].sort((a, b) => cmpRank(comp(b).rank, comp(a).rank)).map(id => `(${comp(id).group})`).join('');
 
   function heroSvg(party, size = 220) {
     const P = [[110, 22], [28, 150], [170, 170], [196, 92]];
     const C = [110, 110];
-    const lbl = i => party[i] ? comp(party[i]) : null;
     const bond = i => {
       const [x, y] = P[i];
       const ex = C[0] + (x - C[0]) * 0.72, ey = C[1] + (y - C[1]) * 0.72;
@@ -53,9 +60,9 @@
       return s;
     };
     const node = i => {
-      const c = lbl(i), [x, y] = P[i];
-      if (!c) return `<g data-act="slot" data-arg="${i}" class="slot empty"><circle cx="${x}" cy="${y}" r="20" fill="#000" stroke="#666" stroke-dasharray="4 3" stroke-width="2"/><text x="${x}" y="${y + 5}" text-anchor="middle" fill="#666" font-size="14">空</text></g>`;
-      return `<g data-act="slot" data-arg="${i}" class="slot atom-${c.atom}"><circle cx="${x}" cy="${y}" r="21" fill="#000" stroke="currentColor" stroke-width="2.5"/><text x="${x}" y="${y + 4}" text-anchor="middle" fill="currentColor" font-size="${c.group.length > 3 ? 10 : 13}">${c.group}</text></g>`;
+      const c = party[i] ? comp(party[i]) : null, [x, y] = P[i];
+      if (!c) return `<g><circle cx="${x}" cy="${y}" r="20" fill="#000" stroke="#666" stroke-dasharray="4 3" stroke-width="2"/><text x="${x}" y="${y + 5}" text-anchor="middle" fill="#666" font-size="14">空</text></g>`;
+      return `<g data-act="unbond" data-arg="${i}" style="cursor:pointer;color:${c.color}"><circle cx="${x}" cy="${y}" r="21" fill="#000" stroke="currentColor" stroke-width="2.5"/><text x="${x}" y="${y + 4}" text-anchor="middle" fill="currentColor" font-size="${c.group.length > 3 ? 10 : 13}">${c.group}</text></g>`;
     };
     return `<svg class="hero" viewBox="0 0 220 220" width="${size}" height="${size}" role="img" aria-label="カーボと4つの結合">
       ${[0, 1, 2, 3].map(bond).join('')}
@@ -65,423 +72,639 @@
     </svg>`;
   }
 
-  // ---- ゲーム開始 -----------------------------------------------
-  function newGame() {
-    S = { screen: 'title', party: [], hero: { hp: BASE_HP, maxHp: BASE_HP, cfg: null }, deck: [], bi: 0, results: [], rewards: [], b: null };
-  }
-
-  function startRun() {
-    const cfg = heroCfg(S.party);
-    S.hero.cfg = cfg;
-    S.hero.maxHp = BASE_HP + (cfg === 'S' ? 10 : 0);
-    S.hero.hp = S.hero.maxHp;
-    S.deck = [...BASIC_DECK, ...S.party.flatMap(id => comp(id).cards)];
-    S.bi = 0; S.results = [];
-    startBattle();
-  }
-
-  function startBattle() {
-    const B = battle();
-    S.screen = 'battle';
-    S.b = {
-      flask: { ...B.start }, draw: shuffle([...S.deck]), hand: [], discard: [],
-      energy: ENERGY, turn: 1, ii: 0, humid: false, heat: false, nextHumid: false, nextHeat: false,
-      sel: { reagent: null, supports: [] }, solvent: 'DMSO', temp: 'rt',
-      log: [{ type: 'sys', text: B.intro }], showHint: false,
-      snapshot: { hp: S.hero.hp, deck: [...S.deck] },
-    };
-    drawCards(HAND + (S.hero.cfg === 'R' ? 1 : 0));
-  }
-
-  function drawCards(n) {
-    const b = S.b;
-    for (let i = 0; i < n; i++) {
-      if (!b.draw.length) { if (!b.discard.length) break; b.draw = shuffle(b.discard); b.discard = []; }
-      b.hand.push(b.draw.pop());
-    }
-  }
-
-  // ---- 条件とコスト -----------------------------------------------
-  const selCards = () => {
-    const b = S.b;
-    return { reagent: b.sel.reagent != null ? b.hand[b.sel.reagent] : null, supports: b.sel.supports.map(i => b.hand[i]) };
-  };
-  function plannedCost(sel = S.b.sel) {
-    const b = S.b;
-    return (sel.reagent != null ? CARDS[b.hand[sel.reagent]].cost : 0) + sel.supports.reduce((s, i) => s + CARDS[b.hand[i]].cost, 0);
-  }
-  function conds() {
-    const b = S.b, sc = selCards();
-    const heatForced = b.heat && !sc.supports.includes('ice');
-    return {
-      reagent: sc.reagent, solvent: b.solvent, temp: heatForced ? 'reflux' : b.temp,
-      humid: b.humid && !sc.supports.includes('MS4A'),
-      ag: sc.supports.includes('Ag'), crown: sc.supports.includes('crown'),
-      heatForced,
-    };
-  }
-
-  // ---- 戦況 -------------------------------------------------------
-  function tally() {
-    const B = battle(), f = S.b.flask;
-    let target = 0, enemy = 0, side = 0;
-    for (const [k, v] of Object.entries(f)) {
-      if (B.isTarget(k)) target += v;
-      else if (isEnemy(k)) enemy += v;
-      else side += v;
-    }
-    return { target, enemy, side };
-  }
-  // 目的物と同じ骨格で、まだ反応しうるもの = 敵
-  const isEnemy = k => Chem.isReactive(k) && Chem.parse(k).sk === battle().sk;
-  function enemyForm() {
-    const B = battle(), f = S.b.flask;
-    const cands = Object.entries(f).filter(([k]) => !B.isTarget(k) && isEnemy(k)).sort((a, b) => b[1] - a[1]);
-    return cands.length ? cands[0][0] : null;
-  }
-  const secondForm = () => battle().boss && Object.entries(S.b.flask).filter(([k]) => k.startsWith('tAm:')).reduce((s, [, v]) => s + v, 0) >= 5;
-
-  // ---- 行動 ------------------------------------------------------
-  const actions = {
-    start() { S.screen = 'party'; },
-    toggleComp(id) {
-      const i = S.party.indexOf(id);
-      if (i >= 0) S.party.splice(i, 1);
-      else if (S.party.length < 4) S.party.push(id);
-    },
-    swap() { if (S.party.length === 4) [S.party[2], S.party[3]] = [S.party[3], S.party[2]]; },
-    slot(i) { if (S.screen === 'party' && S.party[i]) S.party.splice(+i, 1); },
-    go() { if (S.party.length === 4) startRun(); },
-
-    card(i) {
-      i = +i;
-      const b = S.b, id = b.hand[i], C = CARDS[id];
-      const free = b.energy - plannedCost();
-      if (C.type === 'action') {
-        if (C.cost > free) return flash('エネルギーが足りない');
-        b.energy -= C.cost;
-        removeFromHand(i);
-        b.discard.push(id);
-        if (id === 'lit') { drawCards(2); log('sys', '文献調査: カードを 2 枚引いた'); }
-        if (id === 'allnighter') { b.energy += 2; S.hero.hp -= 4; log('sys', '徹夜した。エネルギー +2、HP −4'); if (S.hero.hp <= 0) return gameOver(); }
-        return;
-      }
-      if (C.type === 'reagent') {
-        if (b.sel.reagent === i) { b.sel.reagent = null; return; }
-        const nsel = { reagent: i, supports: b.sel.supports };
-        if (plannedCost(nsel) > b.energy) return flash('エネルギーが足りない');
-        b.sel.reagent = i;
-        return;
-      }
-      const j = b.sel.supports.indexOf(i);
-      if (j >= 0) { b.sel.supports.splice(j, 1); return; }
-      if (plannedCost({ reagent: b.sel.reagent, supports: [...b.sel.supports, i] }) > b.energy) return flash('エネルギーが足りない');
-      b.sel.supports.push(i);
-    },
-    solvent(id) { S.b.solvent = id; },
-    temp(t) { S.b.temp = t; },
-    hint() { S.b.showHint = !S.b.showHint; },
-
-    react() {
-      const b = S.b, c = conds(), sc = selCards();
-      const res = Chem.react(b.flask, c);
-      b.flask = res.flask;
-      b.energy -= plannedCost();
-      b.log.unshift({ type: 'rx', cond: c, supports: sc.supports, report: res.report, turn: b.turn });
-      endPlayerTurn();
-    },
-    wait() { log('sys', '様子を見た……'); endPlayerTurn(); },
-    workup() { S.b.confirmWorkup = true; },
-    workupYes() { finishBattle(); },
-    workupNo() { S.b.confirmWorkup = false; },
-
-    reward(id) { if (id) S.deck.push(id); S.bi++; startBattle(); },
-    retryBattle() { S.hero.hp = S.hero.maxHp; S.deck = [...S.b.snapshot.deck]; startBattle(); },
-    restart() { newGame(); S.screen = 'party'; },
-    title() { newGame(); },
-  };
-
-  function removeFromHand(i) {
-    const b = S.b;
-    b.hand.splice(i, 1);
-    if (b.sel.reagent != null) { if (b.sel.reagent === i) b.sel.reagent = null; else if (b.sel.reagent > i) b.sel.reagent--; }
-    b.sel.supports = b.sel.supports.filter(x => x !== i).map(x => x > i ? x - 1 : x);
-  }
-
-  function log(type, text) { S.b.log.unshift({ type, text }); }
-  let flashMsg = '';
-  function flash(m) { flashMsg = m; }
-
-  function endPlayerTurn() {
-    const b = S.b;
-    b.discard.push(...b.hand); b.hand = [];
-    b.sel = { reagent: null, supports: [] };
-    if (tally().enemy < 2.5) return finishBattle();  // 原料がほぼ消えたら自動で精製
-    enemyAct();
-    if (S.hero.hp <= 0) return gameOver();
-    b.turn++;
-    b.humid = b.nextHumid; b.heat = b.nextHeat; b.nextHumid = b.nextHeat = false;
-    b.energy = ENERGY;
-    drawCards(HAND);
-  }
-
-  function currentIntent() {
-    const B = battle(), it = B.intents[S.b.ii % B.intents.length];
-    if (it.t === 'atk' && secondForm()) return { ...it, v: it.v + 2 };
-    return it;
-  }
-  function intentText(it) {
-    if (it.t === 'atk') return `アルキル化攻撃（${it.v} ダメージ）`;
-    if (it.t === 'humid') return '湿気を送り込む（次のターン、フラスコが湿る）';
-    return 'ホットプレートを暴走させる（次のターン、強制的に還流）';
-  }
-  function enemyAct() {
-    const B = battle(), b = S.b, it = currentIntent();
-    const who = B.monster + (secondForm() ? '（第2形態）' : '');
-    if (it.t === 'atk') { S.hero.hp -= it.v; log('enemy', `${who}のアルキル化攻撃！ カーボは ${it.v} のダメージを受けた`); }
-    else if (it.t === 'humid') { b.nextHumid = true; log('enemy', `${who}は湿気を送り込んだ！ 次のターン、フラスコに水が混入する`); }
-    else { b.nextHeat = true; log('enemy', `${who}はホットプレートを暴走させた！ 次のターンは強制的に還流`); }
-    b.ii++;
-  }
-
-  function finishBattle() {
-    const B = battle(), t = tally();
-    S.results.push({ monster: B.monster, target: B.targetLabel, yield: t.target, flask: { ...S.b.flask }, lastRx: S.b.log.find(e => e.type === 'rx') });
-    S.hero.hp = Math.min(S.hero.maxHp, S.hero.hp + HEAL);
-    if (S.bi >= BATTLES.length - 1) { S.screen = 'end'; return; }
-    const nextKeys = BATTLES[S.bi + 1].keys;
-    const key = pick(nextKeys);
-    const pool = Object.keys(CARDS).filter(id => id !== key && !nextKeys.includes(id) && id !== 'Mitsunobu');
-    S.rewards = shuffle([key, ...shuffle(pool).slice(0, 2)]);
-    S.screen = 'reward';
-  }
-
-  function gameOver() { S.screen = 'over'; }
-
-  // ---- 描画 ------------------------------------------------------
+  // =================================================================
+  // 画面
+  // =================================================================
   function render() {
-    const fn = { title: vTitle, party: vParty, battle: vBattle, reward: vReward, end: vEnd, over: vOver }[S.screen];
+    stopTyping();
+    const fn = { title: vTitle, diff: vDiff, party: vParty, world: vWorld, battle: vBattle, over: vOver, clear: vClear }[UI.screen];
     app.innerHTML = fn();
-    Mol.drawAll(app);
-    if (flashMsg) {
-      const el = document.createElement('div');
-      el.className = 'toast'; el.textContent = flashMsg;
-      document.body.appendChild(el);
-      setTimeout(() => el.remove(), 1600);
-      flashMsg = '';
-    }
+    if (UI.screen === 'world') { setupCanvas(); renderOverlay(); }
+    if (UI.screen === 'battle') { drawEnemy(); Mol.drawAll(app); startTyping(); }
   }
-
   const win = (inner, cls = '') => `<section class="win ${cls}">${inner}</section>`;
 
   function vTitle() {
+    const has = !!loadSave();
     return `<div class="title-screen">
       <h1 class="logo">CarbonRPG</h1>
       <p class="subtitle">炭素の勇者 ── 第1章「求核の森」</p>
       ${win(`<p class="story">炭素の国カルボニア。原子たちは手を取り合い、分子となって穏やかに暮らしていた。</p>
-      <p class="story">ところがある日、森の分子たちが暴走を始めた。脱離基を振りかざし、通りがかりの者をアルキル化して回っているという。</p>
-      <p class="story">芳香族の長老ベンゼンは言った。<br>「わしは付加反応はせん主義でな……。若いの、頼んだぞ」</p>
-      <p class="story">4本の手を持つ sp³ 炭素、カーボの旅が始まる。</p>`, 'msg')}
-      <button class="btn big" data-act="start">▶ はじめる</button>
-      <p class="small dim">化学がわかる人向けの試作版です。反応の結果は教科書レベルの経験則で決まります。</p>
+        <p class="story">ところがある日、森の分子たちが次々と「平ら」にされ、利き手を失いはじめた。</p>
+        <p class="story">闇の組織「メソ教団」。その名が、ささやかれている。</p>`, 'msg')}
+      <div class="center">
+        <button class="btn big" data-act="newGame">▶ はじめから</button>
+        ${has ? '<button class="btn big" data-act="continue">▶ つづきから</button>' : ''}
+      </div>
+      <p class="small dim">化学がわかる人向けの試作版です。問題に正解すると敵にダメージ、間違えると自分がダメージを受けます。</p>
     </div>`;
+  }
+
+  function vDiff() {
+    return `<h2 class="screen-title">難易度を選ぶ</h2>
+      <p class="center dim small">バトルで出る問題の難しさが変わります。あとから変えることはできません。</p>
+      <div class="diff-list">${[1, 2, 3, 4].map(d => `<button class="diff-btn" data-act="pickDiff" data-arg="${d}">
+        <span class="diff-name">${Questions.DIFFS[d].name}</span><span class="small dim">${Questions.DIFFS[d].desc}</span></button>`).join('')}</div>`;
   }
 
   function vParty() {
-    const cfg = heroCfg(S.party);
-    const bonus = cfg === 'R' ? '右回りの加護: 各戦闘の 1 ターン目、手札 +1 枚' : cfg === 'S' ? '左回りの加護: 最大 HP +10' : '';
-    const comps = COMPANIONS.map(c => {
-      const on = S.party.includes(c.id);
-      return `<button class="comp ${on ? 'on' : ''}" style="--ac: var(--${c.atom})" data-act="toggleComp" data-arg="${c.id}">
+    const cfg = heroCfg(UI.pick);
+    const trait = cfg === 'R' ? '攻撃型: 続けて正解するほどダメージが上がる' : cfg === 'S' ? '防御型: 最大 HP +10、間違えたときのダメージ −25%' : '';
+    const list = COMPANIONS.map(c => {
+      const on = UI.pick.includes(c.id);
+      return `<button class="comp ${on ? 'on' : ''}" style="--ac:${c.color}" data-act="toggleComp" data-arg="${c.id}">
         <span class="comp-atom">${c.group}</span>
         <span class="comp-name">${c.name}<small>${c.role}</small></span>
-        <span class="comp-cards">${c.cards.map(id => CARDS[id].name).join(' / ')}</span>
-        <span class="comp-line">「${c.line}」</span>
+        <span class="comp-cards">技「${c.skill.name}」: ${c.skill.desc}</span>
+        <span class="comp-line">${c.bond}</span>
       </button>`;
     }).join('');
-    const quests = BATTLES.map((B, i) => `<li><span class="q-no">${i + 1}</span><b>${B.monster}</b>　${name(Object.keys(B.start)[0])} → ${B.targetLabel}</li>`).join('');
-    return `<h2 class="screen-title">結合パートナーを選ぶ</h2>
+    return `<h2 class="screen-title">4 本の手に、仲間を結ぶ</h2>
     <div class="party-grid">
-      ${win(`<h3>カーボの 4 本の手</h3>
-        <div class="hero-wrap">${heroSvg(S.party)}</div>
-        <p class="center">${S.party.length}/4 結合</p>
-        ${cfg ? `<p class="center big-cfg">(${cfg})-カーボ</p><p class="center small">${heroFormula(S.party)}</p><p class="center small accent">${bonus}</p>
-          <div class="center"><button class="btn" data-act="swap">くさびと破線を入れ替える（R/S 反転）</button></div>` : '<p class="center small dim">仲間を 4 人選ぶと、カーボは不斉炭素になる。</p>'}
-        <p class="small dim">仲間はそれぞれ 3 枚のカードをデッキに加える。全員共通の基本カード: ${BASIC_DECK.map(id => CARDS[id].name).join('、')}</p>`, 'hero-win')}
+      ${win(`<div class="hero-wrap">${heroSvg(UI.pick)}</div>
+        <p class="center">${UI.pick.length}/4 結合</p>
+        ${cfg ? `<p class="center big-cfg">(${cfg})-カーボ</p><p class="center small">${heroFormula(UI.pick)}</p><p class="center small accent">${trait}</p>
+          <div class="center"><button class="btn" data-act="swap">くさびと破線を入れ替える（R/S 反転）</button></div>`
+        : '<p class="center small dim">4 人そろうと、置換基の CIP 順位からカーボの R/S が決まる。</p>'}`, 'hero-win')}
       <div>
-        <div class="comp-list">${comps}</div>
-        ${win(`<h3>長老ベンゼンからの依頼（第1章）</h3><ol class="quests">${quests}</ol>
-          <p class="small dim">各戦闘のあと、次の依頼に役立つカードが報酬の候補に 1 枚は混ざる。</p>`)}
-        <div class="center"><button class="btn big" data-act="go" ${S.party.length === 4 ? '' : 'disabled'}>▶ 求核の森へ</button></div>
+        <div class="comp-list">${list}</div>
+        <p class="small dim">仲間の技は、バトル 1 回につき 1 度ずつ使える。</p>
+        <div class="center"><button class="btn big" data-act="bondDone" ${UI.pick.length === 4 ? '' : 'disabled'}>▶ この 4 人と結合する</button></div>
       </div>
     </div>`;
   }
 
-  function hpBar(cur, max, cls) {
-    return `<div class="bar ${cls}"><div style="width:${Math.max(0, Math.min(100, cur / max * 100))}%"></div></div>`;
+  function hpBar(cur, max, cls) { return `<div class="bar ${cls}"><div style="width:${Math.max(0, Math.min(100, cur / max * 100))}%"></div></div>`; }
+
+  function vWorld() {
+    return `<div class="world">
+      <div class="hud">
+        <span><b>${map().name}</b></span>
+        <span class="hp-box">${S.cfg ? `(${S.cfg})-カーボ` : 'カーボ'} HP ${Math.max(0, S.hp)}/${S.maxHp} ${hpBar(S.hp, S.maxHp, 'hp')}</span>
+        <button class="btn small-btn" data-act="menu">メニュー</button>
+      </div>
+      <div class="stage">
+        <canvas id="cv" width="${VW * TILE}" height="${VH * TILE}"></canvas>
+        <div id="overlay"></div>
+      </div>
+      <div class="pad" aria-label="操作パッド">
+        <div class="dpad">
+          <button class="pd up" data-dir="up" aria-label="上">▲</button>
+          <button class="pd left" data-dir="left" aria-label="左">◀</button>
+          <button class="pd right" data-dir="right" aria-label="右">▶</button>
+          <button class="pd down" data-dir="down" aria-label="下">▼</button>
+        </div>
+        <button class="pd abtn" data-key="a">話す<br>調べる</button>
+      </div>
+      <p class="keys small dim">矢印キー / WASD: 移動　Z・Enter・Space: 話す・調べる・送る　X・Esc: メニュー</p>
+    </div>`;
+  }
+
+  // ---- オーバーレイ（会話・メッセージ・メニュー） ----------------
+  function renderOverlay() {
+    const ov = document.getElementById('overlay');
+    if (!ov) return;
+    stopTyping();
+    if (UI.menu) { ov.innerHTML = vMenu(); return; }
+    const line = currentLine();
+    if (!line) { ov.innerHTML = ''; return; }
+    ov.innerHTML = `<div class="dialog" data-act="advance">
+      ${line.w ? `<div class="speaker">${esc(line.w)}</div>` : ''}
+      <div class="dtext" id="dtext" data-full="${esc(line.t)}"></div>
+      <div class="dnext">▼</div></div>`;
+    startTyping();
+  }
+
+  let typeTimer = null;
+  function startTyping() {
+    const el = document.getElementById('dtext');
+    if (!el) return;
+    const full = el.dataset.full.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    let i = 0;
+    el.textContent = '';
+    el.dataset.done = '0';
+    typeTimer = setInterval(() => {
+      i += 2;
+      el.textContent = full.slice(0, i);
+      if (i >= full.length) { el.dataset.done = '1'; stopTyping(); }
+    }, 22);
+  }
+  function stopTyping() { if (typeTimer) { clearInterval(typeTimer); typeTimer = null; } }
+  function finishTyping() {
+    const el = document.getElementById('dtext');
+    if (el && el.dataset.done !== '1') {
+      stopTyping();
+      el.textContent = el.dataset.full.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+      el.dataset.done = '1';
+      return true;
+    }
+    return false;
+  }
+
+  function currentLine() {
+    if (UI.msg) return { t: UI.msg[0] };
+    const sc = UI.scene;
+    if (!sc) return null;
+    const st = sc.steps[sc.i];
+    if (!st || st.do) return null;
+    let w = st.w || null;
+    if (w && w.startsWith('@')) w = S.party.length ? comp(S.party[(+w.slice(1)) % S.party.length]).name : '仲間';
+    return { w, t: fill(st.t) };
+  }
+
+  function vMenu() {
+    const party = S.party.map(id => { const c = comp(id); return `<li><b style="color:${c.color}">${c.name}</b>（${c.group}）技「${c.skill.name}」: ${c.skill.desc}</li>`; }).join('');
+    const items = Object.entries(S.items).filter(([, n]) => n > 0).map(([id, n]) =>
+      `<li>${ITEMS[id].name} ×${n} <span class="dim small">${ITEMS[id].desc}</span>${id === 'coffee' ? ` <button class="btn small-btn" data-act="useCoffee">飲む</button>` : ''}</li>`).join('') || '<li class="dim">なし</li>';
+    const st = S.stats.total ? `${S.stats.correct}/${S.stats.total} 問正解（${Math.round(S.stats.correct / S.stats.total * 100)}%）` : 'まだ問題に答えていない';
+    return `<div class="menu win">
+      <h3>${S.cfg ? `(${S.cfg})-カーボ` : 'カーボ'}　HP ${S.hp}/${S.maxHp}</h3>
+      <p class="small">難易度: ${Questions.DIFFS[S.diff].name}　｜　${st}</p>
+      ${S.party.length ? `<p class="small">${heroFormula(S.party)}</p><ul class="mlist">${party}</ul>` : ''}
+      <h3>どうぐ</h3><ul class="mlist">${items}</ul>
+      <div class="center"><button class="btn" data-act="saveNow">セーブ</button><button class="btn" data-act="menu">とじる</button></div>
+    </div>`;
+  }
+
+  // ---- 台本の再生 ------------------------------------------------
+  function playScene(id, onDone) {
+    UI.scene = { steps: SCENES[id].map(x => ({ ...x })), i: 0, onDone };
+    UI.held = null;
+    runCommands();
+  }
+  // いまの行がコマンドなら実行して進める
+  function runCommands() {
+    const sc = UI.scene;
+    while (sc && sc.i < sc.steps.length && sc.steps[sc.i].do) {
+      const st = sc.steps[sc.i];
+      if (st.do === 'flag') { S.flags[st.f] = true; save(); sc.i++; continue; }
+      if (st.do === 'heal') { S.hp = S.maxHp; sc.i++; continue; }
+      if (st.do === 'bond') {
+        const lines = S.party.map(id => ({ w: comp(id).name, t: comp(id).bond }));
+        sc.steps.splice(sc.i, 1, ...lines);
+        continue;
+      }
+      if (st.do === 'party') { sc.i++; UI.pick = []; UI.screen = 'party'; render(); return; }
+      if (st.do === 'battle') { sc.i++; startBattle(st.e, false); return; }
+      if (st.do === 'clear') { sc.i++; UI.scene = null; S.flags.clear = true; save(); UI.screen = 'clear'; render(); return; }
+      sc.i++;
+    }
+    if (sc && sc.i >= sc.steps.length) {
+      UI.scene = null;
+      if (sc.onDone) sc.onDone();
+    }
+    if (UI.screen === 'world') { renderOverlay(); refreshHud(); }
+  }
+  function advance() {
+    if (finishTyping()) return;
+    if (UI.msg) { UI.msg.shift(); if (!UI.msg.length) { const cb = UI.msgDone; UI.msg = null; UI.msgDone = null; if (cb) cb(); } renderOverlay(); return; }
+    if (UI.scene) { UI.scene.i++; runCommands(); }
+  }
+  function message(lines, done) { UI.msg = Array.isArray(lines) ? [...lines] : [lines]; UI.msgDone = done || null; UI.held = null; renderOverlay(); }
+  const busy = () => !!(UI.scene || UI.msg || UI.menu);
+
+  function refreshHud() {
+    const hp = document.querySelector('.hud .hp-box');
+    if (hp) hp.innerHTML = `${S.cfg ? `(${S.cfg})-カーボ` : 'カーボ'} HP ${Math.max(0, S.hp)}/${S.maxHp} ${hpBar(S.hp, S.maxHp, 'hp')}`;
+  }
+
+  // =================================================================
+  // マップ
+  // =================================================================
+  let cv = null, ctx = null, mapCache = { key: '', canvas: null };
+
+  function setupCanvas() {
+    cv = document.getElementById('cv');
+    ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+  }
+  function tileAt(x, y) { const g = map().grid; return (g[y] && g[y][x]) || 'T'; }
+  function passableTile(ch) {
+    const p = map().passable && map().passable[ch];
+    if (p) return p(S.flags);
+    return !Sprites.SOLID.has(ch);
+  }
+  const activeEvents = () => (map().events || []).filter(e => !e.when || e.when(S.flags));
+  const eventAt = (x, y, on) => activeEvents().find(e => e.x === x && e.y === y && (!on || e.on === on));
+
+  function mapCanvas() {
+    const m = map(), key = S.map + (S.flags.duo ? 1 : 0);
+    if (mapCache.key === key) return mapCache.canvas;
+    const W = m.grid[0].length, H = m.grid.length;
+    const c = document.createElement('canvas');
+    c.width = W * TILE; c.height = H * TILE;
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let ch = m.grid[y][x];
+      if (ch === 'M' && passableTile('M')) ch = 'm';
+      Sprites.drawTile(g, ch, x * TILE, y * TILE, TILE, x, y);
+    }
+    mapCache = { key, canvas: c };
+    return c;
+  }
+
+  function heroPos() {
+    if (!UI.move) return [S.x, S.y];
+    const t = Math.min(1, (performance.now() - UI.move.t0) / STEP_MS);
+    return [UI.move.fx + (S.x - UI.move.fx) * t, UI.move.fy + (S.y - UI.move.fy) * t];
+  }
+
+  function draw() {
+    if (UI.screen !== 'world' || !ctx) return;
+    const m = map(), W = m.grid[0].length, H = m.grid.length;
+    const [hx, hy] = heroPos();
+    let camX = hx - (VW - 1) / 2, camY = hy - (VH - 1) / 2;
+    camX = W <= VW ? -(VW - W) / 2 : Math.max(0, Math.min(W - VW, camX));
+    camY = H <= VH ? -(VH - H) / 2 : Math.max(0, Math.min(H - VH, camY));
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(mapCanvas(), Math.round(-camX * TILE), Math.round(-camY * TILE));
+    for (const e of activeEvents()) {
+      if (!e.sprite) continue;
+      const sx = (e.x - camX) * TILE, sy = (e.y - camY) * TILE;
+      const id = e.chest && S.flags[e.chest.flag] ? 'chestOpen' : e.sprite;
+      if (e.mirror) { ctx.save(); ctx.translate(sx + TILE, sy); ctx.scale(-1, 1); Sprites.drawChar(ctx, id, 0, 0, TILE); ctx.restore(); }
+      else Sprites.drawChar(ctx, id, sx, sy, TILE);
+    }
+    const colors = S.party.length ? S.party.map(id => comp(id).color) : null;
+    Sprites.drawChar(ctx, 'hero', (hx - camX) * TILE, (hy - camY) * TILE, TILE, { colors, dir: S.dir });
+  }
+
+  function loop() {
+    if (UI.screen === 'world') {
+      if (UI.move && performance.now() - UI.move.t0 >= STEP_MS) { UI.move = null; afterStep(); }
+      if (!UI.move && UI.held && !busy()) tryMove(UI.held);
+      draw();
+    }
+    requestAnimationFrame(loop);
+  }
+
+  const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+  function tryMove(dir) {
+    S.dir = dir;
+    const [dx, dy] = DIRS[dir], nx = S.x + dx, ny = S.y + dy;
+    const ev = eventAt(nx, ny, 'bump');
+    if (ev) { UI.held = null; return trigger(ev); }
+    const ch = tileAt(nx, ny);
+    if (!passableTile(ch)) {
+      const bt = map().blockedText && map().blockedText[ch];
+      if (bt) message(resolve(bt, S.flags));
+      return;
+    }
+    UI.move = { fx: S.x, fy: S.y, t0: performance.now() };
+    S.x = nx; S.y = ny;
+  }
+
+  function afterStep() {
+    const ev = eventAt(S.x, S.y, 'step');
+    if (ev) { UI.held = null; return trigger(ev); }
+    if (map().encounters && tileAt(S.x, S.y) === 'g' && S.flags.f_entry && !S.flags.boss) {
+      UI.steps++;
+      if (UI.steps > 4 && Math.random() < 1 / 10) {
+        UI.steps = 0; UI.held = null;
+        const e = RANDOM_ENEMIES[Math.floor(Math.random() * RANDOM_ENEMIES.length)];
+        startBattle(e, true);
+      }
+    }
+  }
+
+  function action() {
+    if (UI.menu) return;
+    if (UI.scene || UI.msg) return advance();
+    const [dx, dy] = DIRS[S.dir], fx = S.x + dx, fy = S.y + dy;
+    const ev = eventAt(fx, fy, 'bump');
+    if (ev) return trigger(ev);
+    const ins = map().inspect && map().inspect[tileAt(fx, fy)];
+    if (ins) {
+      if (ins.rest) { S.hp = S.maxHp; save(); refreshHud(); return message(['ベッドで仮眠をとった。', 'HP が全回復した。（セーブしました）']); }
+      return message(ins);
+    }
+  }
+
+  function trigger(ev) {
+    if (ev.scene) return playScene(resolve(ev.scene, S.flags));
+    if (ev.text) return message(ev.text);
+    if (ev.chest) {
+      if (S.flags[ev.chest.flag]) return message('宝箱はからっぽだ。');
+      S.flags[ev.chest.flag] = true;
+      S.items[ev.chest.item] = (S.items[ev.chest.item] || 0) + 1;
+      save();
+      return message(`宝箱を開けた！ ${ITEMS[ev.chest.item].name}を手に入れた。`);
+    }
+    if (ev.gate) {
+      if (S.flags.elder) return warp({ map: 'forest', x: 15, y: 22, dir: 'up' });
+      return playScene('gate_block', () => { S.y = 1; S.dir = 'down'; });
+    }
+    if (ev.warp) return warp(ev.warp);
+  }
+
+  function warp(w) {
+    S.map = w.map; S.x = w.x; S.y = w.y; S.dir = w.dir || S.dir;
+    UI.move = null; UI.steps = 0;
+    save();
+    render();
+    const oe = map().onEnter;
+    if (oe && !S.flags[oe.flag]) { S.flags[oe.flag] = true; playScene(oe.scene); }
+  }
+
+  // =================================================================
+  // 問題バトル
+  // =================================================================
+  function questionPool(key) {
+    const d = S.diff;
+    const diffs = ENEMIES[key].boss ? [d, Math.min(4, d + 1)] : key === 'duo' ? [d] : [d, Math.max(1, d - 1)];
+    return Questions.LIST.filter(q => q.ch === 1 && diffs.includes(q.diff));
+  }
+  function pickQuestion(key) {
+    const pool = questionPool(key);
+    // いまの難易度の問題を優先し、未出題のものから選ぶ
+    let cand = pool.filter(q => !S.used[q.id] && q.diff === S.diff);
+    if (!cand.length) cand = pool.filter(q => !S.used[q.id]);
+    if (!cand.length) { pool.forEach(q => delete S.used[q.id]); cand = pool; }
+    const q = cand[Math.floor(Math.random() * cand.length)];
+    S.used[q.id] = true;
+    return q;
+  }
+
+  function startBattle(key, random) {
+    const E = ENEMIES[key];
+    UI.battle = {
+      key, random, name: E.name, sprite: E.sprite, hp: E.hp, maxHp: E.hp, atk: E.atk, phase: 0,
+      state: 'intro', lines: [`${E.name}があらわれた！`, `${E.name}「${E.start}」`],
+      q: null, order: [], removed: new Set(), streak: 0, skills: new Set(), power: false, guard: false, stink: false,
+      timeMax: S.diff >= 4 ? 120 : 90, timeLeft: 0,
+    };
+    UI.screen = 'battle';
+    render();
+  }
+
+  let qTimer = null;
+  function stopTimer() { if (qTimer) { clearInterval(qTimer); qTimer = null; } }
+  function nextQuestion() {
+    const B = UI.battle;
+    B.q = pickQuestion(B.key);
+    B.order = shuffle([0, 1, 2, 3]);
+    B.removed = new Set();
+    B.timeLeft = B.timeCap = B.timeMax;
+    B.state = 'q';
+    render();
+    stopTimer();
+    qTimer = setInterval(() => {
+      B.timeLeft -= 0.25;
+      const bar = document.getElementById('qtime');
+      if (bar) bar.style.width = `${Math.max(0, B.timeLeft / B.timeCap * 100)}%`;
+      const num = document.getElementById('qtnum');
+      if (num) num.textContent = Math.ceil(Math.max(0, B.timeLeft));
+      if (B.timeLeft <= 0) { stopTimer(); answer(-1); }
+    }, 250);
+  }
+
+  const taunt = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  function answer(choice) {
+    const B = UI.battle, E = ENEMIES[B.key];
+    if (B.state !== 'q') return;
+    stopTimer();
+    const ok = choice === B.q.a;
+    S.stats.total++;
+    const lines = [];
+    if (ok) {
+      S.stats.correct++;
+      let dmg = 10 + (S.cfg === 'R' ? Math.min(B.streak, 3) * 4 : 0);
+      if (B.power) { dmg = Math.round(dmg * 1.5); B.power = false; lines.push('アジーの背面攻撃が決まった！'); }
+      B.streak++;
+      B.hp = Math.max(0, B.hp - dmg);
+      lines.push(`正解！ ${B.name}に ${dmg} のダメージ！${S.cfg === 'R' && B.streak > 1 ? `（${B.streak} 連続正解）` : ''}`);
+      if (B.hp > 0) lines.push(`${B.name}「${taunt(E.hit)}」`);
+      for (const ph of E.phases || []) {
+        if (B.phase < (E.phases.indexOf(ph) + 1) && B.hp / B.maxHp <= ph.at && B.hp > 0) {
+          B.phase = E.phases.indexOf(ph) + 1;
+          lines.push(...ph.text.split('\n'));
+          if (ph.transform) { B.sprite = ph.transform; B.name = ph.name; B.atk += ph.atkUp || 0; }
+        }
+      }
+    } else {
+      B.streak = 0;
+      let dmg = Math.max(1, B.atk - (B.stink ? 3 : 0));
+      if (S.cfg === 'S') dmg = Math.max(1, Math.round(dmg * 0.75));
+      if (B.guard) { dmg = 0; B.guard = false; lines.push('ブトキが立ちはだかった！'); }
+      S.hp = Math.max(0, S.hp - dmg);
+      lines.push(`${choice < 0 ? '時間切れ！ ' : '不正解……。'}カーボは ${dmg} のダメージを受けた。`);
+      lines.push(`${B.name}「${taunt(E.miss)}」`);
+    }
+    B.result = { ok, choice, lines };
+    B.state = 'result';
+    render();
+  }
+
+  function battleNext() {
+    const B = UI.battle, E = ENEMIES[B.key];
+    if (B.state === 'intro') return nextQuestion();
+    if (B.state === 'result') {
+      if (S.hp <= 0) { B.state = 'lose'; return render(); }
+      if (B.hp <= 0) { B.state = 'win'; B.lines = [`${B.name}「${E.win}」`, `${B.name}をたおした！`]; return render(); }
+      return nextQuestion();
+    }
+    if (B.state === 'win') return endBattle(true);
+    if (B.state === 'lose') return endBattle(false);
+  }
+
+  function endBattle(won) {
+    stopTimer();
+    const B = UI.battle;
+    UI.battle = null;
+    if (!won) { UI.scene = null; UI.screen = 'over'; return render(); }
+    save();
+    UI.screen = 'world';
+    render();
+    if (UI.scene) { runCommands(); }
+    void B;
+  }
+
+  function useSkill(id) {
+    const B = UI.battle;
+    if (B.state !== 'q' || B.skills.has(id)) return;
+    const c = comp(id), sk = c.skill.id;
+    B.skills.add(id);
+    if (sk === 'heal') S.hp = Math.min(S.maxHp, S.hp + 12);
+    if (sk === 'power') B.power = true;
+    if (sk === 'stink') B.stink = true;
+    if (sk === 'guard') B.guard = true;
+    if (sk === 'time') { B.timeLeft += 60; B.timeCap = Math.max(B.timeCap, B.timeLeft); }
+    if (sk === 'fifty') removeWrong(2);
+    render();
+  }
+  function removeWrong(n) {
+    const B = UI.battle;
+    const wrong = shuffle([0, 1, 2, 3].filter(i => i !== B.q.a && !B.removed.has(i)));
+    wrong.slice(0, n).forEach(i => B.removed.add(i));
+  }
+  function useItem(id) {
+    const B = UI.battle;
+    if (B.state !== 'q' || !S.items[id]) return;
+    if (id === 'coffee') { if (S.hp >= S.maxHp) return; S.hp = Math.min(S.maxHp, S.hp + ITEMS.coffee.heal); }
+    if (id === 'book') removeWrong(1);
+    S.items[id]--;
+    render();
   }
 
   function vBattle() {
-    const B = battle(), b = S.b, t = tally(), c = conds(), it = currentIntent();
-    const form = enemyForm();
-    const formDesc = form ? Chem.describe(form) : null;
-    const startKey = Object.keys(B.start)[0];
-    const sc = selCards();
-
-    const status = [
-      b.humid ? `<span class="chip ${c.humid ? 'bad' : 'ok'}">湿気${c.humid ? '' : '（MS 4Å で打ち消し）'}</span>` : '',
-      b.heat ? `<span class="chip ${c.heatForced ? 'bad' : 'ok'}">加熱の呪い${c.heatForced ? '' : '（氷浴で打ち消し）'}</span>` : '',
-    ].join('');
-
-    const flaskRows = Object.entries(b.flask).filter(([, v]) => v >= 0.5).sort((x, y) => y[1] - x[1]).map(([k, v]) => {
-      const d = Chem.describe(k), isT = B.isTarget(k), re = isEnemy(k);
-      const role = isT ? '<span class="chip ok">★ 目的物</span>' : re ? '<span class="chip bad">敵</span>' : '<span class="chip dim">副生成物</span>';
-      return `<div class="sp-row ${isT ? 'is-target' : ''}">
-        ${Mol.svgTag(d.smiles, 120, 80)}
-        <div class="sp-info"><div class="sp-name">${d.name}</div>${role}
-          <div class="bar ${isT ? 'yield' : re ? 'enemy' : 'side'}"><div style="width:${v}%"></div></div>
-          <div class="small">${fmt(v)}%</div></div>
-      </div>`;
-    }).join('');
-
-    const solv = SOLVENT_GROUPS.map(([g, ids]) => `<div class="opt-row"><span class="opt-label">${g}</span>${ids.map(id =>
-      `<button class="opt ${b.solvent === id ? 'on' : ''}" data-act="solvent" data-arg="${id}">${Chem.SOLVENTS[id].label}</button>`).join('')}</div>`).join('');
-    const temps = Object.entries(Chem.TEMPS).map(([id, T]) =>
-      `<button class="opt ${c.temp === id ? 'on' : ''}" data-act="temp" data-arg="${id}" ${c.heatForced ? 'disabled' : ''}>${T.label}</button>`).join('');
-
-    const free = b.energy - plannedCost();
-    const hand = b.hand.map((id, i) => {
-      const C = CARDS[id];
-      const sel = b.sel.reagent === i || b.sel.supports.includes(i);
-      const afford = sel || C.cost <= free;
-      return `<button class="card t-${C.type} ${sel ? 'sel' : ''} ${afford ? '' : 'na'} ${C.rare ? 'rare' : ''}" data-act="card" data-arg="${i}">
-        <span class="cost">${C.cost}</span><span class="tag">${C.tag}</span>
-        <span class="cname">${C.name}</span><span class="cfull">${C.full}</span>
-        <span class="cdesc">${C.desc}</span><span class="cflav">${C.flavor}</span>
-      </button>`;
-    }).join('');
-
-    const recipe = `<div class="recipe">
-      <span class="slotbox ${sc.reagent ? 'filled' : ''}">${sc.reagent ? CARDS[sc.reagent].name : '試薬なし（溶媒だけ）'}</span>
-      ${sc.supports.map(id => `<span class="slotbox filled sup">+ ${CARDS[id].name}</span>`).join('')}
-      <span class="slotbox">${Chem.SOLVENTS[b.solvent].label}</span>
-      <span class="slotbox ${c.heatForced ? 'bad' : ''}">${Chem.TEMPS[c.temp].label}</span>
-      ${c.humid ? '<span class="slotbox bad">含水</span>' : ''}
-    </div>`;
-
-    const logs = b.log.slice(0, 8).map(vLog).join('');
-
-    return `<header class="topbar">
-      <div><b>第1章 求核の森</b> <span class="dim">戦闘 ${S.bi + 1}/${BATTLES.length}・ターン ${b.turn}</span></div>
-      <div class="hp-box">(${S.hero.cfg})-カーボ HP ${Math.max(0, S.hero.hp)}/${S.hero.maxHp} ${hpBar(S.hero.hp, S.hero.maxHp, 'hp')}</div>
-      <div class="energy">エネルギー ${'◆'.repeat(Math.max(0, free))}${'◇'.repeat(Math.max(0, b.energy - free))} <span class="dim">${free}/${b.energy}</span></div>
-    </header>
-    <div class="battle-grid">
-      <div class="col">
-        ${win(`<div class="enemy-head"><h3>${B.monster}${secondForm() ? '<span class="chip bad">第2形態</span>' : ''} <small>Lv.${B.lv}</small></h3>
-            <div class="small">残り ${fmt(t.enemy)}% ${hpBar(t.enemy, 100, 'enemy')}</div></div>
-          <div class="enemy-body">
-            ${formDesc ? Mol.svgTag(formDesc.smiles, 240, 150, 'big') : '<p class="dim">（もう反応する相手はいない）</p>'}
-            <div class="small">${formDesc ? `いまの姿: ${formDesc.name}` : ''}</div>
-          </div>
-          <div class="intent">次の行動: <b>${intentText(it)}</b></div>
-          ${status ? `<div class="status">このターン: ${status}</div>` : ''}`, 'enemy-win')}
-        ${win(`<h3>依頼</h3>
-          <p>「${B.order}」</p>
-          <div class="target-line">${B.targetSmiles ? Mol.svgTag(B.targetSmiles, 130, 80) : ''}<div><div class="small dim">${name(startKey)} →</div><b>${B.targetLabel}</b></div></div>
-          <p class="small">現在の収率 <b class="accent">${fmt(t.target)}%</b>　副生成物 ${fmt(t.side)}%</p>
-          <button class="btn small-btn" data-act="hint">${b.showHint ? 'ヒントを隠す' : 'ヒント'}</button>
-          ${b.showHint ? `<p class="small hint">${B.hint}</p>` : ''}`)}
-        ${win(`<h3>フラスコの中身</h3>${flaskRows}`)}
+    const B = UI.battle;
+    let body = '';
+    if (B.state === 'intro' || B.state === 'win' || B.state === 'lose') {
+      const lines = B.state === 'lose' ? ['カーボは力尽きた……'] : B.lines;
+      body = win(`${lines.map(l => `<p>${esc(l)}</p>`).join('')}<div class="center"><button class="btn big" data-act="bNext">${B.state === 'intro' ? 'たたかう' : 'つぎへ'}</button>
+        ${B.state === 'intro' && B.random ? '<button class="btn" data-act="run">にげる</button>' : ''}</div>`, 'msg');
+    } else {
+      const q = B.q;
+      const head = `<div class="q-head"><span class="chip dim">${esc(Questions.DIFFS[q.diff].name)}</span><span class="chip dim">${esc(q.topic)}</span></div>`;
+      const qbox = `${head}<p class="q-text">${esc(q.q)}</p>${q.smiles ? `<div class="q-mol">${Mol.svgTag(q.smiles, 220, 130, 'big')}</div>` : ''}`;
+      if (B.state === 'q') {
+        const choices = B.order.map(i => `<button class="choice" data-act="answer" data-arg="${i}" ${B.removed.has(i) ? 'disabled' : ''}>${esc(q.choices[i])}</button>`).join('');
+        const skills = S.party.map(id => { const c = comp(id), used = B.skills.has(id);
+          return `<button class="skill" style="--ac:${c.color}" data-act="skill" data-arg="${id}" ${used ? 'disabled' : ''} title="${esc(c.skill.desc)}">${c.name}「${c.skill.name}」</button>`; }).join('');
+        const items = ['coffee', 'book'].filter(id => S.items[id]).map(id => `<button class="skill item" data-act="item" data-arg="${id}" title="${esc(ITEMS[id].desc)}">${ITEMS[id].name} ×${S.items[id]}</button>`).join('');
+        const flags = [B.power ? '背面攻撃 準備中' : '', B.guard ? '立体障害で守っている' : '', B.stink ? '悪臭で敵がひるんでいる' : ''].filter(Boolean).map(t => `<span class="chip ok">${t}</span>`).join('');
+        body = win(`${qbox}<div class="timer"><div class="bar time"><div id="qtime" style="width:${B.timeLeft / B.timeCap * 100}%"></div></div><span id="qtnum" class="small">${Math.ceil(B.timeLeft)}</span></div>`, 'qwin')
+          + `<div class="choices">${choices}</div>`
+          + `<div class="skills">${skills}${items}</div>${flags ? `<div class="status">${flags}</div>` : ''}`;
+      } else {
+        const r = B.result;
+        const choices = B.order.map(i => `<div class="choice shown ${i === q.a ? 'right' : i === r.choice ? 'wrong' : ''}">${i === q.a ? '○ ' : i === r.choice ? '× ' : ''}${esc(q.choices[i])}</div>`).join('');
+        body = win(qbox, 'qwin') + `<div class="choices">${choices}</div>`
+          + win(`<p class="${r.ok ? 'accent' : 'bad-text'}"><b>${r.ok ? '正解！' : r.choice < 0 ? '時間切れ' : '不正解'}</b></p><p class="explain">${esc(q.explain)}</p>
+              <div class="dlog" id="dtext" data-full="${esc(r.lines.join('\n'))}"></div>
+              <div class="center"><button class="btn big" data-act="bNext">つぎへ</button></div>`, 'msg');
+      }
+    }
+    return `<div class="battle">
+      <div class="enemy-box win">
+        <canvas id="ecv" width="128" height="128"></canvas>
+        <div class="enemy-info"><h3>${esc(B.name)}</h3>${hpBar(B.hp, B.maxHp, 'enemy')}<div class="small dim">攻撃力 ${B.atk - (B.stink ? 3 : 0)}</div></div>
       </div>
-      <div class="col">
-        ${win(`<h3>反応条件</h3>
-          ${recipe}
-          <div class="small dim">溶媒</div>${solv}
-          <div class="opt-row"><span class="opt-label">温度</span>${temps}</div>
-          <div class="actions">
-            <button class="btn big" data-act="react">⚗ 反応開始</button>
-            <button class="btn" data-act="wait">何もせず待つ</button>
-            <button class="btn ${t.enemy < 15 && t.target > 0 ? 'glow' : ''}" data-act="workup">後処理して精製</button>
-          </div>
-          ${b.confirmWorkup ? `<div class="confirm">反応を止めて精製します。いまフラスコにある目的物（${fmt(t.target)}%）が収率になります。
-            <div><button class="btn" data-act="workupYes">精製する</button> <button class="btn" data-act="workupNo">やめる</button></div></div>` : ''}`, 'setup-win')}
-        <div class="hand-head small dim">手札 ${b.hand.length} 枚・山札 ${b.draw.length}・捨て札 ${b.discard.length}　（試薬は 1 枚、補助は何枚でも。反応すると 1 日＝1 ターンが終わる）</div>
-        <div class="hand">${hand || '<p class="dim">手札がない</p>'}</div>
-        ${win(`<h3>実験ノート</h3><div class="log">${logs}</div>`, 'log-win')}
-      </div>
+      ${body}
+      <div class="hero-bar win small">${S.cfg ? `(${S.cfg})-カーボ` : 'カーボ'}　HP ${Math.max(0, S.hp)}/${S.maxHp} ${hpBar(S.hp, S.maxHp, 'hp')}${S.cfg === 'R' && B.streak ? `<span class="chip ok">${B.streak} 連続正解</span>` : ''}</div>
     </div>`;
   }
 
-  function vLog(e) {
-    if (e.type === 'sys') return `<div class="log-e sys">${e.text}</div>`;
-    if (e.type === 'enemy') return `<div class="log-e enemy">${e.text}</div>`;
-    const c = e.cond;
-    const head = [c.reagent ? CARDS[c.reagent].name : '試薬なし', ...e.supports.map(id => CARDS[id].name), Chem.SOLVENTS[c.solvent].label + (c.humid ? '（含水）' : ''), Chem.TEMPS[c.temp].label].join(' / ');
-    const body = e.report.map(r => {
-      const reacted = r.converted > 0.05;
-      const prods = {};
-      for (const [k, v] of r.products) prods[k] = (prods[k] || 0) + v;
-      const plist = Object.entries(prods).sort((a, b) => b[1] - a[1]).filter(([, v]) => v >= 0.5)
-        .map(([k, v]) => `<li>${name(k)} <b>${fmt(v)}%</b>${battle().isTarget(k) ? ' ★' : ''}</li>`).join('');
-      return `<div class="rx-sp">
-        <div><b>${name(r.from)}</b>（${fmt(r.amount)}%）${reacted ? ` → <span class="mech">${r.mech}</span>・変換 ${fmt(r.converted)}%` : ' → 変化なし'}</div>
-        ${r.notes.length ? `<ul class="notes">${r.notes.map(n => `<li>${n}</li>`).join('')}</ul>` : ''}
-        ${reacted && plist ? `<ul class="prods">${plist}</ul>` : ''}
-      </div>`;
-    }).join('');
-    return `<div class="log-e rx"><div class="rx-head">ターン ${e.turn}: ${head}</div>${body}</div>`;
+  function drawEnemy() {
+    const c = document.getElementById('ecv');
+    if (!c || !UI.battle) return;
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    g.clearRect(0, 0, c.width, c.height);
+    const s = UI.battle.sprite === 'mesoDuo' ? 80 : 112;
+    Sprites.drawChar(g, UI.battle.sprite, (c.width - s * (UI.battle.sprite === 'mesoDuo' ? 1 : 1)) / 2, c.height - s, s);
   }
 
-  function vReward() {
-    const r = S.results[S.results.length - 1];
-    const next = BATTLES[S.bi + 1];
-    return `<h2 class="screen-title">${r.monster}を倒した！</h2>
-      ${win(`<p class="center">目的物: ${r.target}</p>
-        <p class="center big-cfg">収率 ${fmt(r.yield)}%</p>
-        <p class="center small">${r.yield >= 90 ? '「見事じゃ！」' : r.yield >= 60 ? '「まずまずじゃな」' : r.yield >= 30 ? '「うーむ、もう少しほしかったのう」' : '「……これは別の化合物じゃな」'}</p>
-        <p class="center small dim">コーヒー休憩: HP が ${HEAL} 回復した（${S.hero.hp}/${S.hero.maxHp}）</p>`, 'msg')}
-      ${r.lastRx ? win(`<h3>決め手の反応</h3>${vLog(r.lastRx)}`) : ''}
-      ${win(`<h3>報酬: カードを 1 枚デッキに加える</h3>
-        <p class="small dim">次の相手: ${next.monster}　${name(Object.keys(next.start)[0])} → ${next.targetLabel}</p>
-        <div class="hand">${S.rewards.map(id => { const C = CARDS[id]; return `<button class="card t-${C.type} ${C.rare ? 'rare' : ''}" data-act="reward" data-arg="${id}">
-          <span class="cost">${C.cost}</span><span class="tag">${C.tag}</span><span class="cname">${C.name}</span><span class="cfull">${C.full}</span><span class="cdesc">${C.desc}</span><span class="cflav">${C.flavor}</span></button>`; }).join('')}</div>
-        <div class="center"><button class="btn" data-act="reward" data-arg="">何も取らない</button></div>`)}`;
-  }
-
-  function vEnd() {
-    const avg = S.results.reduce((s, r) => s + r.yield, 0) / S.results.length;
-    const [, rank, msg] = RANKS.find(([th]) => avg >= th);
-    const rows = S.results.map((r, i) => `<tr><td>${i + 1}</td><td>${r.monster}</td><td>${r.target}</td><td class="num">${fmt(r.yield)}%</td></tr>`).join('');
-    return `<h2 class="screen-title">第1章 クリア！</h2>
-      ${win(`<p class="story">転位竜メーヤワインは、ついに一度もカチオンを見せることなく静かになった。</p>
-        <p class="story">長老ベンゼン「見事じゃ。だが森の奥、芳香族の王国では、もっと手ごわい者たちが待っておる……」</p>`, 'msg')}
-      ${win(`<table class="results"><thead><tr><th>#</th><th>相手</th><th>目的物</th><th>収率</th></tr></thead><tbody>${rows}</tbody></table>
-        <p class="center">平均収率 <b class="accent">${fmt(avg)}%</b></p>
-        <p class="center big-cfg">ランク ${rank}</p><p class="center">${msg}</p>`)}
-      <p class="center dim">第2章「芳香族の王国」へ続く……（未実装）</p>
-      <div class="center"><button class="btn big" data-act="restart">もう一度あそぶ</button></div>`;
-  }
-
+  // ---- ゲームオーバー・クリア --------------------------------------
   function vOver() {
     return `<h2 class="screen-title">カーボは倒れた……</h2>
-      ${win(`<p class="story">気がつくと、研究室の床で目が覚めた。ドラフトのファンの音だけが響いている。</p>
-        <p class="small dim">アルキル化剤の扱いには気をつけよう。</p>`, 'msg')}
-      <div class="center"><button class="btn big" data-act="retryBattle">この戦闘からやり直す</button>
-      <button class="btn" data-act="restart">仲間選びからやり直す</button></div>`;
+      ${win(`<p class="story">……気を失っていたらしい。仲間たちが手を引いて、最後に休んだ場所まで連れ戻してくれた。</p>`, 'msg')}
+      <div class="center"><button class="btn big" data-act="continue">最後のセーブから再開</button><button class="btn" data-act="toTitle">タイトルへ</button></div>`;
+  }
+  function vClear() {
+    const st = S.stats, rate = st.total ? Math.round(st.correct / st.total * 100) : 0;
+    return `<h2 class="screen-title">第1章「求核の森」クリア！</h2>
+      ${win(`<p class="center">難易度: ${Questions.DIFFS[S.diff].name}</p>
+        <p class="center big-cfg">正答率 ${rate}%</p><p class="center small">${st.correct} / ${st.total} 問正解</p>
+        <p class="center small dim">${S.cfg ? `(${S.cfg})-カーボ　${heroFormula(S.party)}` : ''}</p>`, 'msg')}
+      <p class="center dim">第2章「カルボニル港」へ続く……（未実装）</p>
+      <div class="center"><button class="btn big" data-act="toTitle">タイトルへ</button></div>`;
   }
 
-  // ---- 入力 ------------------------------------------------------
+  // =================================================================
+  // 入力
+  // =================================================================
+  const actions = {
+    newGame() { UI.screen = 'diff'; render(); },
+    continue() {
+      const s = loadSave();
+      if (!s) return;
+      S = s;
+      if (S.hp <= 0) S.hp = S.maxHp;
+      if (UI.screen === 'over') { S.hp = S.maxHp; }
+      UI.scene = null; UI.msg = null; UI.menu = false;
+      UI.screen = 'world';
+      render();
+      if (!S.cfg) return playScene('prologue');
+      const oe = map().onEnter;
+      if (oe && !S.flags[oe.flag]) { S.flags[oe.flag] = true; playScene(oe.scene); }
+    },
+    pickDiff(d) {
+      S = freshState(+d);
+      try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* 何もしない */ }
+      UI.screen = 'world';
+      render();
+      playScene('prologue');
+    },
+    toggleComp(id) {
+      const i = UI.pick.indexOf(id);
+      if (i >= 0) UI.pick.splice(i, 1); else if (UI.pick.length < 4) UI.pick.push(id);
+      render();
+    },
+    unbond(i) { UI.pick.splice(+i, 1); render(); },
+    swap() { if (UI.pick.length === 4) { [UI.pick[2], UI.pick[3]] = [UI.pick[3], UI.pick[2]]; render(); } },
+    bondDone() {
+      if (UI.pick.length !== 4) return;
+      S.party = [...UI.pick];
+      S.cfg = heroCfg(S.party);
+      S.maxHp = BASE_HP + (S.cfg === 'S' ? 10 : 0);
+      S.hp = S.maxHp;
+      save();
+      UI.screen = 'world';
+      render();
+      runCommands();
+    },
+    advance() { advance(); },
+    menu() { if (UI.scene || UI.msg) return; UI.menu = !UI.menu; renderOverlay(); },
+    useCoffee() { if (S.items.coffee > 0 && S.hp < S.maxHp) { S.items.coffee--; S.hp = Math.min(S.maxHp, S.hp + ITEMS.coffee.heal); refreshHud(); renderOverlay(); } },
+    saveNow() { save(); UI.menu = false; message('セーブしました。'); },
+    bNext() { battleNext(); },
+    answer(i) { answer(+i); },
+    skill(id) { useSkill(id); },
+    item(id) { useItem(id); },
+    run() { const B = UI.battle; if (B && B.random) { UI.battle = null; UI.screen = 'world'; render(); message('うまく にげきれた。'); } },
+    toTitle() { stopTimer(); UI.screen = 'title'; UI.scene = null; UI.msg = null; render(); },
+  };
+
   app.addEventListener('click', e => {
     const el = e.target.closest('[data-act]');
     if (!el || el.disabled) return;
     const fn = actions[el.dataset.act];
-    if (!fn) return;
-    fn(el.dataset.arg);
-    render();
+    if (fn) fn(el.dataset.arg);
   });
 
-  newGame();
+  // 操作パッド（押している間は歩き続ける）
+  app.addEventListener('pointerdown', e => {
+    const b = e.target.closest('.pd');
+    if (!b) return;
+    e.preventDefault();
+    if (b.dataset.dir) { if (!busy()) UI.held = b.dataset.dir; }
+    else if (b.dataset.key === 'a') action();
+  });
+  const release = () => { UI.held = null; };
+  app.addEventListener('pointerup', release);
+  app.addEventListener('pointercancel', release);
+  app.addEventListener('pointerleave', release);
+
+  const KEYDIR = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right' };
+  window.addEventListener('keydown', e => {
+    if (UI.screen === 'battle') {
+      const B = UI.battle;
+      if (B && B.state === 'q' && ['1', '2', '3', '4'].includes(e.key)) { const i = B.order[+e.key - 1]; if (!B.removed.has(i)) answer(i); }
+      else if (['Enter', ' ', 'z', 'Z'].includes(e.key) && B && B.state !== 'q') { e.preventDefault(); if (!finishTyping()) battleNext(); }
+      return;
+    }
+    if (UI.screen !== 'world') return;
+    if (KEYDIR[e.key]) { e.preventDefault(); if (!busy()) UI.held = KEYDIR[e.key]; return; }
+    if (['Enter', ' ', 'z', 'Z'].includes(e.key)) { e.preventDefault(); if (!e.repeat) action(); return; }
+    if (['x', 'X', 'Escape'].includes(e.key)) { e.preventDefault(); actions.menu(); }
+  });
+  window.addEventListener('keyup', e => { if (KEYDIR[e.key] && UI.held === KEYDIR[e.key]) UI.held = null; });
+  window.addEventListener('blur', release);
+
   render();
-  window.__carbon = { get state() { return S; }, heroCfg, actions, render };
+  requestAnimationFrame(loop);
+  window.__carbon = { get S() { return S; }, UI, actions, render, startBattle, warp, playScene };
 })();
