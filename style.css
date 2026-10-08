@@ -285,6 +285,13 @@ p { margin: .4em 0; }
 .sk-desc { font-size: 12px; line-height: 1.5; color: var(--text); }
 .sk-used { margin-left: 6px; font-size: 11px; color: var(--dim); border: 1px solid var(--dim); border-radius: 4px; padding: 0 4px; }
 .toast.good { border-color: var(--good); color: var(--good); }
+.share-text {
+  font: inherit; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere;
+  background: #10152c; border: 1px dashed #555; border-radius: 6px; padding: 8px 10px; margin: 6px 0 10px;
+  user-select: text; -webkit-user-select: text;
+}
+.share-btns { display: flex; flex-wrap: wrap; gap: 4px; }
+a.btn { display: inline-block; text-decoration: none; }
 .explain { color: var(--good); border-left: 3px solid var(--good); padding-left: 10px; font-size: 14px; line-height: 1.7; }
 .bad-text { color: var(--bad); }
 .dlog { white-space: pre-line; margin: 8px 0; min-height: 3em; }

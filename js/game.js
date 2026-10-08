@@ -619,12 +619,41 @@
       ${win(`<p class="story">……気を失っていたらしい。仲間たちが手を引いて、最後に休んだ場所まで連れ戻してくれた。</p>`, 'msg')}
       <div class="center"><button class="btn big" data-act="continue">最後のセーブから再開</button><button class="btn" data-act="toTitle">タイトルへ</button></div>`;
   }
-  function vClear() {
+  // ---- クリア画面とシェア ------------------------------------------
+  const GAME_URL = 'https://kkaakkeehh-beep.github.io/CarbonRPG/';
+  const TITLES = [[90, '不斉の勇者'], [75, '求核の剣士'], [60, '見習い化学者'], [0, 'ラセミの迷い子']];
+  function clearResult() {
     const st = S.stats, rate = st.total ? Math.round(st.correct / st.total * 100) : 0;
+    const title = TITLES.find(([th]) => rate >= th)[1];
+    return { st, rate, title };
+  }
+  // ネタバレを含まない共有用の文面
+  function shareText() {
+    const { st, rate, title } = clearResult();
+    return `CarbonRPG 第1章「求核の森」をクリア！\n`
+      + `難易度：${Questions.DIFFS[S.diff].name}／正答率 ${rate}%（${st.correct}/${st.total} 問）\n`
+      + `称号：${title}${S.cfg ? `　(${S.cfg})-カーボ` : ''}\n#CarbonRPG #有機化学`;
+  }
+
+  function vClear() {
+    const { st, rate, title } = clearResult();
+    const text = shareText();
+    const xUrl = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(GAME_URL)}`;
+    const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(GAME_URL)}&text=${encodeURIComponent(text)}`;
     return `<h2 class="screen-title">第1章「求核の森」クリア！</h2>
       ${win(`<p class="center">難易度: ${Questions.DIFFS[S.diff].name}</p>
         <p class="center big-cfg">正答率 ${rate}%</p><p class="center small">${st.correct} / ${st.total} 問正解</p>
+        <p class="center">称号「<span class="accent">${title}</span>」</p>
         <p class="center small dim">${S.cfg ? `(${S.cfg})-カーボ　${heroFormula(S.party)}` : ''}</p>`, 'msg')}
+      ${win(`<h3>結果をシェアする</h3>
+        <pre class="share-text">${esc(text)}\n${GAME_URL}</pre>
+        <div class="share-btns">
+          ${navigator.share ? '<button class="btn" data-act="shareNative">共有…</button>' : ''}
+          <a class="btn" href="${xUrl}" target="_blank" rel="noopener noreferrer">X でポスト</a>
+          <a class="btn" href="${lineUrl}" target="_blank" rel="noopener noreferrer">LINE で送る</a>
+          <button class="btn" data-act="shareCopy">文面をコピー</button>
+        </div>
+        <p class="small dim">ストーリーのネタバレは含まれません。</p>`)}
       <p class="center dim">第2章「カルボニル港」へ続く……（未実装）</p>
       <div class="center"><button class="btn big" data-act="toTitle">タイトルへ</button></div>`;
   }
@@ -682,7 +711,28 @@
     item(id) { useItem(id); },
     run() { const B = UI.battle; if (B && B.random) { UI.battle = null; UI.screen = 'world'; render(); message('うまく にげきれた。'); } },
     toTitle() { stopTimer(); UI.screen = 'title'; UI.scene = null; UI.msg = null; render(); },
+    shareNative() {
+      navigator.share({ title: 'CarbonRPG', text: shareText(), url: GAME_URL }).catch(() => { /* 閉じられたときは何もしない */ });
+    },
+    shareCopy() {
+      const t = `${shareText()}\n${GAME_URL}`;
+      const done = () => flash('文面をコピーしました');
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(t).then(done, () => fallbackCopy(t) && done());
+      } else if (fallbackCopy(t)) done();
+    },
   };
+
+  function fallbackCopy(t) {
+    const ta = document.createElement('textarea');
+    ta.value = t; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.remove();
+    if (!ok) flash('コピーできませんでした。上の文面を長押しでコピーしてください');
+    return ok;
+  }
 
   app.addEventListener('click', e => {
     const el = e.target.closest('[data-act]');
