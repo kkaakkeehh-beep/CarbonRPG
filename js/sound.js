@@ -92,6 +92,18 @@ const Sound = (() => {
       bass: T(`
       B2 . . . F#3 . . .  G2 . . . D3 . . .  B2 . . . F#3 . . .  A2 . . . E3 . . .
       G2 . . . D3 . . .  D2 . . . A2 . . .  E2 . . . F#2 . . .  B1 . . . F#2 . . .`) },
+    // 第 3 章：芳香族の王国（おごそかで、少し古風）
+    kingdom: { bpm: 96, lead: T(`
+      G5 . D5 . G5 . B5 .  A5 . G5 . F#5 . E5 .  D5 . E5 . F#5 . G5 .  A5 . . . . . . .
+      B5 . A5 . G5 . E5 .  C6 . B5 . A5 . F#5 .  G5 . A5 . B5 . D5 .  G5 . . . . . . .`),
+      bass: T(`
+      G2 . D3 . G3 . D3 .  C3 . G3 . C3 . G3 .  B2 . F#3 . B2 . F#3 .  D3 . A3 . D3 . A3 .
+      E3 . B3 . E3 . B3 .  A2 . E3 . D3 . A3 .  C3 . G3 . D3 . A3 .  G2 . D3 . G2 . . .`) },
+    // 光の塔（止まらない連鎖のように、せき立てる）
+    tower: { bpm: 132, lead: T(`
+      E5 . B4 . E5 F5 E5 .  D5 . A4 . D5 Eb5 D5 .  C5 . G4 . C5 D5 Eb5 .  D5 . . . B4 . . .`),
+      bass: T(`
+      E2 E2 E3 E2 E2 E2 E3 E2  D2 D2 D3 D2 D2 D2 D3 D2  C2 C2 C3 C2 C2 C2 C3 C2  B1 B1 B2 B1 B1 B1 B2 B1`) },
     battle: { bpm: 152, lead: T(`
       E5 E5 G5 E5 B5 . A5 G5  F#5 F#5 A5 F#5 D6 . B5 A5  E5 E5 G5 E5 B5 . C6 B5  A5 G5 F#5 D5 E5 . . .`),
       bass: T(`

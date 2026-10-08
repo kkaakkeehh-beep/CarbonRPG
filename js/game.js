@@ -108,8 +108,10 @@
   function musicFor() {
     if (UI.screen === 'battle') return UI.battle && ENEMIES[UI.battle.key].boss ? 'boss' : UI.battle && UI.battle.key === 'practice' ? 'town' : 'battle';
     if (UI.screen === 'world') {
+      if (MAPS[S.map].bgm) return resolve(MAPS[S.map].bgm, S.flags);
       if (S.map === 'forest') return S.flags.boss ? 'town' : 'forest';
       if (MAPS[S.map].ch === 2) return S.flags.night ? 'night' : 'port';
+      if (MAPS[S.map].ch === 3) return 'kingdom';
       return 'town';
     }
     if (UI.screen === 'over' || UI.screen === 'clear') return null;
@@ -122,7 +124,7 @@
     const has = !!loadSave();
     return `<div class="title-screen">
       <h1 class="logo">CarbonRPG</h1>
-      <p class="subtitle">炭素の勇者 ── 第2章「カルボニル港」まで</p>
+      <p class="subtitle">炭素の勇者 ── 第3章「芳香族の王国」まで</p>
       ${win(`<p class="story">炭素の国カルボニア。原子たちは手を取り合い、分子となって穏やかに暮らしていた。</p>
         <p class="story">ところがある日、森の分子たちが次々と「平ら」にされ、利き手を失いはじめた。</p>
         <p class="story">闇の組織「メソ教団」。その名が、ささやかれている。</p>`, 'msg')}
@@ -172,10 +174,13 @@
   function hpBar(cur, max, cls) { return `<div class="bar ${cls}"><div style="width:${Math.max(0, Math.min(100, cur / max * 100))}%"></div></div>`; }
   const hudStatus = () => `${heroName()} Lv${S.lv}　HP ${Math.max(0, S.hp)}/${S.maxHp} ${hpBar(S.hp, S.maxHp, 'hp')}`;
 
+  // 第 2 章は昼と夜、第 3 章は残っている柱の数をマップ名に添える
+  const mapTitle = () => map().name + (map().ch === 2 ? (S.flags.night ? '（夜）' : '（昼）')
+    : map().ch === 3 && !S.flags.c3_boss ? `　柱 ${Maps.pillarsLit(S.flags)}/6` : '');
   function vWorld() {
     return `<div class="world">
       <div class="hud">
-        <span><b>${map().name}${map().ch === 2 ? (S.flags.night ? '（夜）' : '（昼）') : ''}</b></span>
+        <span><b class="mapname">${mapTitle()}</b></span>
         <span class="hp-box">${hudStatus()}</span>
         <span class="hud-btns"><span class="money">研究費 ${yen(S.money)}</span>${muteBtn()}<button class="btn small-btn" data-act="menu">メニュー</button></span>
       </div>
@@ -293,7 +298,8 @@
 
   // ---- 台本の再生 ------------------------------------------------
   function playScene(id, onDone) {
-    UI.scene = { steps: SCENES[id].map(x => ({ ...x })), i: 0, onDone };
+    // need: その仲間がパーティにいるときだけの台詞
+    UI.scene = { steps: SCENES[id].filter(x => !x.need || S.party.includes(x.need)).map(x => ({ ...x })), i: 0, onDone };
     UI.held = null;
     runCommands();
   }
@@ -303,6 +309,7 @@
       const st = sc.steps[sc.i];
       if (st.do === 'flag') { S.flags[st.f] = true; save(); sc.i++; continue; }
       if (st.do === 'heal') { S.hp = S.maxHp; sc.i++; continue; }
+      if (st.do === 'se') { Sound.se(st.s); sc.i++; continue; }
       if (st.do === 'night' || st.do === 'day') { S.flags.night = st.do === 'night'; sc.i++; save(); if (UI.screen === 'world') render(); continue; }
       if (st.do === 'warp') { S.map = st.map; S.x = st.x; S.y = st.y; S.dir = st.dir || S.dir; UI.move = null; sc.i++; save(); render(); continue; }
       if (st.do === 'choice') { sc.i++; UI.choice = st.opts; renderOverlay(); return; }
@@ -356,6 +363,8 @@
     if (hp) hp.innerHTML = hudStatus();
     const m = document.querySelector('.hud .money');
     if (m) m.textContent = `研究費 ${yen(S.money)}`;
+    const nm = document.querySelector('.hud .mapname');
+    if (nm) nm.textContent = mapTitle();
   }
 
   // =================================================================
@@ -378,7 +387,9 @@
   const eventAt = (x, y, on) => activeEvents().find(e => e.x === x && e.y === y && (!on || e.on === on));
 
   function mapCanvas() {
-    const m = map(), key = S.map + (S.flags.duo ? 1 : 0);
+    // openTile: 通れるようになった門を、開いた絵に差し替える
+    const open = m0 => Object.keys(m0.openTile || {}).map(c => passableTile(c) ? 1 : 0).join('');
+    const m = map(), key = S.map + (S.flags.duo ? 1 : 0) + open(m);
     if (mapCache.key === key) return mapCache.canvas;
     const W = m.grid[0].length, H = m.grid.length;
     const c = document.createElement('canvas');
@@ -388,6 +399,7 @@
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       let ch = m.grid[y][x];
       if (ch === 'M' && passableTile('M')) ch = 'm';
+      if (m.openTile && m.openTile[ch] && passableTile(ch)) ch = m.openTile[ch];
       Sprites.drawTile(g, ch, x * TILE, y * TILE, TILE, x, y, (dx, dy) => (m.grid[y + dy] && m.grid[y + dy][x + dx]) || 'T');
     }
     mapCache = { key, canvas: c };
@@ -410,6 +422,11 @@
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.drawImage(mapCanvas(), Math.round(-camX * TILE), Math.round(-camY * TILE));
     if (S.flags.night && m.ch === 2) { ctx.fillStyle = 'rgba(10, 18, 52, 0.55)'; ctx.fillRect(0, 0, cv.width, cv.height); }
+    // 第 3 章：柱の光が消えるほど、外の景色が暗く沈む
+    if (m.dim && !S.flags.c3_boss) {
+      const dark = 6 - Maps.pillarsLit(S.flags);
+      if (dark) { ctx.fillStyle = `rgba(40, 20, 70, ${dark * 0.05})`; ctx.fillRect(0, 0, cv.width, cv.height); }
+    }
     for (const e of activeEvents()) {
       if (!e.sprite) continue;
       const sx = (e.x - camX) * TILE, sy = (e.y - camY) * TILE;
@@ -475,7 +492,7 @@
 
   function trigger(ev) {
     if (ev.scene) return playScene(resolve(ev.scene, S.flags));
-    if (ev.text) return message(ev.text);
+    if (ev.text) return message(resolve(ev.text, S.flags));
     if (ev.shop) return openShop(ev.shop);
     if (ev.chest) {
       if (S.flags[ev.chest.flag]) return message('宝箱はからっぽだ。');
@@ -501,8 +518,12 @@
     UI.move = null; UI.steps = 0;
     save();
     render();
-    const oe = map().onEnter;
-    if (oe && !S.flags[oe.flag]) { S.flags[oe.flag] = true; playScene(oe.scene); }
+    enterScene();
+  }
+  // マップに入ったときの出来事（1 回だけ。when があれば、その条件のときだけ）
+  function enterScene() {
+    const oe = [].concat(map().onEnter || []).find(o => !S.flags[o.flag] && (!o.when || o.when(S.flags)));
+    if (oe) { S.flags[oe.flag] = true; playScene(oe.scene); }
   }
 
   // =================================================================
@@ -517,6 +538,9 @@
     if (tag) { const t = pool.filter(q => q.tag === tag); if (t.length >= 4) pool = t; }
     return pool;
   }
+  // 段階のあるボス（ラジカ）は、いまの段階の出題分野と台詞を使う
+  const stageOf = (B, E) => (E.stages ? E.stages[Math.min(B.phase, E.stages.length - 1)] : {});
+  const voiceOf = (B, E) => (B.form ? E.forms[B.form] : { ...E, ...stageOf(B, E) });
   function pickQuestion(B) {
     if (B.queue) { const id = B.queue.shift(); return Questions.LIST.find(q => q.id === id); }
     const pool = questionPool(B);
@@ -524,11 +548,16 @@
     let cand = pool.filter(q => !S.used[q.id] && q.diff === S.diff);
     if (!cand.length) cand = pool.filter(q => !S.used[q.id]);
     // 中ボスなどの得意分野は、未出題のものがあれば優先する
-    const E = ENEMIES[B.key];
-    if (E.topics) { const pref = pool.filter(q => !S.used[q.id] && E.topics.includes(q.topic)); if (pref.length) cand = pref; }
-    if (!cand.length) { pool.forEach(q => delete S.used[q.id]); cand = pool; }
+    const E = ENEMIES[B.key], topics = stageOf(B, E).topics || E.topics;
+    if (topics) {
+      let pref = pool.filter(q => !S.used[q.id] && topics.includes(q.topic));
+      // 段階のあるボスは、ほかのバトルで出た問題でも、その段階の分野を優先する（同じバトルの中では重ねない）
+      if (!pref.length && E.stages) pref = pool.filter(q => topics.includes(q.topic) && !B.asked.has(q.id));
+      if (pref.length) cand = pref;
+    }
+    if (!cand.length) { pool.forEach(q => delete S.used[q.id]); cand = pool.filter(q => !B.asked.has(q.id)); if (!cand.length) cand = pool; }
     const q = cand[Math.floor(Math.random() * cand.length)];
-    S.used[q.id] = true;
+    S.used[q.id] = true; B.asked.add(q.id);
     return q;
   }
 
@@ -538,7 +567,7 @@
     UI.battle = {
       key, random, name: E.name, sprite: E.sprite, hp, maxHp: hp, atk: E.atk, phase: 0,
       state: 'intro', lines: [`${E.name}があらわれた！`, `${E.name}「${E.start}」`],
-      q: null, order: [], removed: new Set(), streak: 0, power: 0, guard: 0, stink: 0, dr: 0,
+      q: null, order: [], removed: new Set(), asked: new Set(), streak: 0, power: 0, guard: 0, stink: 0, dr: 0,
       uses: Object.fromEntries(S.party.map(id => [id, skillAt(id).uses])),
       timeMax: S.diff >= 4 ? 120 : 90, timeLeft: 0, queue: queue ? [...queue] : null, levels: 0,
     };
@@ -592,7 +621,7 @@
       B.hp = Math.max(0, B.hp - dmg);
       lines.push(`正解！ ${B.name}に ${dmg} のダメージ！${S.cfg === 'R' && B.streak > 1 && !E.practice ? `（${B.streak} 連続正解）` : ''}`);
       if (S.notebook[q.id]) { delete S.notebook[q.id]; lines.push('復習ノートの問題を克服した！'); }
-      if (B.hp > 0) lines.push(`${B.name}「${taunt((B.form ? E.forms[B.form] : E).hit)}」`);
+      if (B.hp > 0) lines.push(`${B.name}「${taunt(voiceOf(B, E).hit)}」`);
       UI.fx.push({ t: 'enemyHit', v: dmg }); Sound.se('ok'); setTimeout(() => Sound.se('hit'), 120);
       for (const [i, ph] of (E.phases || []).entries()) {
         if (B.phase < i + 1 && B.hp / B.maxHp <= ph.at && B.hp > 0) {
@@ -615,7 +644,7 @@
         lines.push('この問題を復習ノートに書きとめた。');
         if (dmg > 0) UI.fx.push({ t: 'heroHit', v: dmg });
       }
-      lines.push(`${B.name}「${taunt((B.form ? E.forms[B.form] : E).miss)}」`);
+      lines.push(`${B.name}「${taunt(voiceOf(B, E).miss)}」`);
       Sound.se('ng'); if (!E.practice) setTimeout(() => Sound.se('hurt'), 150);
     }
     // ケト形とエノール形の入れ替わり（数問ごと）
@@ -880,9 +909,10 @@
   }
 
   const TITLES = [[90, '不斉の勇者'], [75, '求核の剣士'], [60, '見習い化学者'], [0, 'ラセミの迷い子']];
-  const CHAPTERS = { 1: '第1章「求核の森」', 2: '第2章「カルボニル港」' };
-  const NEXT = { 1: '第2章「カルボニル港」', 2: '第3章「芳香族の王国」' };
-  const clearCh = () => UI.clearCh || (S.flags.clear2 ? 2 : 1);
+  const CHAPTERS = { 1: '第1章「求核の森」', 2: '第2章「カルボニル港」', 3: '第3章「芳香族の王国」' };
+  const NEXT = { 1: '第2章「カルボニル港」', 2: '第3章「芳香族の王国」', 3: '第4章「鏡の回廊」' };
+  const NEXT_ACT = { 1: 'toCh2', 2: 'toCh3' };
+  const clearCh = () => UI.clearCh || (S.flags.clear3 ? 3 : S.flags.clear2 ? 2 : 1);
   function clearResult() {
     const ch = clearCh();
     const cs = S.chStats[ch], st = cs ? { correct: cs.c, total: cs.t } : S.stats;
@@ -917,7 +947,7 @@
           <button class="btn" data-act="shareCopy">文面をコピー</button>
         </div>
         <p class="small dim">ストーリーのネタバレは含まれません。</p>`)}
-      ${ch === 1 ? `<div class="center"><button class="btn big" data-act="toCh2">▶ ${NEXT[1]}へ進む</button></div>` : `<p class="center dim">${NEXT[ch]}へ続く……（未実装）</p>`}
+      ${NEXT_ACT[ch] ? `<div class="center"><button class="btn big" data-act="${NEXT_ACT[ch]}">▶ ${NEXT[ch]}へ進む</button></div>` : `<p class="center dim">${NEXT[ch]}へ続く……（未実装）</p>`}
       <div class="center"><button class="btn" data-act="clearNote">復習ノートを見る</button><button class="btn" data-act="toTitle">タイトルへ</button></div>`;
   }
   function fallbackCopy(t) {
@@ -945,8 +975,7 @@
       UI.screen = 'world';
       render();
       if (!S.cfg) return playScene('prologue');
-      const oe = map().onEnter;
-      if (oe && !S.flags[oe.flag]) { S.flags[oe.flag] = true; playScene(oe.scene); }
+      enterScene();
     },
     pickDiff(d) {
       S = freshState(+d);
@@ -999,6 +1028,12 @@
       S.map = 'town'; S.x = 19; S.y = 5; S.dir = 'right';
       save(); UI.screen = 'world'; render();
       if (!S.flags.ch2) playScene('c2_start');
+    },
+    toCh3() {
+      S.ch = 3; S.hp = S.maxHp; UI.clearCh = null;
+      S.map = 'port'; S.x = 13; S.y = 15; S.dir = 'left';
+      save(); UI.screen = 'world'; render();
+      if (!S.flags.ch3) playScene('c3_start');
     },
     practice() {
       const ids = shuffle(Object.keys(S.notebook)).slice(0, 10);

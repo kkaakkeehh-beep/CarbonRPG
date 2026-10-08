@@ -33,7 +33,7 @@ const Sprites = (() => {
 
   // ---- タイル --------------------------------------------------
   const GRASS = '#3f8f3f';
-  const PATHLIKE = new Set([',', '=', 'D', 'E', 'o']);
+  const PATHLIKE = new Set([',', '=', 'D', 'E', 'o', 'Q']);
   const WATERLIKE = new Set(['~', '=', 'p']);
   function grassBase(ctx, x, y, s, tx, ty, base = GRASS) {
     dot(ctx, x, y, s, 0, 0, 16, 16, base);
@@ -277,8 +277,126 @@ const Sprites = (() => {
       circle(c, x, y, s, 8, 8, 4, '#ffe066');
       circle(c, x, y, s, 8, 8, 2, '#fff8c8');
     },
+
+    // ---- 第 3 章（芳香族の王国） ----
+    'Z': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#d8d3c4');
+      for (let r = 0; r < 4; r++) {
+        dot(c, x, y, s, 0, r * 4 + 3, 16, 1, '#b7b09d');
+        const off = (r + ty) % 2 ? 4 : 10;
+        dot(c, x, y, s, off, r * 4, 1, 3, '#b7b09d');
+      }
+      dot(c, x, y, s, 0, 0, 16, 1, '#ece8dc');
+      void tx;
+    },
+    'Q': (c, x, y, s, tx, ty, nb) => {
+      TILE['b'](c, x, y, s, tx, ty);
+      const wallL = nb(-1, 0) === 'Z', wallR = nb(1, 0) === 'Z';
+      if (wallL) dot(c, x, y, s, 0, 0, 3, 16, '#c9c3b2');
+      if (wallR) dot(c, x, y, s, 13, 0, 3, 16, '#c9c3b2');
+      if (nb(0, -1) !== 'Q') { dot(c, x, y, s, 0, 0, 16, 3, '#c9c3b2'); for (let i = 0; i < 4; i++) dot(c, x, y, s, 1 + i * 4, 1, 2, 2, '#8a8f99'); }
+    },
+    'I': (c, x, y, s, tx, ty, nb) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#8d909c');
+      for (let r = 0; r < 4; r++) dot(c, x, y, s, 0, r * 4 + 3, 16, 1, '#757885');
+      if (nb(0, -1) !== 'I' && nb(0, -1) !== 'D') { dot(c, x, y, s, 0, 0, 16, 3, '#3a3d48'); for (let i = 0; i < 4; i++) dot(c, x, y, s, 1 + i * 4, 0, 2, 3, '#a5a8b3'); }
+      if ((tx + ty) % 2) { dot(c, x, y, s, 6, 6, 4, 5, '#2a2c36'); dot(c, x, y, s, 7, 7, 2, 3, '#c9a7ff'); }
+    },
+    'l': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#b49a6a');
+      for (let i = 0; i < 3; i++) {
+        const gx = Math.floor(hash(tx, ty, i) * 12), gy = Math.floor(hash(tx, ty, i + 3) * 14);
+        dot(c, x, y, s, gx, gy, 3, 1, '#957c4f'); dot(c, x, y, s, gx + 2, gy + 1, 1, 1, '#957c4f');
+      }
+    },
+    // 王都の石畳は、六角形の敷石
+    'b': (c, x, y, s) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#e3ded0');
+      const pts = [...Array(6)].map((_, i) => [8 + 6.2 * Math.cos(i * Math.PI / 3), 8 + 6.2 * Math.sin(i * Math.PI / 3)]);
+      poly(c, x, y, s, pts, '#ebe7db', '#cfc8b6');
+    },
+    // ベンジル通り：環から側鎖が 1 本のびた敷石
+    'n': (c, x, y, s) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#bdb5a2');
+      const pts = [...Array(6)].map((_, i) => [7 + 5 * Math.cos(i * Math.PI / 3), 8 + 5 * Math.sin(i * Math.PI / 3)]);
+      poly(c, x, y, s, pts, '#c8c0ad', '#a39a85');
+      dot(c, x, y, s, 12, 7.5, 4, 1, '#a39a85');
+    },
+    'J': (c, x, y, s) => gate(c, x, y, s, '#3d7dd8', 'o/p'),
+    'V': (c, x, y, s) => gate(c, x, y, s, '#c0392b', 'm'),
+    'N': (c, x, y, s) => gate(c, x, y, s, '#d4af37', 'p'),
+    'i': (c, x, y, s, tx, ty, nb) => {
+      TILE['b'](c, x, y, s, tx, ty);
+      const vert = nb(0, -1) === 'Z' || nb(0, 1) === 'Z';
+      if (vert) { dot(c, x, y, s, 0, 0, 2, 16, '#b7b09d'); dot(c, x, y, s, 14, 0, 2, 16, '#b7b09d'); }
+      else { dot(c, x, y, s, 0, 0, 16, 2, '#b7b09d'); dot(c, x, y, s, 0, 14, 16, 2, '#b7b09d'); }
+    },
+    'U': (c, x, y, s) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#3b5c9e');
+      for (let r = 0; r < 4; r++) dot(c, x, y, s, 0, r * 4 + 3, 16, 1, '#2c4679');
+    },
+    'P': (c, x, y, s, tx) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#f4f1e8');
+      dot(c, x, y, s, 0, 0, 16, 2, '#d4af37'); dot(c, x, y, s, 0, 14, 16, 2, '#c9b98f');
+      if (tx % 2) { dot(c, x, y, s, 5, 4, 6, 8, '#7fb2ee'); dot(c, x, y, s, 5, 4, 6, 1, '#d4af37'); }
+    },
+    'A': (c, x, y, s, tx, ty, nb) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#2f4a8a');
+      for (let r = 0; r < 4; r++) dot(c, x, y, s, 0, r * 4 + 3, 16, 1, '#243a6d');
+      if (nb(0, -1) !== 'A') dot(c, x, y, s, 0, 0, 16, 2, '#d4af37');
+      if (tx === 16 && nb(0, -1) !== 'A') {
+        const pts = [...Array(6)].map((_, i) => [8 + 5 * Math.cos(Math.PI / 6 + i * Math.PI / 3), 9 + 5 * Math.sin(Math.PI / 6 + i * Math.PI / 3)]);
+        poly(c, x, y, s, pts, null, '#d4af37'); circle(c, x, y, s, 8, 9, 2.6, null, '#d4af37');
+      }
+    },
+    't': (c, x, y, s) => {
+      TILE['_'](c, x, y, s);
+      dot(c, x, y, s, 3, 1, 10, 14, '#3a3a44');
+      dot(c, x, y, s, 4, 2, 8, 6, '#7a2c3a'); dot(c, x, y, s, 3, 9, 10, 3, '#5a5a66');
+      dot(c, x, y, s, 3, 1, 10, 1, '#d4af37');
+    },
+    'u': (c, x, y, s, tx, ty) => {
+      TILE['q'](c, x, y, s);
+      c.fillStyle = 'rgba(180, 120, 255, 0.32)'; c.fillRect(x, y, s, s);
+      if (hash(tx, ty) < 0.5) dot(c, x, y, s, 3 + Math.floor(hash(tx, ty, 2) * 9), 3 + Math.floor(hash(tx, ty, 3) * 9), 1, 1, '#f0e0ff');
+    },
+    'y': (c, x, y, s) => {
+      TILE['q'](c, x, y, s);
+      dot(c, x, y, s, 3, 9, 10, 6, '#3a3d48');
+      c.save(); c.shadowColor = '#c08cff'; c.shadowBlur = s / 2;
+      circle(c, x, y, s, 8, 7, 5.5, '#b48cff', '#6b3fb0');
+      c.restore();
+      circle(c, x, y, s, 8, 7, 2.5, '#f6eaff');
+    },
+    'e': (c, x, y, s, tx, ty) => {
+      TILE['b'](c, x, y, s, tx, ty);
+      dot(c, x, y, s, 1, 6, 14, 9, '#7a5230');
+      for (let i = 0; i < 4; i++) dot(c, x, y, s, i * 4, 1, 4, 5, i % 2 ? '#f4f4f4' : '#6b4fb0');
+      const cols = ['#f2cc60', '#7ee787', '#ff9b6a'];
+      for (let i = 0; i < 3; i++) {
+        const pts = [...Array(6)].map((_, k) => [4 + i * 4 + 1.5 * Math.cos(k * Math.PI / 3), 9.5 + 1.5 * Math.sin(k * Math.PI / 3)]);
+        poly(c, x, y, s, pts, cols[Math.floor(hash(tx, ty, i) * 3)]);
+      }
+    },
+    'a': (c, x, y, s, tx, ty) => {
+      TILE['b'](c, x, y, s, tx, ty);
+      const hex = r => [...Array(6)].map((_, i) => [8 + r * Math.cos(Math.PI / 6 + i * Math.PI / 3), 8 + r * Math.sin(Math.PI / 6 + i * Math.PI / 3)]);
+      poly(c, x, y, s, hex(7.5), '#a7adbb', '#6e7686');
+      poly(c, x, y, s, hex(5.6), '#5fa8e8');
+      circle(c, x, y, s, 8, 8, 3, null, '#cfe6ff');
+      dot(c, x, y, s, 7.5, 2.5, 1, 5, '#e8f4ff');
+    },
   };
-  const SOLID = new Set(['T', '~', 'M', 'r', '#', 'B', 'S', 'F', 'W', 'R', 'h', 'E', 'O', 'K', 'G', 'X', 'L', 'k', '|', 'Y']);
+  // 配向性の門（閉じている）。色の旗で、どの紋章が要るかを示す
+  function gate(c, x, y, s, color) {
+    TILE['Z'](c, x, y, s, 0, 0);
+    dot(c, x, y, s, 2, 2, 12, 14, '#4a3a2a');
+    for (let i = 0; i < 3; i++) dot(c, x, y, s, 3 + i * 4, 2, 2, 14, '#8a8f99');
+    dot(c, x, y, s, 2, 7, 12, 1, '#6e7686');
+    dot(c, x, y, s, 5, 3, 6, 3, color);
+  }
+  const SOLID = new Set(['T', '~', 'M', 'r', '#', 'B', 'S', 'F', 'W', 'R', 'h', 'E', 'O', 'K', 'G', 'X', 'L', 'k', '|', 'Y',
+    'Z', 'I', 'J', 'V', 'N', 'U', 'P', 'A', 't', 'y', 'e', 'a']);
 
   // nb(dx, dy) はとなりのタイルの文字を返す（マップの外は木とみなす）
   function drawTile(ctx, ch, x, y, s, tx, ty, nb = () => '.') { (TILE[ch] || TILE['.'])(ctx, x, y, s, tx, ty, nb); }
@@ -482,9 +600,125 @@ const Sprites = (() => {
       c.fillStyle = 'rgba(220, 230, 245, .35)';
       for (const [fx, fr] of [[10, 5], [22, 6], [42, 6], [54, 5]]) { c.beginPath(); c.ellipse(X(fx), Y(45), fr * u, 2 * u, 0, 0, Math.PI * 2); c.fill(); }
     },
+
+    // ---- 第 3 章 ----
+    // グリニャの小舟（2×2 タイル分）。帆に、グリニャの青い縞
+    boat(c, x, y, s) {
+      poly(c, x, y, s, [[1, 22], [31, 22], [27, 29], [5, 29]], '#8a5f33', '#5e3d1f');
+      dot(c, x, y, s, 2, 22, 28, 1.5, '#a8763f');
+      dot(c, x, y, s, 15.3, 2, 1.4, 20, '#5e3d1f');
+      poly(c, x, y, s, [[16.5, 3], [28, 19], [16.5, 19]], '#f4f4f4', '#bbb');
+      for (let i = 0; i < 3; i++) dot(c, x, y, s, 17, 9 + i * 3, 6 + i * 2.5, 1, '#2f6fbf');
+    },
+    // BHT の衛兵：両肩に、かさ高い t-ブチル基
+    bht(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#c9a227', helmet: true });
+      for (const gx of [3, 13]) { circle(c, x, y, s, gx, 8.5, 2.6, '#9aa0aa', '#555'); [[-1.4, -1.6], [1.6, -1.2], [0, 1.9]].forEach(([a, b]) => circle(c, x, y, s, gx + a, 8.5 + b, 0.9, '#f4f4f4')); }
+      dot(c, x, y, s, 14, 2, 1, 13, '#6b4423'); poly(c, x, y, s, [[13, 2], [16, 2], [14.5, 0]], '#c9ced8');
+    },
+    naphtha(c, x, y, s) {
+      CHAR.naphthaNoCrown(c, x, y, s);
+      // 2 つの六角形が並んだ、鉄の冠
+      for (const cx of [6, 10]) {
+        const pts = [...Array(6)].map((_, i) => [cx + 2.2 * Math.cos(i * Math.PI / 3), 0.6 + 2.2 * Math.sin(i * Math.PI / 3)]);
+        poly(c, x, y, s, pts, '#3a3a44', '#d4af37');
+      }
+    },
+    naphthaNoCrown(c, x, y, s) {
+      poly(c, x, y, s, [[3, 8], [13, 8], [15, 16], [1, 16]], '#2c3e8f');
+      person(c, x, y, s, { cloth: '#f4f1e8', hair: '#c8c8c8' });
+      dot(c, x, y, s, 5.5, 6.5, 5, 1.5, '#e0e0e0');
+      dot(c, x, y, s, 7, 9, 2, 4, '#d4af37');
+    },
+    aniHead(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#3d7dd8', hair: '#2a2a2a' });
+      dot(c, x, y, s, 5.5, 5.8, 5, 1, '#2a2a2a');                       // ひげ
+      dot(c, x, y, s, 4, 8, 2, 2, '#9fd0ff'); dot(c, x, y, s, 10, 8, 2, 2, '#9fd0ff');
+    },
+    metaCount(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#7a1f2e', coat: '#3a1018', hair: '#5a5a5a' });
+      dot(c, x, y, s, 5, -1, 6, 3, '#2a2a2a'); dot(c, x, y, s, 4, 1.5, 8, 1, '#2a2a2a');
+      dot(c, x, y, s, 5, 8, 6, 1.5, '#f4f4f4');                            // 高い襟
+    },
+    nitra(c, x, y, s) {
+      c.save(); c.translate(x + s * 0.15, y + s * 0.3);
+      person(c, 0, 0, s * 0.7, { cloth: '#f2d43c', hair: '#5a3a1e', long: true, dress: true });
+      c.restore();
+      dot(c, x, y, s, 6, 4, 4, 2, '#ffe066'); circle(c, x, y, s, 8, 5, 1, '#f2b705');   // 黄色いリボン
+    },
+    aniBoy(c, x, y, s) { c.save(); c.translate(x + s * 0.15, y + s * 0.3); person(c, 0, 0, s * 0.7, { cloth: '#79c0ff', hair: '#2a2a2a' }); c.restore(); },
+    aniBoyBr(c, x, y, s) {
+      CHAR.aniBoy(c, x, y, s);
+      [[4, 6], [12, 6], [8, 3.5]].forEach(([gx, gy]) => circle(c, x, y, s, gx, gy, 1.4, '#a5402a', '#5a1a10'));
+    },
+    pyridine(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#2a8a8a', hair: '#2a2a2a' });
+      dot(c, x, y, s, 4, 0, 8, 3, '#f4f4f4'); circle(c, x, y, s, 8, 1.5, 1, '#79c0ff');   // ターバンと青い石（窒素）
+    },
+    ibu(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#f4f4f4', hair: '#3a2a1a', long: true });
+      dot(c, x, y, s, 7, 9, 2, 2, '#d9534f'); dot(c, x, y, s, 7.5, 8.5, 1, 3, '#d9534f');   // 薬師の印
+    },
+    // オクタ：桶の形の家から抜け出してきたような、桶をはいた少女
+    octa(c, x, y, s) {
+      c.save(); c.translate(x + s * 0.15, y + s * 0.1);
+      person(c, 0, 0, s * 0.7, { cloth: '#7ee787', hair: '#c9772a', long: true });
+      c.restore();
+      poly(c, x, y, s, [[2.5, 10], [13.5, 10], [12, 16], [4, 16]], '#a2763f', '#6b4423');
+      dot(c, x, y, s, 2.5, 12, 11, 1, '#6b4423');
+    },
+    tempo(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#4a6b5a', hair: '#f4f4f4' });
+      poly(c, x, y, s, [[5.5, 6], [10.5, 6], [8, 11]], '#f4f4f4');                    // ひげ
+      c.save(); c.shadowColor = '#ff6b6b'; c.shadowBlur = s / 5; circle(c, x, y, s, 12.5, 9, 1.2, '#ff6b6b'); c.restore();   // 不対電子
+    },
+    methylGuard(c, x, y, s) {
+      circle(c, x, y, s, 8, 10, 4.5, '#6e7480', '#333');
+      [[4, 6], [12, 6], [8, 15]].forEach(([gx, gy]) => circle(c, x, y, s, gx, gy, 1.6, '#f4f4f4', '#777'));
+      dot(c, x, y, s, 6.5, 9, 1, 1, '#fff'); dot(c, x, y, s, 8.5, 9, 1, 1, '#fff');
+    },
+    bromosuc(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#555c6b', coat: '#f0f0f0', hair: '#2a2a2a', glasses: true });
+      dot(c, x, y, s, 12.5, 6, 1.2, 5, '#cfe6ff'); dot(c, x, y, s, 12.3, 5, 1.6, 1.4, '#3a3a44'); dot(c, x, y, s, 12.8, 11, 0.8, 1, '#a5402a');   // スポイトと臭素の 1 滴
+    },
+    radika(c, x, y, s, o = {}) {
+      const glow = o.glow === undefined ? 1 : o.glow;
+      c.save(); c.translate(x + s * 0.12, y + s * 0.22);
+      person(c, 0, 0, s * 0.76, { cloth: '#e0663a', hair: '#ffb347' });
+      c.restore();
+      [[5, 1.5], [7.5, 0.6], [10, 1.5]].forEach(([gx, gy]) => poly(c, x, y, s, [[gx - 1.2, gy + 2.5], [gx + 1.2, gy + 2.5], [gx, gy - 1]], '#ffb347'));   // とがった髪
+      if (glow > 0) { c.save(); c.shadowColor = '#ffe066'; c.shadowBlur = s / 3 * glow; circle(c, x, y, s, 14, 10, 1.4 + glow * 0.5, '#ffe066'); c.restore(); }   // 空いた片手の不対電子
+      else circle(c, x, y, s, 14, 10, 1.2, '#a89a6a');
+    },
+    radika2(c, x, y, s) {
+      c.fillStyle = 'rgba(180, 120, 255, .25)'; c.beginPath(); c.arc(x + s / 2, y + s / 2, s * 0.55, 0, Math.PI * 2); c.fill();
+      CHAR.radika(c, x, y, s, { glow: 2 });
+    },
+    radika3(c, x, y, s) { CHAR.radika(c, x, y, s, { glow: 0 }); },
+    pillarOn(c, x, y, s) {
+      c.save(); c.shadowColor = '#a8c8ff'; c.shadowBlur = s / 3;
+      dot(c, x, y, s, 5, 2, 6, 13, '#f4f6fb');
+      c.restore();
+      dot(c, x, y, s, 4, 1, 8, 2, '#d4af37'); dot(c, x, y, s, 4, 14, 8, 2, '#c9b98f');
+      c.strokeStyle = '#7fa6ff'; c.lineWidth = s / 16; c.beginPath(); c.ellipse(x + s / 2, y + s * 0.45, s * 0.36, s * 0.12, 0, 0, Math.PI * 2); c.stroke();
+    },
+    pillarOff(c, x, y, s) {
+      dot(c, x, y, s, 5, 2, 6, 13, '#9a9da6');
+      dot(c, x, y, s, 4, 1, 8, 2, '#7a7d86'); dot(c, x, y, s, 4, 14, 8, 2, '#6e7180');
+      [[6, 5], [9, 8], [6.5, 11], [9.5, 3.5]].forEach(([gx, gy]) => circle(c, x, y, s, gx, gy, 0.9, '#8fd16a'));   // 付加した塩素
+    },
+    // 置換でクロロベンゼンになった長老（環の角に、緑の Cl）
+    elderCl(c, x, y, s) {
+      CHAR.elder(c, x, y, s);
+      dot(c, x, y, s, 13.5, 2.5, 1.6, 1, '#555');
+      circle(c, x, y, s, 15, 1.6, 1.8, '#8fd16a', '#3d7a2a');
+    },
+    fruit(c, x, y, s) { person(c, x, y, s, { cloth: '#e08a2e', hair: '#5a3a1e' }); dot(c, x, y, s, 5, 9, 6, 5, '#f4f4f4'); },
+    butler(c, x, y, s) { person(c, x, y, s, { cloth: '#1f1f28', hair: '#9a9a9a' }); dot(c, x, y, s, 7, 8, 2, 3, '#f4f4f4'); dot(c, x, y, s, 7.3, 8, 1.4, 1, '#c0392b'); },
+    student(c, x, y, s) { person(c, x, y, s, { cloth: '#6a7fb5', hair: '#3a2a1a', glasses: true }); dot(c, x, y, s, 10, 9, 4, 5, '#c0392b'); dot(c, x, y, s, 10.5, 9.5, 3, 4, '#f4f4f4'); },
   };
 
   function drawChar(ctx, id, x, y, s, o) { (CHAR[id] || CHAR.victim)(ctx, x, y, s, o); }
 
-  return { drawTile, drawChar, SOLID, TILE_IDS: Object.keys(TILE) };
+  return { drawTile, drawChar, SOLID, TILE_IDS: Object.keys(TILE), CHAR_IDS: Object.keys(CHAR) };
 })();

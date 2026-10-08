@@ -19,6 +19,7 @@
   <script src="js/sprites.js"></script>
   <script src="js/maps.js"></script>
   <script src="js/story.js"></script>
+  <script src="js/sound.js"></script>
   <script>
     const out = document.getElementById('out');
     let pass = 0, fail = 0;
@@ -134,7 +135,7 @@
       if (!q.explain) bad.push(`${q.id}: 解説がない`);
     }
     check(`問題データの形式（${Questions.LIST.length} 問）`, !bad.length, bad.join('\n'));
-    for (const ch of [1, 2]) for (let d = 1; d <= 4; d++) {
+    for (const ch of [1, 2, 3]) for (let d = 1; d <= 4; d++) {
       const n = Questions.pickSet(ch, d).length;
       check(`第${ch}章・${Questions.DIFFS[d].name}: 20 問以上（${n} 問）`, n >= 20, `${n} 問`);
     }
@@ -146,6 +147,21 @@
     }
     check('第2章ボス: ケト形・エノール形の問題が各難易度に 4 問以上', !tagBad.length, tagBad.join('\n'));
     check('第2章の問題すべてに tag（keto / enol）', Questions.LIST.filter(q => q.ch === 2).every(q => ['keto', 'enol'].includes(q.tag)), '');
+    // 第 3 章：ラジカル・芳香族の両方が各難易度にあり、ラジカの 3 段階それぞれに出せる問題がある
+    check('第3章の問題すべてに tag（radical / arom）', Questions.LIST.filter(q => q.ch === 3).every(q => ['radical', 'arom'].includes(q.tag)), '');
+    const c3Bad = [];
+    for (let d = 1; d <= 4; d++) {
+      const band = Questions.LIST.filter(q => q.ch === 3 && (q.diff === d || q.diff === Math.min(4, d + 1)));
+      for (const tag of ['radical', 'arom']) { const n = band.filter(q => q.tag === tag).length; if (n < 8) c3Bad.push(`難易度 ${d} の ${tag}: ${n} 問`); }
+      GameData.ENEMIES.radika.stages.forEach((st, i) => {
+        const n = band.filter(q => q.tag === 'radical' && st.topics.includes(q.topic)).length;
+        if (n < 2) c3Bad.push(`難易度 ${d} のラジカ第 ${i + 1} 段階: ${n} 問`);
+      });
+    }
+    // 敵の得意分野（topics）が、実際にある分野名か
+    const topicSet = new Set(Questions.LIST.map(q => q.topic));
+    for (const [k, E] of Object.entries(GameData.ENEMIES)) for (const t of [...(E.topics || []), ...(E.stages || []).flatMap(s => s.topics)]) if (!topicSet.has(t)) c3Bad.push(`${k} の分野 ${t} の問題がない`);
+    check('第3章: 分野・段階ごとの問題数と、敵の得意分野の名前', !c3Bad.length, c3Bad.join('\n'));
     const smiBad = [];
     for (const q of Questions.LIST.filter(q => q.smiles)) {
       SmilesDrawer.parse(q.smiles, () => {}, () => smiBad.push(`${q.id}: ${q.smiles}`));
@@ -172,7 +188,11 @@
     const sceneIds = new Set(Object.keys(Story.SCENES));
     const flagsAll = { elder: true, sisters: true, duo: true, boss: true, f_entry: true, started: true,
       c2_met: true, c2_lens: true, c2_pier: true, c2_kidnap: true, c2_rescued: true, c2_clue2: true, c2_clue3: true, c2_chase: true, c2_reveal: true };
-    const flagSets = [{}, flagsAll, { ...flagsAll, night: true }, { night: true }, { c2_lens: true }, { c2_clue2: true }];
+    // 第 3 章の進み具合（順番どおりに立つフラグ）
+    const c3Order = ['c2_boss', 'ch3', 'c3_arrive', 'c3_gate', 'c3_king1', 'c3_radika1', 'c3_aniboy', 'c3_pyr', 'c3_duel1', 'c3_emblem', 'c3_ibu', 'c3_hint', 'c3_bmeso',
+      'c3_octa', 'c3_mid', 'c3_king2', 'c3_tempo', 'c3_lastpillar', 'c3_tower', 'c3_top', 'c3_boss'];
+    const c3Steps = c3Order.map((_, i) => Object.fromEntries(c3Order.slice(0, i + 1).map(k => [k, true])));
+    const flagSets = [{}, flagsAll, { ...flagsAll, night: true }, { night: true }, { c2_lens: true }, { c2_clue2: true }, ...c3Steps];
     for (const [id, m] of Object.entries(Maps.MAPS)) {
       const W = m.grid[0].length;
       m.grid.forEach((row, y) => { if (row.length !== W) mapBad.push(`${id}: ${y} 行目の幅が ${row.length}（期待 ${W}）`); });
@@ -185,9 +205,13 @@
         }
         if (e.warp && !Maps.MAPS[e.warp.map]) mapBad.push(`${id}: ワープ先 ${e.warp.map} がない`);
         if (e.warp) { const t = Maps.MAPS[e.warp.map].grid[e.warp.y][e.warp.x]; if (Sprites.SOLID.has(t)) mapBad.push(`${id}: ワープ先 (${e.warp.x},${e.warp.y}) が壁`); }
-        if (e.on === 'step' && Sprites.SOLID.has(m.grid[e.y][e.x])) mapBad.push(`${id}: 踏むイベント (${e.x},${e.y}) が壁の上`);
+        if (e.on === 'step' && Sprites.SOLID.has(m.grid[e.y][e.x]) && !(m.passable && m.passable[m.grid[e.y][e.x]])) mapBad.push(`${id}: 踏むイベント (${e.x},${e.y}) が壁の上`);
       }
-      if (m.onEnter && !sceneIds.has(m.onEnter.scene)) mapBad.push(`${id}: onEnter の台本がない`);
+      for (const oe of [].concat(m.onEnter || [])) if (!sceneIds.has(oe.scene)) mapBad.push(`${id}: onEnter の台本 ${oe.scene} がない`);
+      for (const e of m.events) for (const f of flagSets) {
+        const sp = typeof e.sprite === 'function' ? e.sprite(f) : e.sprite;
+        if (sp && !Sprites.CHAR_IDS.includes(sp)) mapBad.push(`${id}: キャラ ${sp} の絵がない`);
+      }
     }
     check('マップの形・タイル・イベントの参照先', !mapBad.length, mapBad.join('\n'));
     const scBad = [];
@@ -196,7 +220,16 @@
       if (st.do === 'choice') for (const o of st.opts) if (o.go && !Story.SCENES[o.go]) scBad.push(`${id}: 選択肢の先 ${o.go} がない`);
       if (st.do === 'warp') { const m = Maps.MAPS[st.map]; if (!m) scBad.push(`${id}: ワープ先 ${st.map} がない`); else if (Sprites.SOLID.has(m.grid[st.y][st.x])) scBad.push(`${id}: ワープ先 (${st.x},${st.y}) が壁`); }
       if (!st.do && !st.t) scBad.push(`${id}: 台詞が空`);
+      if (st.need && !GameData.COMPANIONS.some(c => c.id === st.need)) scBad.push(`${id}: need の仲間 ${st.need} がいない`);
+      if (st.do === 'choice') for (const o of st.opts) if (o.shop && !(o.shop.name && o.shop.line)) scBad.push(`${id}: 売店の名前か台詞がない`);
     }
+    for (const [k, E] of Object.entries(GameData.ENEMIES)) {
+      const ids = [E.sprite, ...(E.phases || []).map(p => p.transform), ...Object.values(E.forms || {}).map(f => f.sprite)].filter(Boolean);
+      for (const sp of ids) if (!Sprites.CHAR_IDS.includes(sp)) scBad.push(`敵 ${k} の絵 ${sp} がない`);
+    }
+    // BGM: 主旋律とベースの長さがそろっている（ずれずに繰り返す）
+    for (const [k, tr] of Object.entries(Sound.TRACKS)) if (tr.lead.length !== tr.bass.length) scBad.push(`BGM ${k}: 主旋律 ${tr.lead.length} / ベース ${tr.bass.length}`);
+    for (const m of Object.values(Maps.MAPS)) if (typeof m.bgm === 'string' && !Sound.TRACKS[m.bgm]) scBad.push(`BGM ${m.bgm} がない`);
     for (const k of GameData.RANDOM_ENEMIES) if (!GameData.ENEMIES[k]) scBad.push(`ランダム敵 ${k} がない`);
     for (const [id, m] of Object.entries(Maps.MAPS)) for (const k of (m.encounters && m.encounters.enemies) || []) if (!GameData.ENEMIES[k]) scBad.push(`${id} のエンカウント敵 ${k} がない`);
     // 話しかけるイベントは、となりのどこかに歩ける場所がある（囲まれて届かない人がいない）
