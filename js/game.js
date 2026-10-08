@@ -249,7 +249,11 @@
     const st = sc.steps[sc.i];
     if (!st || st.do) return null;
     let w = st.w || null;
-    if (w && w.startsWith('@')) w = S.party.length ? comp(S.party[(+w.slice(1)) % S.party.length]).name : '仲間';
+    if (w && w.startsWith('@')) {
+      // 仲間の台詞は順番に割り振る。ただし無口なブトキ（いつも「……」）には割り振らない
+      const talkers = S.party.filter(id => id !== 'buto');
+      w = talkers.length ? comp(talkers[(+w.slice(1)) % talkers.length]).name : '仲間';
+    }
     return { w, t: fill(st.t) };
   }
 
@@ -402,7 +406,7 @@
     for (const e of activeEvents()) {
       if (!e.sprite) continue;
       const sx = (e.x - camX) * TILE, sy = (e.y - camY) * TILE;
-      const id = e.chest && S.flags[e.chest.flag] ? 'chestOpen' : e.sprite;
+      const id = e.chest && S.flags[e.chest.flag] ? 'chestOpen' : resolve(e.sprite, S.flags);
       if (e.mirror) { ctx.save(); ctx.translate(sx + TILE, sy); ctx.scale(-1, 1); Sprites.drawChar(ctx, id, 0, 0, TILE); ctx.restore(); }
       else Sprites.drawChar(ctx, id, sx, sy, TILE);
     }

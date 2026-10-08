@@ -392,6 +392,11 @@ const Sprites = (() => {
       circle(c, x, y, s, 9.5, 4.5, 1.4, null, '#f2cc60');                               // 片眼鏡
       dot(c, x, y, s, 7, 8, 2, 4, '#f4f4f4');
     },
+    ketohNoMono(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#6b4a2f', hair: '#3a2a1a' });
+      dot(c, x, y, s, 4, 0, 8, 2, '#1a1a1a'); dot(c, x, y, s, 5, -2, 6, 2, '#1a1a1a');
+      dot(c, x, y, s, 7, 8, 2, 4, '#f4f4f4');
+    },
     thief(c, x, y, s) {
       poly(c, x, y, s, [[3, 7], [13, 7], [15, 15], [1, 15]], '#1a1a2e');
       person(c, x, y, s, { cloth: '#2a2a40', hair: '#1a1a1a' });

@@ -130,13 +130,13 @@ const GameData = (() => {
       win: 'お、覚えてろ……エノラス様に言いつけてやる……！',
     },
     enolas: {
-      name: 'エノラス', sprite: 'ketoh', hp: 120, atk: 9, exp: 60, money: 400, ch: 2, boss: true,
+      name: 'エノラス', sprite: 'ketohNoMono', hp: 120, atk: 9, exp: 60, money: 400, ch: 2, boss: true,
       start: 'さあ、どっちの顔で相手をしてやろうか',
       win: '……そうか。お前は、どっちつかずじゃないんだな',
       // 数問ごとにケト形とエノール形が入れ替わり、出題分野も変わる
       switchEvery: 3,
       forms: {
-        keto: { name: 'エノラス（ケト形）', sprite: 'ketoh', tag: 'keto',
+        keto: { name: 'エノラス（ケト形）', sprite: 'ketohNoMono', tag: 'keto',
           hit: ['くっ……カルボニルを読まれたか', '紳士的に、とはいかないな'],
           miss: ['立体なんて、プロトン 1 つで揺らぐのさ', '迷ったな？ 平衡は迷いを許すぜ'],
           into: 'プロトンが戻る……。少し、紳士的にいこうか' },

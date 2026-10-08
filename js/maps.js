@@ -7,7 +7,7 @@
 //         （第 2 章）o 石畳 / s 砂浜 / p 桟橋 / O 噴水 / K 屋台 / G 倉庫街の門 / w 倉庫の床 / X 木箱
 //         L 灯台 / > 下り階段 / < 上り階段 / c じゅうたん / k 机 / d 土の床 / q 石の床 / | 手すり / Y 灯台の灯
 // イベント:
-//   sprite があれば人や物として描く。on: 'bump'（ぶつかる・話しかける）/ 'step'（踏む）
+//   sprite があれば人や物として描く（関数なら f を受け取って sprite を返す）。on: 'bump'（ぶつかる・話しかける）/ 'step'（踏む）
 //   when(f): 表示・発動の条件（f はフラグ）
 //   scene: 台本の ID（関数なら f を受け取って ID を返す）/ warp / chest / text
 // =============================================================
@@ -34,7 +34,7 @@ const Maps = (() => {
         B: { rest: true },
       },
       events: [
-        { x: 5, y: 3, sprite: 'prof', on: 'bump', scene: f => f.elder ? 'lab_prof2' : 'lab_prof' },
+        { x: 5, y: 3, sprite: 'prof', on: 'bump', scene: f => f.clear ? 'lab_prof3' : f.elder ? 'lab_prof2' : 'lab_prof' },
         { x: 5, y: 8, on: 'step', warp: { map: 'town', x: 5, y: 12, dir: 'down' } },
       ],
     },
@@ -59,11 +59,11 @@ const Maps = (() => {
         'TTTTTTTTTTTTTTTTTTTTTT',
       ],
       events: [
-        { x: 16, y: 4, sprite: 'elder', on: 'bump', scene: f => f.elder ? 'elder_after' : 'elder' },
+        { x: 16, y: 4, sprite: 'elder', on: 'bump', scene: f => f.boss ? 'elder_after2' : f.elder ? 'elder_after' : 'elder' },
         { x: 5, y: 11, on: 'step', warp: { map: 'lab', x: 5, y: 7, dir: 'up' } },
         { x: 10, y: 0, on: 'step', gate: true },
         { x: 11, y: 0, on: 'step', gate: true },
-        { x: 13, y: 1, sprite: 'guard', on: 'bump', scene: f => f.elder ? 'guard2' : 'guard' },
+        { x: 13, y: 1, sprite: 'guard', on: 'bump', scene: f => f.boss ? 'guard3' : f.elder ? 'guard2' : 'guard' },
         { x: 6, y: 6, sprite: 'water', on: 'bump', scene: 'water' },
         { x: 8, y: 8, sprite: 'methane', on: 'bump', scene: 'methane' },
         { x: 3, y: 12, sprite: 'shop', on: 'bump', shop: true },
@@ -110,8 +110,8 @@ const Maps = (() => {
         { x: 15, y: 23, on: 'step', warp: { map: 'town', x: 11, y: 1, dir: 'down' } },
         { x: 16, y: 23, on: 'step', warp: { map: 'town', x: 11, y: 1, dir: 'down' } },
         { x: 13, y: 18, sprite: 'sign', on: 'bump', text: '↑ 霧の奥　　← 花畑' },
-        { x: 5, y: 4, sprite: 'carvoneR', on: 'bump', scene: f => f.sisters ? 'sisters_after' : 'sisters' },
-        { x: 6, y: 4, sprite: 'carvoneS', on: 'bump', scene: f => f.sisters ? 'sisters_after' : 'sisters' },
+        { x: 5, y: 4, sprite: 'carvoneR', on: 'bump', scene: f => f.boss ? 'sisters_after2' : f.sisters ? 'sisters_after' : 'sisters' },
+        { x: 6, y: 4, sprite: 'carvoneS', on: 'bump', scene: f => f.boss ? 'sisters_after2' : f.sisters ? 'sisters_after' : 'sisters' },
         { x: 25, y: 9, sprite: 'victim', on: 'bump', scene: 'victim' },
         { x: 5, y: 13, sprite: 'lumber', on: 'bump', scene: 'lumber' },
         { x: 25, y: 5, sprite: 'chest', on: 'bump', chest: { item: 'coffee', flag: 'chest1' } },
@@ -165,8 +165,8 @@ const Maps = (() => {
         { x: 12, y: 3, on: 'bump', when: f => f.night, text: '屋敷の門は、固く閉ざされている。' },
         { x: 4, y: 3, on: 'bump', scene: f => f.night ? 'c2_orph_night' : f.c2_reveal ? 'c2_director2' : 'c2_director' },
         // 昼の人びと
-        { x: 14, y: 7, sprite: 'ketoh', on: 'bump', when: f => !f.night && !f.c2_reveal && !f.c2_chase && !(f.c2_lens && !f.c2_pier), scene: f => f.c2_met ? 'c2_ketoh2' : 'c2_ketoh' },
-        { x: 6, y: 15, sprite: 'ketoh', on: 'bump', when: f => !f.night && f.c2_lens && !f.c2_pier, scene: 'c2_pier' },
+        { x: 14, y: 7, sprite: f => f.c2_lens ? 'ketohNoMono' : 'ketoh', on: 'bump', when: f => !f.night && !f.c2_reveal && !f.c2_chase && !(f.c2_lens && !f.c2_pier), scene: f => f.c2_met ? 'c2_ketoh2' : 'c2_ketoh' },
+        { x: 6, y: 15, sprite: 'ketohNoMono', on: 'bump', when: f => !f.night && f.c2_lens && !f.c2_pier, scene: 'c2_pier' },
         { x: 16, y: 10, sprite: 'kidA', on: 'bump', when: f => !f.night, scene: kidsScene },
         { x: 17, y: 10, sprite: 'kidB', on: 'bump', when: f => !f.night, scene: kidsScene },
         { x: 6, y: 4, sprite: 'director', on: 'bump', when: f => !f.night, scene: f => f.c2_reveal ? 'c2_director2' : 'c2_director' },
@@ -212,7 +212,7 @@ const Maps = (() => {
       },
       events: [
         { x: 6, y: 8, on: 'step', warp: { map: 'port', x: 12, y: 4, dir: 'down' } },
-        { x: 6, y: 3, sprite: 'ketoh', on: 'bump', when: f => !f.night && f.c2_chase && !f.c2_reveal, scene: 'c2_reveal' },
+        { x: 6, y: 3, sprite: 'ketohNoMono', on: 'bump', when: f => !f.night && f.c2_chase && !f.c2_reveal, scene: 'c2_reveal' },
       ],
     },
 
