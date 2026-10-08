@@ -304,3 +304,61 @@ a.btn { display: inline-block; text-decoration: none; }
   .abtn { width: 84px; height: 84px; }
   .dtext { font-size: 15px; }
 }
+
+/* =========================================================
+   成長・購買部・演出・構造式の選択肢・復習ノート
+   ========================================================= */
+.hud-btns { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.hud-btns .btn { margin: 0; }
+.money { color: var(--accent); font-size: 14px; }
+.shop-list { list-style: none; padding: 0; margin: 6px 0 10px; }
+.shop-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dashed #333; }
+.toast.bad { border-color: var(--bad); color: var(--bad); }
+
+.enemy-box { position: relative; }
+.b-mute { position: absolute; top: 6px; right: 8px; }
+.b-mute .btn { margin: 0; }
+.hero-bar { position: relative; }
+.choice { display: flex; align-items: center; gap: 8px; }
+.c-key { flex: none; width: 22px; height: 22px; border: 1px solid var(--dim); border-radius: 4px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; color: var(--dim); }
+.choice.shown .c-key { border: 0; font-size: 16px; }
+.choice.right .c-key { color: var(--good); }
+.choice.wrong .c-key { color: var(--bad); }
+.choices.struct .choice { flex-direction: column; justify-content: center; text-align: center; position: relative; padding: 8px 6px; }
+.choices.struct .c-key { position: absolute; top: 6px; left: 6px; }
+.choices.struct .mol { max-width: 100%; height: auto; }
+.c-note { font-size: 12px; color: var(--dim); }
+.c-name { font-size: 13px; line-height: 1.4; }
+.choices.struct .choice.shown { opacity: .5; }
+.choices.struct .choice.right, .choices.struct .choice.wrong { opacity: 1; }
+
+.skill.up { cursor: pointer; }
+.skill.up .accent { color: var(--accent); }
+
+.dmg {
+  position: absolute; left: 50%; top: 30%; transform: translateX(-50%);
+  font-size: 30px; font-weight: bold; pointer-events: none; z-index: 5;
+  text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+  animation: dmgUp 1.1s ease-out forwards;
+}
+.dmg.to-enemy { color: #fff; left: 70px; }
+.dmg.to-hero { color: var(--bad); top: -10px; }
+.dmg.heal { color: var(--good); top: -10px; }
+@keyframes dmgUp { 0% { opacity: 0; transform: translate(-50%, 10px) scale(.6); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.15); } 100% { opacity: 0; transform: translate(-50%, -36px) scale(1); } }
+#ecv.hit { animation: enemyHit .45s steps(2) 1; }
+@keyframes enemyHit { 0%, 100% { transform: none; filter: none; } 25% { transform: translateX(-6px); filter: brightness(3); } 50% { transform: translateX(6px); filter: none; } 75% { transform: translateX(-3px); filter: brightness(3); } }
+.battle.shake { animation: shake .35s 1; }
+@keyframes shake { 0%, 100% { transform: none; } 20% { transform: translate(-6px, 2px); } 40% { transform: translate(6px, -2px); } 60% { transform: translate(-4px, 1px); } 80% { transform: translate(3px, 0); } }
+.whiteout { position: fixed; inset: 0; background: #fff; z-index: 20; pointer-events: none; animation: whiteout .9s ease-out forwards; }
+@keyframes whiteout { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .dmg { animation-duration: .01s; }
+  #ecv.hit, .battle.shake { animation: none; }
+  .whiteout { animation-duration: .3s; }
+}
+
+.note-q { border: 2px solid #444; border-radius: 8px; padding: 8px 10px; margin: 8px 0; }
+.note-q summary { cursor: pointer; line-height: 1.7; }
+.note-q[open] { border-color: var(--line); }
+.results td.rate { width: 40%; }
+.results td.rate .bar { width: 100%; }

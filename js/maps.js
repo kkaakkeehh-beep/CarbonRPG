@@ -62,6 +62,8 @@ const Maps = (() => {
         { x: 13, y: 1, sprite: 'guard', on: 'bump', scene: f => f.elder ? 'guard2' : 'guard' },
         { x: 6, y: 6, sprite: 'water', on: 'bump', scene: 'water' },
         { x: 8, y: 8, sprite: 'methane', on: 'bump', scene: 'methane' },
+        { x: 3, y: 12, sprite: 'shop', on: 'bump', shop: true },
+        { x: 3, y: 11, sprite: 'sign', on: 'bump', text: '購買部　コーヒー・エナジードリンク・参考書あります' },
       ],
     },
 

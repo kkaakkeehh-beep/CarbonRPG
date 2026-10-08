@@ -136,17 +136,27 @@
     check(`問題データの形式（${Questions.LIST.length} 問）`, !bad.length, bad.join('\n'));
     for (let d = 1; d <= 4; d++) {
       const n = Questions.pickSet(1, d).length;
-      check(`第1章・${Questions.DIFFS[d].name}: 20 問`, n === 20, `${n} 問`);
+      check(`第1章・${Questions.DIFFS[d].name}: 20 問以上（${n} 問）`, n >= 20, `${n} 問`);
     }
     const smiBad = [];
     for (const q of Questions.LIST.filter(q => q.smiles)) {
       SmilesDrawer.parse(q.smiles, () => {}, () => smiBad.push(`${q.id}: ${q.smiles}`));
+    }
+    for (const q of Questions.LIST.filter(q => q.cs)) {
+      if (q.cs.length !== 4) smiBad.push(`${q.id}: cs が 4 つではない`);
+      if (q.cl && q.cl.length !== 4) smiBad.push(`${q.id}: cl が 4 つではない`);
+      if (!q.cs[q.a]) smiBad.push(`${q.id}: 正解の選択肢に構造式がない`);
+      q.cs.forEach((smi, i) => smi && SmilesDrawer.parse(smi, () => {}, () => smiBad.push(`${q.id} 選択肢${i}: ${smi}`)));
+      if (new Set(q.cs.filter(Boolean)).size !== q.cs.filter(Boolean).length) smiBad.push(`${q.id}: 同じ構造式が重複`);
     }
     check('問題の SMILES がすべて読める', !smiBad.length, smiBad.join('\n'));
     // 立体の記号と SMILES の対応（本ゲームの骨格では X が CIP 1 位）
     const cfgOf = smi => smi.includes('[C@@H]') ? 'R' : smi.includes('[C@H]') ? 'S' : null;
     const stereoQs = { 'c1-1-01': 'R', 'c1-1-07': 'R', 'c1-2-07': 'R', 'c1-2-10': 'S', 'c1-3-09': 'R', 'c1-2-18': 'S' };
     const stBad = Object.entries(stereoQs).filter(([id, c]) => cfgOf(Questions.LIST.find(q => q.id === id).smiles) !== c);
+    // 構造式の選択肢: 正解の SMILES の立体と問題の想定が合っているか
+    const csStereo = { 'c1-1-07': 'S', 'c1-2-10': 'R', 'c1-1-21': 'S', 'c1-3-21': 'S' };
+    for (const [id, c] of Object.entries(csStereo)) { const q = Questions.LIST.find(q => q.id === id); if (cfgOf(q.cs[q.a]) !== c) stBad.push([id, 'cs']); }
     check('問題文の立体と SMILES が一致', !stBad.length, JSON.stringify(stBad));
 
     // ---- マップと台本 ----

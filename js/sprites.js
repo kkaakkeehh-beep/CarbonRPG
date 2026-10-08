@@ -203,6 +203,20 @@ const Sprites = (() => {
     },
     prof: (c, x, y, s) => person(c, x, y, s, { cloth: '#3b5ba5', coat: '#f0f0f0', hair: '#b8b8b8', glasses: true }),
     guard: (c, x, y, s) => person(c, x, y, s, { cloth: '#3f7d4a', helmet: true }),
+    shop(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#d97b3f', hair: '#5a3a1e', long: true });
+      dot(c, x, y, s, 5, 9, 6, 5, '#f4f4f4'); dot(c, x, y, s, 7, 10, 2, 1, '#d97b3f');
+    },
+    model(c, x, y, s) {
+      // 球棒模型（中心の炭素と 4 本の結合）
+      const u = s / 16;
+      [[8, 2.5], [2.5, 12], [13.5, 12], [12.5, 5]].forEach(([gx, gy]) => {
+        c.strokeStyle = '#bbb'; c.lineWidth = 1.4 * u; c.beginPath(); c.moveTo(x + 8 * u, y + 8.5 * u); c.lineTo(x + gx * u, y + gy * u); c.stroke();
+        circle(c, x, y, s, gx, gy, 2, '#f4f4f4', '#777');
+      });
+      circle(c, x, y, s, 8, 8.5, 3.6, '#30343f', '#111');
+      dot(c, x, y, s, 6.8, 7.6, 0.8, 1.2, '#fff'); dot(c, x, y, s, 8.6, 7.6, 0.8, 1.2, '#fff');
+    },
     meso: (c, x, y, s) => person(c, x, y, s, { cloth: '#4b3a6b', mask: true }),
     mesoDuo(c, x, y, s) {
       CHAR.meso(c, x - s * 0.28, y, s);
