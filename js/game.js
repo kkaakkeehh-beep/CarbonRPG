@@ -121,20 +121,122 @@
   const muteBtn = () => `<button class="btn small-btn" data-act="mute">${Sound.isMuted() ? '♪ 音: OFF' : '♪ 音: ON'}</button>`;
 
   function vTitle() {
-    const has = !!loadSave();
+    const sv = loadSave();
+    const where = sv && MAPS[sv.map] ? `${MAPS[sv.map].name}　Lv${sv.lv || 1}` : '';
     return `<div class="title-screen">
-      <h1 class="logo">CarbonRPG</h1>
-      <p class="subtitle">炭素の勇者 ── 第3章「芳香族の王国」まで</p>
+      <div class="title-hero">
+        <canvas id="tcv" width="320" height="168" aria-hidden="true"></canvas>
+        <div class="title-logo">
+          <h1 class="logo" data-text="CarbonRPG">CarbonRPG</h1>
+          <p class="logo-sub">炭 素 の 勇 者</p>
+        </div>
+      </div>
+      <p class="title-chapter">第3章「芳香族の王国」まで遊べます</p>
+      <div class="title-menu">
+        <button class="tbtn" data-act="newGame">はじめから</button>
+        ${sv ? `<button class="tbtn" data-act="continue">つづきから<small>${esc(where)}</small></button>` : ''}
+      </div>
       ${win(`<p class="story">炭素の国カルボニア。原子たちは手を取り合い、分子となって穏やかに暮らしていた。</p>
         <p class="story">ところがある日、森の分子たちが次々と「平ら」にされ、利き手を失いはじめた。</p>
-        <p class="story">闇の組織「メソ教団」。その名が、ささやかれている。</p>`, 'msg')}
-      <div class="center">
-        <button class="btn big" data-act="newGame">▶ はじめから</button>
-        ${has ? '<button class="btn big" data-act="continue">▶ つづきから</button>' : ''}
-      </div>
+        <p class="story">闇の組織「メソ教団」。その名が、ささやかれている。</p>`, 'msg title-story')}
       <div class="center">${muteBtn()}</div>
-      <p class="small dim">化学がわかる人向けの試作版です。問題に正解すると敵にダメージ、間違えると自分がダメージを受けます。</p>
+      <p class="small dim center">化学がわかる人向けの有機化学 RPG（試作版）。問題に正解すると敵にダメージ、間違えると自分がダメージを受けます。</p>
     </div>`;
+  }
+
+  // ---- タイトルの絵（夜空に回る sp³ の正四面体と、これまでの章の景色） ----
+  const TITLE_COLORS = ['#ff7b72', '#79c0ff', '#f2cc60', '#d2a8ff'];
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function drawTitle(now) {
+    const c = document.getElementById('tcv');
+    if (!c) return;
+    const g = c.getContext('2d'), W = c.width, H = c.height, t = reduceMotion ? 4 : now / 1000;
+    g.imageSmoothingEnabled = false;
+    const rnd = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+    // 夜空
+    const sky = g.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#05071a'); sky.addColorStop(0.55, '#16113a'); sky.addColorStop(1, '#2b1a4f');
+    g.fillStyle = sky; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 70; i++) {
+      const a = 0.35 + 0.65 * Math.abs(Math.sin(t * (0.6 + rnd(i + 99)) + i));
+      g.fillStyle = `rgba(255,255,255,${a * (rnd(i + 7) < 0.15 ? 1 : 0.6)})`;
+      g.fillRect(Math.floor(rnd(i) * W), Math.floor(rnd(i + 50) * H * 0.7), rnd(i + 7) < 0.15 ? 2 : 1, 1);
+    }
+    // 漂う小さな六角形（芳香族のかけら）
+    for (let i = 0; i < 9; i++) {
+      const x = (rnd(i + 300) * W + t * 4 * (0.5 + rnd(i + 310))) % W, y = H - ((t * 6 * (0.4 + rnd(i + 320)) + rnd(i + 330) * H) % H);
+      g.strokeStyle = `rgba(170,190,255,${0.12 + 0.1 * rnd(i)})`; g.lineWidth = 1;
+      g.beginPath();
+      for (let k = 0; k <= 6; k++) { const an = k * Math.PI / 3 + t * 0.3; const px = x + 3 * Math.cos(an), py = y + 3 * Math.sin(an); k ? g.lineTo(px, py) : g.moveTo(px, py); }
+      g.stroke();
+    }
+    // 正四面体（中心の炭素と、4 本の手）
+    const cx = W / 2, cy = 60, R = 34, ay = t * 0.7, ax = 0.42;
+    const V = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]].map(v => v.map(n => n / Math.sqrt(3)));
+    const P = V.map(([x, y, z]) => {
+      const x1 = x * Math.cos(ay) + z * Math.sin(ay), z1 = -x * Math.sin(ay) + z * Math.cos(ay);
+      const y2 = y * Math.cos(ax) - z1 * Math.sin(ax), z2 = y * Math.sin(ax) + z1 * Math.cos(ax);
+      const k = 1 + z2 * 0.18;
+      return { x: cx + x1 * R * k, y: cy - y2 * R * k, z: z2 };
+    });
+    const glow = g.createRadialGradient(cx, cy, 2, cx, cy, 46);
+    glow.addColorStop(0, 'rgba(255,215,94,.35)'); glow.addColorStop(1, 'rgba(255,215,94,0)');
+    g.fillStyle = glow; g.fillRect(cx - 50, cy - 50, 100, 100);
+    // 4 つの手の先どうしを結ぶ、うっすらした辺
+    g.strokeStyle = 'rgba(200,210,255,.18)'; g.lineWidth = 1;
+    for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) { g.beginPath(); g.moveTo(P[i].x, P[i].y); g.lineTo(P[j].x, P[j].y); g.stroke(); }
+    const order = [0, 1, 2, 3].sort((a, b) => P[a].z - P[b].z);
+    const atom = i => {
+      const p = P[i], r = 5 + p.z * 1.6;
+      g.fillStyle = TITLE_COLORS[i]; g.beginPath(); g.arc(p.x, p.y, r, 0, Math.PI * 2); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(Math.round(p.x - r / 2), Math.round(p.y - r / 2), 2, 2);
+    };
+    const bond = i => { g.strokeStyle = `rgba(255,255,255,${0.55 + P[i].z * 0.4})`; g.lineWidth = 2; g.beginPath(); g.moveTo(cx, cy); g.lineTo(P[i].x, P[i].y); g.stroke(); };
+    order.filter(i => P[i].z < 0).forEach(i => { bond(i); atom(i); });
+    g.fillStyle = '#151a28'; g.beginPath(); g.arc(cx, cy, 8, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.stroke();
+    g.fillStyle = '#fff'; g.font = 'bold 10px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('C', cx, cy + 0.5);
+    order.filter(i => P[i].z >= 0).forEach(i => { bond(i); atom(i); });
+    // 遠くの丘
+    const hill = (base, amp, col, seed) => {
+      g.fillStyle = col; g.beginPath(); g.moveTo(0, H);
+      for (let x = 0; x <= W; x += 8) g.lineTo(x, base - amp * (0.5 + 0.5 * Math.sin(x / 37 + seed)) - amp * 0.4 * Math.sin(x / 13 + seed * 2));
+      g.lineTo(W, H); g.closePath(); g.fill();
+    };
+    hill(126, 10, '#141a3a', 1);
+    // 第 1 章：求核の森（左）
+    for (let i = 0; i < 9; i++) {
+      const x = 8 + i * 9 + rnd(i + 400) * 4, h = 14 + rnd(i + 410) * 10, y = 130;
+      g.fillStyle = '#0d2a2a'; g.beginPath(); g.moveTo(x, y - h); g.lineTo(x + 7, y); g.lineTo(x - 7, y); g.closePath(); g.fill();
+    }
+    // 第 2 章：灯台と、回る光（中央右）
+    // 光は回転しているので、左右に伸び縮みして見える
+    const lx = 236, ly = 132, top = ly - 31, len = 70 * Math.cos(t * 0.8);
+    const bg = g.createLinearGradient(lx, 0, lx + len, 0);
+    bg.addColorStop(0, 'rgba(255,236,160,.45)'); bg.addColorStop(1, 'rgba(255,236,160,0)');
+    g.fillStyle = bg; g.beginPath(); g.moveTo(lx, top); g.lineTo(lx + len, top - 7); g.lineTo(lx + len, top + 7); g.closePath(); g.fill();
+    g.fillStyle = '#3a4060'; g.fillRect(lx - 3, ly - 28, 6, 28);
+    g.fillStyle = '#7a3a4a'; g.fillRect(lx - 3, ly - 21, 6, 3); g.fillRect(lx - 3, ly - 11, 6, 3);
+    g.fillStyle = '#ffe58a'; g.fillRect(lx - 2, ly - 33, 4, 4);
+    // 第 3 章：六角形の城と、6 本の光の柱（右）
+    const hx = 292, hy = 126;
+    for (let k = 0; k < 6; k++) {
+      const px = hx - 15 + k * 6, a = 0.2 + 0.14 * Math.sin(t * 1.4 + k);
+      const pg = g.createLinearGradient(0, hy - 80, 0, hy - 14);
+      pg.addColorStop(0, 'rgba(170,200,255,0)'); pg.addColorStop(1, `rgba(170,200,255,${a})`);
+      g.fillStyle = pg; g.fillRect(px, hy - 80, 2, 66);
+    }
+    g.fillStyle = '#262c55'; g.beginPath();
+    for (let k = 0; k < 6; k++) { const an = Math.PI / 6 + k * Math.PI / 3; const px = hx + 22 * Math.cos(an), py = hy - 6 + 8 * Math.sin(an); k ? g.lineTo(px, py) : g.moveTo(px, py); }
+    g.closePath(); g.fill();
+    g.fillRect(hx - 7, hy - 24, 14, 18); g.fillRect(hx - 2, hy - 31, 4, 7);
+    g.fillStyle = '#ffd75e';
+    for (const [wx, wy] of [[-4, -19], [2, -19], [-1, -13], [-14, -7], [11, -7]]) g.fillRect(hx + wx, hy + wy, 2, 2);
+    // 手前の丘と、カーボ
+    hill(148, 6, '#0b0f24', 4);
+    const bob = reduceMotion ? 0 : Math.round(Math.sin(t * 2.2));
+    g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(cx - 9, 145, 18, 2);
+    Sprites.drawChar(g, 'hero', cx - 16, 112 + bob, 32, { colors: TITLE_COLORS, dir: 'down' });
   }
 
   function vDiff() {
@@ -444,6 +546,7 @@
       if (!UI.move && UI.held && !busy()) tryMove(UI.held);
       draw();
     }
+    if (UI.screen === 'title') drawTitle(performance.now());
     requestAnimationFrame(loop);
   }
 
@@ -1086,6 +1189,16 @@
 
   const KEYDIR = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right' };
   window.addEventListener('keydown', e => {
+    // タイトル：上下キーでメニューを選び、Enter で決める（決定はボタンの標準の動き）
+    if (UI.screen === 'title' && ['ArrowUp', 'ArrowDown', 'w', 's'].includes(e.key)) {
+      const bs = [...document.querySelectorAll('.title-menu .tbtn')];
+      if (!bs.length) return;
+      e.preventDefault();
+      const i = bs.indexOf(document.activeElement), d = ['ArrowUp', 'w'].includes(e.key) ? -1 : 1;
+      bs[(i < 0 ? 0 : i + d + bs.length) % bs.length].focus();
+      Sound.se('blip');
+      return;
+    }
     if (UI.screen === 'battle') {
       const B = UI.battle;
       if (B && B.state === 'q' && ['1', '2', '3', '4'].includes(e.key)) { const i = B.order[+e.key - 1]; if (!B.removed.has(i)) answer(i); }

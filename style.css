@@ -79,10 +79,42 @@ p { margin: .4em 0; }
 }
 
 /* ---- タイトル ---- */
-.title-screen { max-width: 720px; margin: 24px auto; text-align: center; }
+.title-screen { max-width: 720px; margin: 8px auto 24px; text-align: center; }
 .title-screen .win { text-align: left; }
-.logo { font-size: clamp(40px, 9vw, 72px); color: var(--accent); letter-spacing: .06em; text-shadow: 4px 4px 0 #6b3d00; margin-top: 12px; }
-.subtitle { font-size: 18px; margin-bottom: 20px; }
+.title-hero { position: relative; border: 3px solid var(--line); border-radius: 10px; box-shadow: 0 0 0 3px var(--win), 0 0 40px rgba(120, 90, 255, .25); overflow: hidden; background: #05071a; }
+#tcv { display: block; width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; }
+.title-logo { background: #0b0f24; padding: 4px 8px 16px; margin-top: -1px; }
+/* 金色のロゴ。光の帯がときどき横切る */
+.logo {
+  position: relative; display: inline-block; margin: 0;
+  font-size: clamp(40px, 11vw, 84px); line-height: 1; letter-spacing: .04em;
+  color: #ffd75e;
+  background: linear-gradient(100deg, #fff3b0 0%, #ffd75e 30%, #ff9b3d 60%, #ffd75e 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(3px 3px 0 #5a2a00) drop-shadow(0 0 1px #000) drop-shadow(0 0 14px rgba(255, 180, 60, .35));
+}
+.logo::after {
+  content: attr(data-text); position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 40%, rgba(255, 255, 255, .95) 50%, transparent 60%);
+  background-size: 300% 100%; background-position: 150% 0;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  animation: shine 5s ease-in-out 1s infinite;
+}
+@keyframes shine { 0% { background-position: 150% 0; } 30%, 100% { background-position: -50% 0; } }
+.logo-sub { margin: 6px 0 0; font-size: clamp(16px, 3.6vw, 24px); letter-spacing: .3em; color: #f4f4f4; text-shadow: 2px 2px 0 #2a1a4f, 0 0 8px rgba(160, 140, 255, .8); }
+.title-chapter { margin: 14px 0 6px; color: var(--dim); font-size: 14px; }
+.title-menu { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 10px 0 16px; }
+.tbtn {
+  position: relative; min-width: 260px; font: inherit; font-size: 20px; cursor: pointer;
+  color: var(--text); background: var(--win); border: 3px solid var(--line); border-radius: 8px;
+  padding: 8px 28px; box-shadow: 0 0 0 3px var(--win);
+}
+.tbtn small { display: block; font-size: 12px; color: var(--dim); margin-top: 2px; }
+.tbtn::before { content: '▶'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--accent); opacity: 0; }
+.tbtn:hover, .tbtn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+.tbtn:hover::before, .tbtn:focus-visible::before { opacity: 1; animation: blink 1s steps(1) infinite; }
+.title-story { margin-top: 4px; }
+@media (prefers-reduced-motion: reduce) { .logo::after { animation: none; } .tbtn::before { animation: none !important; } }
 
 /* ---- 仲間選び ---- */
 .screen-title { text-align: center; font-size: 24px; color: var(--accent); margin: 8px 0 16px; }
