@@ -222,8 +222,9 @@
       for (const night of [false, true]) {
         const g = Maps.goalOf({ ...base, night });
         if (k === 'c3_boss' || k === 'c4_boss') { if (g) goalBad.push(`${k} のあとにも目的が残っている`); continue; }
-        if (!g || !g.t || !g.at.length) { goalBad.push(`${k} のあとに目的がない`); continue; }
-        for (const [mp, x, y] of g.at) { const m = Maps.MAPS[mp]; if (!m || !(m.grid[y] && m.grid[y][x])) goalBad.push(`${k}: 印 ${mp} (${x},${y}) がマップ外`); }
+        if (!g || !g.t) { goalBad.push(`${k} のあとに目的がない`); continue; }
+        if (!g.to.length) goalBad.push(`${k}: 目的の場所 to がない`);
+        for (const [mp, x, y] of [...g.at, ...g.to]) { const m = Maps.MAPS[mp]; if (!m || !(m.grid[y] && m.grid[y][x])) goalBad.push(`${k}: 印 ${mp} (${x},${y}) がマップ外`); }
       }
     });
     // 第 3 章のあいだに港へ戻ったら、船で王国へ戻る案内になる

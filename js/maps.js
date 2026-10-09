@@ -35,68 +35,69 @@ const Maps = (() => {
   const familyScene = f => f.c3_emblem ? (f.c3_boss ? 'c3_family_end' : 'c3_family_after') : f.c3_duel1 ? 'c3_family2' : 'c3_family';
 
   // ---- いまの目的（HUD に出す文と、マップの上に印をつける場所 [map, x, y]） ----
-  const G = (t, ...at) => ({ t, at });
+  const G = (t, ...at) => ({ t, at, to: at });
+  // 場所を台詞で言われていない目的：印は出さない。to は実際の場所（テストと自動プレイだけが使う）
+  const V = (t, ...to) => ({ t, at: [], to });
   const INN = ['port', 19, 4];
   // 第 2 章は昼と夜で出来事が変わる。時間が合わないときは、宿の主人に印をつける
-  const atNight = (f, t, ...at) => f.night ? G(t, ...at) : G(`${t}。まずアルドール亭で「夜まで休む」`, INN);
-  const atDay = (f, t, ...at) => f.night ? G(`${t}。まずアルドール亭で「朝まで休む」`, INN) : G(t, ...at);
+  const atNight = (f, t, ...at) => f.night ? G(t, ...at) : G(`${t}（宿で夜まで休む）`, INN);
+  const atDay = (f, t, ...at) => f.night ? G(`${t}（宿で朝まで休む）`, INN) : G(t, ...at);
   // here: いまいるマップ。第 3 章のあいだに港や村へ戻ったときは、船で王国へ戻るよう案内する
   function goalOf(f, here) {
     if (!f.started) return null;
-    if (here && f.ch3 && !f.c3_boss && MAPS[here] && MAPS[here].ch !== 3) return G('港の船着き場のグリニャの船で、芳香族の王国へ戻る', ['port', 12, 15]);
+    if (here && f.ch3 && !f.c3_boss && MAPS[here] && MAPS[here].ch !== 3) return G('グリニャの船で、王国へ戻る', ['port', 12, 15]);
     // 第 3 章のあと、王国に残っているときは、まず船で港へ戻る
-    if (here && f.clear3 && !f.c4_boss && MAPS[here] && MAPS[here].ch === 3) return G('浜のグリニャの船で、港へ戻る', ['shore', 12, 17]);
+    if (here && f.clear3 && !f.c4_boss && MAPS[here] && MAPS[here].ch === 3) return G('グリニャの船で、港へ戻る', ['shore', 12, 17]);
     // いまの章。前の章の記録が欠けていても（古いセーブなど）、先の章の記録を優先して、前の章の目的に戻らない
     const stage = (f.clear3 || f.ch4) ? 4 : (f.ch3 || f.c2_boss || f.clear2) ? 3 : (f.clear || f.ch2 || f.c2_arrive) ? 2 : 1;
+    // 目的の文は、台詞で「どこへ行け」と言われた分だけ書く。言われていないときは場所を書かず、印もつけない
     // 第 1 章
-    if (stage === 1 && !f.elder) return G('村の東、六角形の屋根の庵で、長老ベンゼンに会う', ['town', 16, 4]);
-    if (stage === 1 && !f.f_entry) return G('村の北の門から、求核の森へ向かう', ['town', 10, 0], ['town', 11, 0]);
+    if (stage === 1 && !f.elder) return G('村の東の庵で、長老ベンゼンに会う', ['town', 16, 4]);
+    if (stage === 1 && !f.f_entry) return G('村の北の、求核の森へ', ['town', 10, 0], ['town', 11, 0]);
     if (stage === 1 && !f.boss) {
-      if (!f.sisters) return G('森の西の花畑から聞こえる声の主を探す', ['forest', 5, 4], ['forest', 6, 4]);
-      if (!f.duo) return G('霧の手前に立つ、メソ団員の 2 人組を倒す', ['forest', 14, 8], ['forest', 15, 8]);
-      return G('晴れた霧の奥へ進み、森を荒らす幹部を探す', ['forest', 14, 3]);
+      if (!f.sisters) return V('森の奥へ進む', ['forest', 5, 4], ['forest', 6, 4]);
+      if (!f.duo) return V('霧の奥へ進む', ['forest', 14, 8], ['forest', 15, 8]);
+      return V('森の奥で、幹部カチオーネを探す', ['forest', 14, 3]);
     }
     // 第 2 章
     if (stage <= 2 && !f.c2_boss) {
-      if (!f.c2_arrive) return G('村の東の街道から、カルボニル港へ向かう', ['town', 21, 5]);
-      if (!f.c2_met) return G('港の広場、噴水のそばにいるケトー卿に会う', ['port', 14, 7]);
-      if (!f.c2_lens) return atNight(f, '夜の倉庫街（港の東）を調べる', ['port', 23, 8]);
-      if (!f.c2_pier) return atDay(f, '昼、ケトー卿を探す。浜辺の西の桟橋にいるらしい', ['port', 6, 15]);
-      if (!f.c2_kidnap) return atDay(f, '昼、広場の西の市場で起きている騒ぎを見に行く', ['port', 6, 8]);
-      if (!f.c2_rescued) return atNight(f, '夜、倉庫街の奥の階段から地下へ下り、アセトン婆さんを探す', ['port', 28, 10], ['cellar', 17, 11]);
-      if (!f.c2_clue2) return atNight(f, '夜の広場にいる双子に、話を聞く', ['port', 13, 7]);
-      if (!f.c2_clue3) return atDay(f, '昼、南東の島の灯台守に、話を聞く', ['port', 23, 20]);
-      if (!f.c2_chase) return atNight(f, '夜、灯台のふもとへ行く', ['port', 24, 21]);
-      if (!f.c2_reveal) return atDay(f, '昼、広場の北にあるケトー卿の屋敷を訪ねる', ['port', 12, 3], ['mansion', 6, 3]);
-      return atNight(f, '夜、灯台の扉から頂上へ登る', ['port', 25, 20], ['top', 4, 2]);
+      if (!f.c2_arrive) return G('村の東の街道から、カルボニル港へ', ['town', 21, 5]);
+      if (!f.c2_met) return V('港町を歩いて、話を聞く', ['port', 14, 7]);
+      if (!f.c2_lens) return atNight(f, '夜の倉庫街を調べる', ['port', 23, 8]);
+      if (!f.c2_pier) return atDay(f, '昼、白い船のことをケトー卿に知らせる', ['port', 6, 15]);
+      if (!f.c2_kidnap) return atDay(f, '市場の騒ぎを見に行く', ['port', 6, 8]);
+      if (!f.c2_rescued) return atNight(f, '夜、倉庫街の奥の階段から地下へ', ['port', 28, 10], ['cellar', 17, 11]);
+      if (!f.c2_clue2) return atNight(f, '夜の双子に、話を聞く', ['port', 13, 7]);
+      if (!f.c2_clue3) return atDay(f, '昼、灯台守に話を聞く', ['port', 23, 20]);
+      if (!f.c2_chase) return atNight(f, '夜、灯台へ', ['port', 24, 21]);
+      if (!f.c2_reveal) return atDay(f, '昼、ケトー卿の屋敷へ', ['port', 12, 3], ['mansion', 6, 3]);
+      return atNight(f, '夜、灯台の頂上へ', ['port', 25, 20], ['top', 4, 2]);
     }
     // 第 3 章
-    if (stage <= 3 && !f.ch3) return G('港の船着き場にいるグリニャに話しかけ、芳香族の王国へ', ['port', 12, 15]);
+    if (stage <= 3 && !f.ch3) return G('グリニャの船で、芳香族の王国へ', ['port', 12, 15]);
     if (stage <= 3 && !f.c3_boss) {
-      if (!f.c3_gate) return G('浜から北の坂を上り、城門へ', ['shore', 14, 1], ['shore', 15, 1]);
-      if (!f.c3_radika1) return G('南の城門区へ行き、街で話を聞く', ['capital', 16, 21]);
-      if (!f.c3_emblem) return G('城門区の東の広場で言い争う、2 つの家の者に話しかける', ['capital', 25, 26]);
-      if (!f.c3_mid) return G('メタの紋章でメタ区（北西）の門を通り、臭素の匂いのもとを探す', ['capital', 10, 8], ['capital', 5, 4], ['workshop', 5, 2]);
-      if (!f.c3_king2) return G('王宮へ行き、ナフタ王に話を聞く', ['capital', 16, 12], ['palace', 6, 2]);
-      if (!f.c3_tempo) return G('城の外、浜の東にある古い塔でテンポに会う', ['capital', 16, 29], ['shore', 27, 5], ['tempo', 4, 3]);
+      if (!f.c3_gate) return G('北の坂の上の城門へ', ['shore', 14, 1], ['shore', 15, 1]);
+      if (!f.c3_radika1) return G('南の城門区で、話を聞く', ['capital', 16, 21]);
+      if (!f.c3_emblem) return V('城門区の人たちに、話を聞いて回る', ['capital', 25, 26]);
+      if (!f.c3_mid) return { ...V('メタ区で、臭素の匂いのもとを探す', ['capital', 10, 8], ['capital', 5, 4], ['workshop', 5, 2]), at: [['capital', 10, 8]] };
+      if (!f.c3_king2) return G('王宮で、ナフタ王に話を聞く', ['capital', 16, 12], ['palace', 6, 2]);
+      if (!f.c3_tempo) return G('城の外の東、テンポの塔へ', ['capital', 16, 29], ['shore', 27, 5], ['tempo', 4, 3]);
       if (!f.c3_lastpillar) return G('王宮の北、パラ区の門へ', ['shore', 14, 1], ['capital', 16, 5]);
-      return G('光の塔を登り、頂上のラジカを止める', ['capital', 16, 3], ['ltower', 1, 1], ['ltop', 4, 3]);
+      return G('光の塔を登って、光を止める', ['capital', 16, 3], ['ltower', 1, 1], ['ltop', 4, 3]);
     }
     // 第 4 章
     if (stage < 4) return null;
     if (!f.c4_boss) {
-      if (!f.ch4) return G('研究所の鏡野教授に、話を聞く', ['town', 5, 11], ['lab', 5, 3]);
-      if (!f.c4_mount) return G('村の北の門から求核の森へ。森の北の端を抜けて、山道へ', ['town', 10, 0], ['town', 11, 0], ['forest', 14, 0], ['forest', 15, 0]);
-      if (!f.c4_lake) return G('山道を登り、鏡の湖へ', ['mount', 10, 0], ['mount', 11, 0]);
-      if (!f.c4_bull) return G('湖の岸にいる門番に、話しかける', ['lake', 13, 21]);
-      if (!f.c4_in) return G('門番のなぞなぞを手がかりに、神殿の「開く扉」を探す', ['lake', 13, 21]);
-      const doors = [[1, 22, '4π・熱'], [2, 16, '6π・熱'], [3, 10, '6π・光'], [4, 4, '4π・光']];
-      for (const [n, y, label] of doors) if (!f['c4_door' + n]) return G(`回転の扉（${label}）を開ける。両端のハンドルを、同旋か逆旋に回す`, ['lake', 12, 15], ['kairo', 6, y]);
-      const rooms = [['c4_mh1', [1, 13], [13, 13]], ['c4_mh2', [1, 7], [8, 7]], ['c4_mh3', [1, 1], [11, 1]]];
-      for (const [fl, [lx, ly], [rx, ry]] of rooms) if (!f[fl]) return G('鏡の広間：カーボと影が、それぞれの部屋の金のスイッチを同時に踏む（影は左右が逆に動き、壁にぶつかると止まる）', ['kairo', 6, 0], ['mhall', rx, ry], ['mhall', lx, ly]);
-      if (!f.c4_shadow) return G('ガラスの向こうの影と、向き合う', ['mhall', 7, 3]);
-      if (!f.c4_wed) return G('上の格子を抜けて、婚礼の間へ', ['mhall', 3, 0], ['chapel', 8, 9]);
-      if (!f.c4_guards) return G('婚礼の間の奥から、奥の院への階段を上る', ['chapel', 8, 0], ['oku', 7, 13]);
+      if (!f.ch4) return G('研究所へ戻る', ['town', 5, 11], ['lab', 5, 3]);
+      if (!f.c4_mount) return G('森の北の端から、山道へ', ['town', 10, 0], ['town', 11, 0], ['forest', 14, 0], ['forest', 15, 0]);
+      if (!f.c4_lake) return G('山道を登る', ['mount', 10, 0], ['mount', 11, 0]);
+      if (!f.c4_bull) return V('湖の岸の門番を探す', ['lake', 13, 21]);
+      if (!f.c4_in) return V('神殿の入口を探す', ['lake', 12, 15]);
+      for (const [n, y] of [[1, 22], [2, 16], [3, 10], [4, 4]]) if (!f['c4_door' + n]) return V('回転の扉を開けて、回廊の奥へ', ['lake', 12, 15], ['kairo', 6, y]);
+      for (const [fl, [lx, ly], [rx, ry]] of [['c4_mh1', [1, 13], [13, 13]], ['c4_mh2', [1, 7], [8, 7]], ['c4_mh3', [1, 1], [11, 1]]]) if (!f[fl]) return V('鏡の広間を抜ける', ['kairo', 6, 0], ['mhall', rx, ry], ['mhall', lx, ly]);
+      if (!f.c4_shadow) return V('ガラスの向こうの影と、向き合う', ['mhall', 7, 3]);
+      if (!f.c4_wed) return V('開いた格子の先へ', ['mhall', 3, 0], ['chapel', 8, 9]);
+      if (!f.c4_guards) return G('祭壇の奥の扉から、奥の院へ', ['chapel', 8, 0], ['oku', 7, 13]);
       return G('奥の院で、総帥アキラルと向き合う', ['oku', 7, 4]);
     }
     return null;
