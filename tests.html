@@ -254,6 +254,29 @@
     });
     check('鏡の広間の 3 つの部屋が、どれも解ける', !mirBad.length, mirBad.join('\n'));
 
+    // ---- 物語の出来事を、踏まずに回りこめない（奥の院の見張り、回廊のテンポの話、王都のラジカとの出会い） ----
+    const gateBad = [];
+    const mustStep = (mapId, from, to, flags, why) => {
+      const m = Maps.MAPS[mapId], ok = (x, y) => m.grid[y] && m.grid[y][x] && !Sprites.SOLID.has(m.grid[y][x]);
+      const trig = (x, y) => m.events.some(e => e.x === x && e.y === y && e.on === 'step' && e.scene && (!e.when || e.when(flags)));
+      const blocked = (x, y) => m.events.some(e => e.x === x && e.y === y && e.on === 'bump' && (!e.when || e.when(flags)));
+      const seen = new Set([from.join()]), q = [from];
+      while (q.length) {
+        const [x, y] = q.shift();
+        if (Math.abs(x - to[0]) + Math.abs(y - to[1]) === 1) { gateBad.push(`${mapId}: ${why}を踏まずに (${to}) まで行ける`); return; }
+        for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+          const nx = x + dx, ny = y + dy, k = nx + ',' + ny;
+          if (seen.has(k) || !ok(nx, ny) || trig(nx, ny) || blocked(nx, ny)) continue;
+          seen.add(k); q.push([nx, ny]);
+        }
+      }
+    };
+    const fC4 = Object.fromEntries(['clear3', 'ch4', 'c4_wed'].map(k => [k, true]));
+    mustStep('oku', [7, 18], [7, 4], fC4, '奥の院の見張りの場面');
+    mustStep('kairo', [6, 11], [6, 1], { ...fC4, c4_door1: true, c4_door2: true, c4_door3: true, c4_door4: true }, 'テンポの話');
+    mustStep('capital', [16, 27], [16, 13], { c3_king1: true }, 'ラジカとの出会い');
+    check('物語の出来事を、踏まずに回りこめない', !gateBad.length, gateBad.join('\n'));
+
     out.insertAdjacentHTML('afterbegin', `<h2 class="${fail ? 'ng' : 'ok'}" id="summary">${pass} 件成功 / ${fail} 件失敗</h2>`);
   </script>
 </body>

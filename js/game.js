@@ -606,13 +606,14 @@
     const m = map();
     if (!m.mirror) { UI.shadow = null; return; }
     const room = mirrorRoom(m, S.y);
-    if (room < 0) return;
+    // 部屋と部屋のあいだ（格子の上）にいるあいだは「部屋の外」。入り直すと、影は入口の鏡の位置に戻る
+    if (room < 0) { if (UI.shadow) UI.shadow.room = -1; return; }
     // カーボのいる部屋が変わったら、影を鏡の位置に置き直す
     if (!UI.shadow || UI.shadow.map !== S.map || UI.shadow.room !== room) UI.shadow = { map: S.map, room, x: 2 * m.mirror.axis - S.x, y: S.y, px: null, py: null };
   }
   function moveShadow(dx, dy) {
     const m = map(), sh = UI.shadow;
-    if (!m.mirror || !sh || sh.map !== S.map) return;
+    if (!m.mirror || !sh || sh.map !== S.map || sh.room < 0) return;
     const [a, b] = m.mirror.rooms[sh.room], nx = sh.x - dx, ny = sh.y + dy, ch = tileAt(nx, ny);
     sh.px = sh.x; sh.py = sh.y;
     if (nx > m.mirror.axis && ny >= a && ny <= b && (ch === '%' || ch === '$')) { sh.x = nx; sh.y = ny; }
@@ -620,7 +621,7 @@
   // カーボと影が、同時にスイッチを踏んだら解ける。最後の部屋を解くと、影が出てくる
   function checkMirror() {
     const m = map(), sh = UI.shadow;
-    if (!m.mirror || !sh || sh.map !== S.map || mirrorRoom(m, S.y) !== sh.room) return false;
+    if (!m.mirror || !sh || sh.map !== S.map || sh.room < 0 || mirrorRoom(m, S.y) !== sh.room) return false;
     const fl = m.mirror.rooms[sh.room][2];
     if (S.flags[fl] || tileAt(S.x, S.y) !== '$' || tileAt(sh.x, sh.y) !== '$') return false;
     S.flags[fl] = true; save(); Sound.se('chest'); UI.held = null;
@@ -1274,6 +1275,7 @@
       if (!s) return;
       S = normalize(s);
       if (S.hp <= 0 || UI.screen === 'over') S.hp = S.maxHp;
+      UI.shadow = null;   // 鏡の広間の影は、読み込んだ位置に合わせて置き直す
       UI.scene = null; UI.msg = null; UI.menu = false; UI.shop = false;
       UI.screen = 'world';
       render();

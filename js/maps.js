@@ -894,7 +894,7 @@ const Maps = (() => {
         ']': () => ['銀の格子が閉じている。', '【ヒント】影は、壁にぶつかると止まる。止まっているあいだも、カーボは動ける。'],
         '}': () => ['銀の格子が閉じている。ガラスの向こうから、影がこちらを見ている……。'],
       },
-      inspect: { '!': 'ガラスの壁だ。向こうの部屋で、左右が逆の自分が、同じようにこちらを見ている。' },
+      inspect: { '!': ['ガラスの壁だ。向こうの部屋で、左右が逆の自分が、同じようにこちらを見ている。', '【ヒント】部屋を出て入り直すと、影も入口の位置に戻る。'] },
       events: [
         { x: 3, y: 18, on: 'step', warp: { map: 'kairo', x: 6, y: 1, dir: 'down' } },
         { x: 3, y: 0, on: 'step', when: f => f.c4_shadow, warp: { map: 'chapel', x: 8, y: 12, dir: 'up' } },
@@ -964,7 +964,8 @@ const Maps = (() => {
         { x: 7, y: 19, on: 'step', warp: { map: 'chapel', x: 8, y: 1, dir: 'down' } },
         // ボスの前の休み場所（ブルバレンが茶を出してくれる）
         { x: 2, y: 17, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', when: f => !f.c4_boss, scene: 'c4_rest' },
-        ...[4, 5, 6, 7, 8, 9, 10].map(x => ({ x, y: 13, on: 'step', when: f => !f.c4_guards, scene: 'c4_okumae' })),
+        // 階段の手前の 1 行すべて（端を回りこんで見張りを避けられないように）
+        ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map(x => ({ x, y: 13, on: 'step', when: f => !f.c4_guards, scene: 'c4_okumae' })),
         { x: 5, y: 11, sprite: 'meso', on: 'bump', when: f => !f.c4_guards, scene: 'c4_okumae' },
         { x: 9, y: 11, sprite: 'meso', on: 'bump', when: f => !f.c4_guards, scene: 'c4_okumae' },
         { x: 7, y: 4, sprite: f => f.c4_shatter ? 'achiralOpen' : 'achiral', on: 'bump', when: f => !f.c4_boss, scene: 'c4_boss' },
