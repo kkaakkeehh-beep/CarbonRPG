@@ -33,8 +33,10 @@ const Maps = (() => {
   // 第 2 章は昼と夜で出来事が変わる。時間が合わないときは、宿の主人に印をつける
   const atNight = (f, t, ...at) => f.night ? G(t, ...at) : G(`${t}。まずアルドール亭で「夜まで休む」`, INN);
   const atDay = (f, t, ...at) => f.night ? G(`${t}。まずアルドール亭で「朝まで休む」`, INN) : G(t, ...at);
-  function goalOf(f) {
+  // here: いまいるマップ。第 3 章のあいだに港や村へ戻ったときは、船で王国へ戻るよう案内する
+  function goalOf(f, here) {
     if (!f.started) return null;
+    if (here && f.ch3 && !f.c3_boss && MAPS[here] && MAPS[here].ch !== 3) return G('港の船着き場のグリニャの船で、芳香族の王国へ戻る', ['port', 12, 15]);
     // 第 1 章
     if (!f.elder) return G('村の東、六角形の屋根の庵で、長老ベンゼンに会う', ['town', 16, 4]);
     if (!f.f_entry) return G('村の北の門から、求核の森へ向かう', ['town', 10, 0], ['town', 11, 0]);
@@ -234,7 +236,7 @@ const Maps = (() => {
         { x: 6, y: 8, sprite: 'granny', on: 'bump', when: f => !f.night && (!f.c2_kidnap || f.c2_rescued), scene: f => f.c2_rescued ? 'c2_granny2' : 'c2_granny' },
         { x: 8, y: 8, sprite: 'twins', on: 'bump', when: f => !f.night, scene: 'c2_twins_day' },
         // 第 3 章が始まったあとも、グリニャの船で港と王国の浜を行き来できる
-        { x: 12, y: 15, sprite: 'grignard', on: 'bump', when: f => !f.night, scene: f => f.ch3 ? 'c3_ferry' : f.c2_boss ? 'c3_board' : 'c2_grignard' },
+        { x: 12, y: 15, sprite: 'grignard', on: 'bump', when: f => !f.night || f.ch3, scene: f => f.ch3 ? 'c3_ferry' : f.c2_boss ? 'c3_board' : 'c2_grignard' },
         { x: 23, y: 20, sprite: 'keeper', on: 'bump', when: f => !f.night && !f.c2_boss, scene: f => (f.c2_clue2 && !f.c2_clue3) ? 'c2_lecture' : 'c2_keeper' },
         { x: 19, y: 4, sprite: 'innkeeper', on: 'bump', scene: f => f.c2_met ? 'c2_inn' : 'c2_inn_first' },
         // 夜

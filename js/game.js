@@ -3,7 +3,7 @@
 //           成長と購買部、復習ノート、セーブ
 // =============================================================
 (() => {
-  const { COMPANIONS, SKILL_MAX, ITEMS, SHOP, ENEMIES, RANDOM_ENEMIES, expToNext, HP_PER_LV } = GameData;
+  const { COMPANIONS, SKILL_MAX, ITEMS, SHOP, COMP_PRICE, ENEMIES, RANDOM_ENEMIES, expToNext, HP_PER_LV } = GameData;
   const { MAPS } = Maps;
   const { SCENES } = Story;
   const TILE = 32, VW = 15, VH = 11, STEP_MS = 140;
@@ -29,7 +29,7 @@
 
   function freshState(diff) {
     return {
-      diff, party: [], cfg: null, hp: BASE_HP, maxHp: BASE_HP, lv: 1, exp: 0, money: 0, skillLv: {},
+      diff, party: [], owned: [], cfg: null, hp: BASE_HP, maxHp: BASE_HP, lv: 1, exp: 0, money: 0, skillLv: {},
       items: { coffee: 1, energy: 0, book: 0 }, map: 'lab', x: 5, y: 5, dir: 'up',
       flags: {}, used: {}, stats: { correct: 0, total: 0 }, chStats: {}, notebook: {}, topics: {}, ch: 1,
     };
@@ -39,6 +39,7 @@
     const d = freshState(s.diff || 2);
     for (const k of Object.keys(d)) if (s[k] === undefined) s[k] = d[k];
     for (const id of s.party) if (!s.skillLv[id]) s.skillLv[id] = 1;
+    for (const id of s.party) if (!s.owned.includes(id)) s.owned.push(id);
     for (const id of Object.keys(ITEMS)) if (s.items[id] === undefined) s.items[id] = 0;
     // 問題の ID が変わったときに、ノートや出題の記録に残った古い ID を消す（練習で読み込めず止まらないように）
     const ids = new Set(Questions.LIST.map(q => q.id));
@@ -48,6 +49,7 @@
   function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* 保存できない環境でも遊べる */ } }
   function loadSave() { try { const j = localStorage.getItem(SAVE_KEY); return j ? JSON.parse(j) : null; } catch (e) { return null; } }
 
+  const maxHpFor = (lv, cfg) => BASE_HP + (lv - 1) * HP_PER_LV + (cfg === 'S' ? 10 : 0);
   const skillLv = id => S.skillLv[id] || 1;
   const skillAt = (id, lv = skillLv(id)) => comp(id).skill.lv[lv - 1];
 
@@ -252,16 +254,21 @@
   function vParty() {
     const cfg = heroCfg(UI.pick);
     const trait = cfg === 'R' ? '攻撃型: 続けて正解するほどダメージが上がる' : cfg === 'S' ? '防御型: 最大 HP +10、間違えたときのダメージ −25%' : '';
+    // 付け替え（UI.swap）のときは、迎えた仲間だけを選べる。技はいまのレベルで見せる
     const list = COMPANIONS.map(c => {
-      const on = UI.pick.includes(c.id);
-      return `<button class="comp ${on ? 'on' : ''}" style="--ac:${c.color}" data-act="toggleComp" data-arg="${c.id}">
+      const on = UI.pick.includes(c.id), locked = UI.swap && !S.owned.includes(c.id);
+      const sk = UI.swap && !locked ? ` Lv${skillLv(c.id)}: ${skillAt(c.id).desc}` : `: ${c.skill.lv[0].desc}`;
+      return `<button class="comp ${on ? 'on' : ''} ${locked ? 'locked' : ''}" style="--ac:${c.color}" data-act="toggleComp" data-arg="${c.id}" ${locked ? 'disabled' : ''}>
         <span class="comp-atom">${c.group}</span>
         <span class="comp-name">${c.name}<small>${c.role}</small></span>
-        <span class="comp-cards">技「${c.skill.name}」: ${c.skill.lv[0].desc}</span>
-        <span class="comp-line">${c.bond}</span>
+        <span class="comp-cards">技「${c.skill.name}」${sk}</span>
+        <span class="comp-line">${locked ? `まだ仲間になっていない（売店で紹介料 ${yen(COMP_PRICE)} を払うと迎えられる）` : c.bond}</span>
       </button>`;
     }).join('');
-    return `<h2 class="screen-title">4 本の手に、仲間を結ぶ</h2>
+    const done = UI.swap
+      ? `<button class="btn big" data-act="bondDone" ${UI.pick.length === 4 ? '' : 'disabled'}>▶ この 4 人と結合しなおす</button><button class="btn" data-act="cancelSwap">やめる</button>`
+      : `<button class="btn big" data-act="bondDone" ${UI.pick.length === 4 ? '' : 'disabled'}>▶ この 4 人と結合する</button>`;
+    return `<h2 class="screen-title">${UI.swap ? '結合する仲間を付け替える' : '4 本の手に、仲間を結ぶ'}</h2>
     <div class="party-grid">
       ${win(`<div class="hero-wrap">${heroSvg(UI.pick)}</div>
         <p class="center">${UI.pick.length}/4 結合</p>
@@ -270,8 +277,8 @@
         : '<p class="center small dim">4 人そろうと、置換基の CIP 順位からカーボの R/S が決まる。</p>'}`, 'hero-win')}
       <div>
         <div class="comp-list">${list}</div>
-        <p class="small dim">仲間の技は、バトルごとに使える。レベルが上がるたびに、強化する技を 1 つ選べる。</p>
-        <div class="center"><button class="btn big" data-act="bondDone" ${UI.pick.length === 4 ? '' : 'disabled'}>▶ この 4 人と結合する</button></div>
+        <p class="small dim">仲間の技は、バトルごとに使える。レベルが上がるたびに、強化する技を 1 つ選べる。${UI.swap ? '外した仲間の技のレベルは、そのまま残る。' : ''}</p>
+        <div class="center">${done}</div>
       </div>
     </div>`;
   }
@@ -283,7 +290,7 @@
   const mapTitle = () => map().name + (map().ch === 2 ? (S.flags.night ? '（夜）' : '（昼）')
     : map().ch === 3 && !S.flags.c3_boss ? `　柱 ${Maps.pillarsLit(S.flags)}/6` : '');
   // いまの目的（どこへ行けばよいかを HUD に出す）
-  const goalText = () => { const g = Maps.goalOf(S.flags); return g ? g.t : ''; };
+  const goalText = () => { const g = Maps.goalOf(S.flags, S.map); return g ? g.t : ''; };
   function vWorld() {
     const gt = goalText();
     return `<div class="world">
@@ -386,6 +393,7 @@
       ${S.party.length ? `<p class="small">${heroFormula(S.party)}</p><ul class="mlist">${party}</ul>` : ''}
       <h3>どうぐ</h3><ul class="mlist">${items}</ul>
       <div class="center">
+        <button class="btn" data-act="openSwap">仲間を付け替える（${S.owned.length} 人）</button>
         <button class="btn" data-act="openNote">復習ノート（${nb}）</button>
         <button class="btn" data-act="saveNow">セーブ</button>
         <button class="btn" data-act="menu">とじる</button>
@@ -397,11 +405,17 @@
     const rows = SHOP.map(id => { const it = ITEMS[id], can = S.money >= it.price;
       return `<li class="shop-row"><span><b>${it.name}</b>　${yen(it.price)}<br><span class="small dim">${it.desc}（持っている数: ${S.items[id] || 0}）</span></span>
         <button class="btn small-btn" data-act="buy" data-arg="${id}" ${can ? '' : 'disabled'}>買う</button></li>`; }).join('');
+    // まだ仲間になっていない人を、紹介料を払って迎える
+    const cands = COMPANIONS.filter(c => !S.owned.includes(c.id));
+    const comps = cands.map(c => `<li class="shop-row"><span><b style="color:${c.color}">${c.name}</b>（${c.group}）　${yen(COMP_PRICE)}<br>
+        <span class="small dim">${c.role}。技「${c.skill.name}」: ${c.skill.lv[0].desc}</span></span>
+        <button class="btn small-btn" data-act="buyComp" data-arg="${c.id}" ${S.money >= COMP_PRICE ? '' : 'disabled'}>迎える</button></li>`).join('');
     return `<div class="menu win">
       <h3>${esc(UI.shopInfo.name)}</h3>
       <p class="small">${esc(UI.shopInfo.line)}</p>
       <p>研究費 <b class="accent">${yen(S.money)}</b></p>
       <ul class="shop-list">${rows}</ul>
+      ${cands.length ? `<h3>仲間を迎える（紹介料）</h3><p class="small dim">迎えた仲間は、メニューの「仲間を付け替える」で結合できる。</p><ul class="shop-list">${comps}</ul>` : ''}
       <div class="center"><button class="btn" data-act="closeShop">とじる</button></div>
     </div>`;
   }
@@ -552,7 +566,7 @@
   }
   // 目的の場所に、上下に揺れる黄色い矢印を出す（会話中は出さない）
   function drawGoalMarks(camX, camY) {
-    const g = Maps.goalOf(S.flags);
+    const g = Maps.goalOf(S.flags, S.map);
     if (!g || busy()) return;
     const bob = reduceMotion ? 0 : Math.round(Math.sin(performance.now() / 180) * 2);
     for (const [mp, x, y] of g.at) {
@@ -928,15 +942,16 @@
   // ---- バトル画面 -------------------------------------------------
   // 選択肢 1 つ分の中身（構造式の問題なら構造式、結果表示では名前も添える）
   // 問題文に出てくる化合物の構造式（名前つきで並べる）
+  const narrow = () => window.matchMedia && window.matchMedia('(max-width: 560px)').matches;
   const molsRow = (q, maxW = 300) => q.mols ? `<div class="q-mols">${q.mols.map(([label, smi]) =>
-    `<figure>${Mol.autoTag(smi, '', 120, maxW)}<figcaption>${esc(label)}</figcaption></figure>`).join('')}</div>` : '';
+    `<figure>${narrow() ? Mol.autoTag(smi, '', 96, Math.min(maxW, 170)) : Mol.autoTag(smi, '', 120, maxW)}<figcaption>${esc(label)}</figcaption></figure>`).join('')}</div>` : '';
   function choiceInner(q, i, reveal) {
     const smi = q.cs && q.cs[i];
     // cm: 名前はそのまま見せて、構造式を添える
-    if (!smi && q.cm && q.cm[i]) return `<span class="c-text">${esc(q.choices[i])}</span>${Mol.autoTag(q.cm[i], 'c-mol', 110, 260)}`;
+    if (!smi && q.cm && q.cm[i]) return `<span class="c-text">${esc(q.choices[i])}</span>${narrow() ? Mol.autoTag(q.cm[i], 'c-mol', 96, 200) : Mol.autoTag(q.cm[i], 'c-mol', 110, 260)}`;
     if (!smi) return esc(q.choices[i]);
     const note = q.cl && q.cl[i] ? `<span class="c-note">${esc(q.cl[i])}</span>` : '';
-    return `${Mol.svgTag(smi, 170, 100)}${note}${reveal ? `<span class="c-name">${esc(q.choices[i])}</span>` : ''}`;
+    return `${narrow() ? Mol.svgTag(smi, 140, 80) : Mol.svgTag(smi, 170, 100)}${note}${reveal ? `<span class="c-name">${esc(q.choices[i])}</span>` : ''}`;
   }
 
   function vBattle() {
@@ -961,7 +976,8 @@
         ${allMax ? '<div class="center"><button class="btn" data-act="upgrade" data-arg="">技はすべて最大。つぎへ</button></div>' : ''}`, 'msg');
     } else {
       const q = B.q;
-      const head = `<div class="q-head"><span class="chip dim">${esc(Questions.DIFFS[q.diff].name)}</span><span class="chip dim">${esc(q.topic)}</span>${q.cs ? '<span class="chip ok">構造式で答える</span>' : ''}${S.notebook[q.id] ? '<span class="chip bad">復習ノートの問題</span>' : ''}</div>`;
+      // 分野の名前がそのまま正解になる問題があるので、分野は答えたあとに見せる
+      const head = `<div class="q-head"><span class="chip dim">${esc(Questions.DIFFS[q.diff].name)}</span>${B.state === 'q' ? '' : `<span class="chip dim">${esc(q.topic)}</span>`}${q.cs ? '<span class="chip ok">構造式で答える</span>' : ''}${S.notebook[q.id] ? '<span class="chip bad">復習ノートの問題</span>' : ''}</div>`;
       const qbox = `${head}<p class="q-text">${esc(q.q)}</p>${q.smiles ? `<div class="q-mol">${Mol.svgTag(q.smiles, 220, 130, 'big')}</div>` : ''}${molsRow(q)}`;
       const grid = q.cs ? 'choices struct' : q.cm ? 'choices withmol' : 'choices';
       if (B.state === 'q') {
@@ -1117,6 +1133,7 @@
       playScene('prologue');
     },
     toggleComp(id) {
+      if (UI.swap && !S.owned.includes(id)) return;
       const i = UI.pick.indexOf(id);
       if (i >= 0) UI.pick.splice(i, 1); else if (UI.pick.length < 4) UI.pick.push(id);
       Sound.se('blip');
@@ -1126,15 +1143,39 @@
     swap() { if (UI.pick.length === 4) { [UI.pick[2], UI.pick[3]] = [UI.pick[3], UI.pick[2]]; render(); } },
     bondDone() {
       if (UI.pick.length !== 4) return;
+      if (UI.swap) {
+        // 付け替え：技のレベルは仲間ごとに残る。最大 HP はキラリティで変わる（いまの HP は増やさない）
+        const was = S.cfg;
+        S.party = [...UI.pick];
+        S.cfg = heroCfg(S.party);
+        S.maxHp = maxHpFor(S.lv, S.cfg);
+        S.hp = Math.min(S.hp, S.maxHp);
+        S.party.forEach(id => { if (!S.skillLv[id]) S.skillLv[id] = 1; });
+        UI.swap = false; UI.screen = 'world';
+        save(); render(); Sound.se('heal');
+        flash(`結合しなおした！ ${heroName()}${was !== S.cfg ? `（${was} → ${S.cfg}）` : ''}`);
+        return;
+      }
       S.party = [...UI.pick];
+      S.owned = [...new Set([...S.owned, ...S.party])];
       S.cfg = heroCfg(S.party);
-      S.maxHp = BASE_HP + (S.cfg === 'S' ? 10 : 0);
+      S.maxHp = maxHpFor(S.lv, S.cfg);
       S.hp = S.maxHp;
       S.party.forEach(id => { S.skillLv[id] = 1; });
       save();
       UI.screen = 'world';
       render();
       runCommands();
+    },
+    openSwap() { UI.menu = false; UI.swap = true; UI.pick = [...S.party]; UI.screen = 'party'; render(); },
+    cancelSwap() { UI.swap = false; UI.screen = 'world'; render(); },
+    buyComp(id) {
+      const c = comp(id);
+      if (!c || S.owned.includes(id) || S.money < COMP_PRICE) return;
+      S.money -= COMP_PRICE; S.owned.push(id);
+      if (!S.skillLv[id]) S.skillLv[id] = 1;
+      Sound.se('level'); save(); refreshHud(); renderOverlay();
+      flash(`${c.name}が仲間になった！ メニューの「仲間を付け替える」で結合できる`);
     },
     advance() { advance(); },
     menu() { if (UI.scene || UI.msg || UI.shop) return; UI.menu = !UI.menu; Sound.se('blip'); renderOverlay(); },

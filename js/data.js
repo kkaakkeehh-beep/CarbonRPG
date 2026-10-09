@@ -54,6 +54,8 @@ const GameData = (() => {
     book:   { name: '参考書', desc: 'バトル中に使うと、間違いの選択肢を 1 つ消す', price: 60 },
   };
   const SHOP = ['coffee', 'energy', 'book'];
+  // 最初に選ばなかった仲間は、売店で紹介料を払うと迎えられる（迎えた仲間は、メニューから付け替えられる）
+  const COMP_PRICE = 1500;
 
   // レベル: 次のレベルまでに必要な経験値と、上がったときの最大 HP の伸び
   const expToNext = lv => lv * 10 + 5;
@@ -234,5 +236,5 @@ const GameData = (() => {
 
   const RANDOM_ENEMIES = ['meso', 'meso', 'mesoTartaric', 'mesoCis'];
 
-  return { COMPANIONS, SKILL_MAX, ITEMS, SHOP, ENEMIES, RANDOM_ENEMIES, expToNext, HP_PER_LV };
+  return { COMPANIONS, SKILL_MAX, ITEMS, SHOP, COMP_PRICE, ENEMIES, RANDOM_ENEMIES, expToNext, HP_PER_LV };
 })();

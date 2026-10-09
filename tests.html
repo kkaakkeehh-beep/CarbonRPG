@@ -169,6 +169,10 @@
         for (const [mp, x, y] of g.at) { const m = Maps.MAPS[mp]; if (!m || !(m.grid[y] && m.grid[y][x])) goalBad.push(`${k}: 印 ${mp} (${x},${y}) がマップ外`); }
       }
     });
+    // 第 3 章のあいだに港へ戻ったら、船で王国へ戻る案内になる
+    const midC3 = Object.fromEntries(goalOrder.slice(0, goalOrder.indexOf('c3_mid')).map(x => [x, true]));
+    for (const here of ['port', 'town', 'lab']) { const g = Maps.goalOf(midC3, here); if (!g || g.at[0][0] !== 'port') goalBad.push(`第 3 章で ${here} にいるとき、船の案内がない`); }
+    if (Maps.goalOf(midC3, 'capital').t !== Maps.goalOf(midC3).t) goalBad.push('王都の中で、船の案内が出てしまう');
     check('いまの目的が物語の最後まで途切れない', !goalBad.length, goalBad.join('\n'));
 
     out.insertAdjacentHTML('afterbegin', `<h2 class="${fail ? 'ng' : 'ok'}" id="summary">${pass} 件成功 / ${fail} 件失敗</h2>`);

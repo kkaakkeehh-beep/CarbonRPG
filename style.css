@@ -379,6 +379,20 @@ a.btn { display: inline-block; text-decoration: none; }
 .choices.struct .choice.shown { opacity: .5; }
 .choices.struct .choice.right, .choices.struct .choice.wrong { opacity: 1; }
 
+/* バトル中も自分の HP とダメージが見えるように、画面の下に貼りつける */
+.battle .hero-bar { position: sticky; bottom: 6px; z-index: 4; margin-bottom: 6px; }
+/* スマホ：敵の欄を小さくして、問題と選択肢を画面に収める */
+@media (max-width: 560px) {
+  .enemy-box { gap: 10px; padding: 8px 12px; margin-bottom: 10px; }
+  #ecv { width: 72px; height: 72px; }
+  .enemy-info h3 { margin: 0; font-size: 16px; }
+  .qwin { padding: 10px 12px; }
+  .q-text { font-size: 16px; line-height: 1.6; }
+  .choices.struct { grid-template-columns: 1fr 1fr; }
+  .battle .hero-bar { padding: 5px 12px; gap: 4px 8px; }
+  .battle .hero-bar .bar { width: 110px; }
+}
+.comp.locked { opacity: .45; cursor: not-allowed; }
 .skill.up { cursor: pointer; }
 .skill.up .accent { color: var(--accent); }
 
