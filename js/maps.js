@@ -15,8 +15,15 @@
 //   scene: 台本の ID（関数なら f を受け取って ID を返す）/ warp / chest / text
 // =============================================================
 const Maps = (() => {
+  // 章が進むと台詞が変わる住人：id に _2（森の霧が晴れたあと）/ _3（港の灯台のあと）/ _4（王国のあと）/ _5（神殿のあと）を
+  // つけた台本があれば、いまの章までのうち、いちばん新しいものを使う
+  const staged = (id, f) => {
+    const st = f.c4_boss ? 5 : f.c3_boss ? 4 : f.c2_boss ? 3 : f.boss ? 2 : 1;
+    for (let s = st; s >= 2; s--) if (Story.SCENES[`${id}_${s}`]) return `${id}_${s}`;
+    return id;
+  };
   // 子どもたちは、ケトー卿の居場所をそれとなく教えてくれる
-  const kidsScene = f => f.c2_reveal ? 'c2_kids2' : f.c2_chase ? 'c2_kids_home' : (f.c2_lens && !f.c2_pier) ? 'c2_kids_pier' : 'c2_kids';
+  const kidsScene = f => f.c2_boss ? staged('c2_kids2', f) : f.c2_reveal ? 'c2_kids2' : f.c2_chase ? 'c2_kids_home' : (f.c2_lens && !f.c2_pier) ? 'c2_kids_pier' : 'c2_kids';
 
   // 第 3 章：王国の 6 本の柱。話が進むと 1 本ずつ消え、戦いのあとで戻る
   const pillarsLit = f => f.c3_boss ? 6 : f.c3_lastpillar ? 1 : 6 - [f.c3_mid, f.c3_king2, f.c3_tempo].filter(Boolean).length;
@@ -82,7 +89,7 @@ const Maps = (() => {
       if (!f.c4_mount) return G('村の北の門から求核の森へ。森の北の端を抜けて、山道へ', ['town', 10, 0], ['town', 11, 0], ['forest', 14, 0], ['forest', 15, 0]);
       if (!f.c4_lake) return G('山道を登り、鏡の湖へ', ['mount', 10, 0], ['mount', 11, 0]);
       if (!f.c4_bull) return G('湖の岸にいる門番に、話しかける', ['lake', 13, 21]);
-      if (!f.c4_in) return G('湖に映った神殿の扉の上を、まっすぐ歩いて中へ入る', ['lake', 12, 15]);
+      if (!f.c4_in) return G('門番のなぞなぞを手がかりに、神殿の「開く扉」を探す', ['lake', 13, 21]);
       const doors = [[1, 22, '4π・熱'], [2, 16, '6π・熱'], [3, 10, '6π・光'], [4, 4, '4π・光']];
       for (const [n, y, label] of doors) if (!f['c4_door' + n]) return G(`回転の扉（${label}）を開ける。両端のハンドルを、同旋か逆旋に回す`, ['lake', 12, 15], ['kairo', 6, y]);
       const rooms = [['c4_mh1', [1, 13], [13, 13]], ['c4_mh2', [1, 7], [8, 7]], ['c4_mh3', [1, 1], [11, 1]]];
@@ -234,13 +241,13 @@ const Maps = (() => {
         'TTTTTTTTTTTTTTTTTTTTTT',
       ],
       events: [
-        { x: 16, y: 4, sprite: f => f.c3_lastpillar ? 'elderCl' : 'elder', on: 'bump', when: f => !f.ch3 || f.c3_boss, scene: f => f.c3_boss ? 'elder_c3' : f.boss ? 'elder_after2' : f.elder ? 'elder_after' : 'elder' },
+        { x: 16, y: 4, sprite: f => f.c3_lastpillar ? 'elderCl' : 'elder', on: 'bump', when: f => !f.ch3 || f.c3_boss, scene: f => f.c4_boss ? 'elder_c4end' : f.c3_boss ? 'elder_c3' : f.boss ? 'elder_after2' : f.elder ? 'elder_after' : 'elder' },
         { x: 5, y: 11, on: 'step', warp: { map: 'lab', x: 5, y: 7, dir: 'up' } },
         { x: 10, y: 0, on: 'step', gate: true },
         { x: 11, y: 0, on: 'step', gate: true },
-        { x: 13, y: 1, sprite: 'guard', on: 'bump', scene: f => f.boss ? 'guard3' : f.elder ? 'guard2' : 'guard' },
-        { x: 6, y: 6, sprite: 'water', on: 'bump', scene: 'water' },
-        { x: 8, y: 8, sprite: 'methane', on: 'bump', scene: 'methane' },
+        { x: 13, y: 1, sprite: 'guard', on: 'bump', scene: f => f.boss ? staged('guard3', f) : f.elder ? 'guard2' : 'guard' },
+        { x: 6, y: 6, sprite: 'water', on: 'bump', scene: f => staged('water', f) },
+        { x: 8, y: 8, sprite: 'methane', on: 'bump', scene: f => staged('methane', f) },
         { x: 3, y: 12, sprite: 'shop', on: 'bump', shop: true },
         { x: 21, y: 5, on: 'step', eastGate: true },
         { x: 3, y: 11, sprite: 'sign', on: 'bump', text: '購買部　コーヒー・エナジードリンク・参考書あります' },
@@ -289,10 +296,10 @@ const Maps = (() => {
         { x: 15, y: 23, on: 'step', warp: { map: 'town', x: 11, y: 1, dir: 'down' } },
         { x: 16, y: 23, on: 'step', warp: { map: 'town', x: 11, y: 1, dir: 'down' } },
         { x: 13, y: 18, sprite: 'sign', on: 'bump', text: '↑ 霧の奥　　← 花畑' },
-        { x: 5, y: 4, sprite: 'carvoneR', on: 'bump', scene: f => (f.ch4 && !f.c4_boss) ? 'c4_sisters' : f.boss ? 'sisters_after2' : f.sisters ? 'sisters_after' : 'sisters' },
-        { x: 6, y: 4, sprite: 'carvoneS', on: 'bump', scene: f => (f.ch4 && !f.c4_boss) ? 'c4_sisters' : f.boss ? 'sisters_after2' : f.sisters ? 'sisters_after' : 'sisters' },
-        { x: 25, y: 9, sprite: 'victim', on: 'bump', scene: 'victim' },
-        { x: 5, y: 13, sprite: 'lumber', on: 'bump', scene: 'lumber' },
+        { x: 5, y: 4, sprite: 'carvoneR', on: 'bump', scene: f => f.c4_boss ? 'sisters_c4end' : (f.ch4 && !f.c4_boss) ? 'c4_sisters' : f.boss ? 'sisters_after2' : f.sisters ? 'sisters_after' : 'sisters' },
+        { x: 6, y: 4, sprite: 'carvoneS', on: 'bump', scene: f => f.c4_boss ? 'sisters_c4end' : (f.ch4 && !f.c4_boss) ? 'c4_sisters' : f.boss ? 'sisters_after2' : f.sisters ? 'sisters_after' : 'sisters' },
+        { x: 25, y: 9, sprite: 'victim', on: 'bump', scene: f => staged('victim', f) },
+        { x: 5, y: 13, sprite: 'lumber', on: 'bump', scene: f => staged('lumber', f) },
         { x: 25, y: 5, sprite: 'chest', on: 'bump', chest: { item: 'coffee', flag: 'chest1' } },
         { x: 9, y: 15, sprite: 'chest', on: 'bump', chest: { item: 'book', flag: 'chest2' } },
         { x: 27, y: 18, sprite: 'chest', on: 'bump', chest: { item: 'coffee', flag: 'chest3' } },
@@ -339,25 +346,25 @@ const Maps = (() => {
       events: [
         { x: 0, y: 5, on: 'step', warp: { map: 'town', x: 20, y: 5, dir: 'left' } },
         // 建物
-        { x: 20, y: 3, on: 'bump', scene: f => f.c2_met ? 'c2_inn' : 'c2_inn_first' },
+        { x: 20, y: 3, on: 'bump', scene: f => (f.c2_met || f.c2_boss) ? 'c2_inn' : 'c2_inn_first' },
         { x: 12, y: 3, on: 'step', when: f => !f.night, warp: { map: 'mansion', x: 6, y: 7, dir: 'up' } },
         { x: 12, y: 3, on: 'bump', when: f => f.night, text: '屋敷の門は、固く閉ざされている。' },
-        { x: 4, y: 3, on: 'bump', scene: f => f.night ? 'c2_orph_night' : f.c2_reveal ? 'c2_director2' : 'c2_director' },
+        { x: 4, y: 3, on: 'bump', scene: f => f.night ? 'c2_orph_night' : f.c2_boss ? staged('c2_director2', f) : f.c2_reveal ? 'c2_director2' : 'c2_director' },
         // 昼の人びと
         { x: 14, y: 7, sprite: f => f.c2_lens ? 'ketohNoMono' : 'ketoh', on: 'bump', when: f => !f.night && !f.c2_reveal && !f.c2_chase && !(f.c2_lens && !f.c2_pier), scene: f => f.c2_met ? 'c2_ketoh2' : 'c2_ketoh' },
         { x: 6, y: 15, sprite: 'ketohNoMono', on: 'bump', when: f => !f.night && f.c2_lens && !f.c2_pier, scene: 'c2_pier' },
         { x: 16, y: 10, sprite: 'kidA', on: 'bump', when: f => !f.night, scene: kidsScene },
         { x: 17, y: 10, sprite: 'kidB', on: 'bump', when: f => !f.night, scene: kidsScene },
-        { x: 6, y: 4, sprite: 'director', on: 'bump', when: f => !f.night, scene: f => f.c2_reveal ? 'c2_director2' : 'c2_director' },
-        { x: 2, y: 8, sprite: 'menthone', on: 'bump', when: f => !f.night, scene: f => f.c2_reveal ? 'c2_menthone2' : 'c2_menthone' },
-        { x: 4, y: 8, sprite: 'methylBoss', on: 'bump', when: f => !f.night && !(f.c2_pier && !f.c2_kidnap), scene: f => f.c2_reveal ? 'c2_methyl2' : 'c2_methyl' },
+        { x: 6, y: 4, sprite: 'director', on: 'bump', when: f => !f.night, scene: f => f.c2_boss ? staged('c2_director2', f) : f.c2_reveal ? 'c2_director2' : 'c2_director' },
+        { x: 2, y: 8, sprite: 'menthone', on: 'bump', when: f => !f.night, scene: f => f.c2_boss ? staged('c2_menthone2', f) : f.c2_reveal ? 'c2_menthone2' : 'c2_menthone' },
+        { x: 4, y: 8, sprite: 'methylBoss', on: 'bump', when: f => !f.night && !(f.c2_pier && !f.c2_kidnap), scene: f => f.c2_boss ? staged('c2_methyl2', f) : f.c2_reveal ? 'c2_methyl2' : 'c2_methyl' },
         { x: 6, y: 8, sprite: 'methylBoss', on: 'bump', when: f => !f.night && f.c2_pier && !f.c2_kidnap, scene: 'c2_kidnap' },
-        { x: 6, y: 8, sprite: 'granny', on: 'bump', when: f => !f.night && (!f.c2_kidnap || f.c2_rescued), scene: f => f.c2_rescued ? 'c2_granny2' : 'c2_granny' },
-        { x: 8, y: 8, sprite: 'twins', on: 'bump', when: f => !f.night, scene: 'c2_twins_day' },
+        { x: 6, y: 8, sprite: 'granny', on: 'bump', when: f => !f.night && (!f.c2_kidnap || f.c2_rescued), scene: f => f.c2_boss ? staged('c2_granny2', f) : f.c2_rescued ? 'c2_granny2' : 'c2_granny' },
+        { x: 8, y: 8, sprite: 'twins', on: 'bump', when: f => !f.night, scene: f => staged('c2_twins_day', f) },
         // 第 3 章が始まったあとも、グリニャの船で港と王国の浜を行き来できる
         { x: 12, y: 15, sprite: 'grignard', on: 'bump', when: f => !f.night || f.ch3, scene: f => f.ch3 ? 'c3_ferry' : f.c2_boss ? 'c3_board' : 'c2_grignard' },
         { x: 23, y: 20, sprite: 'keeper', on: 'bump', when: f => !f.night && !f.c2_boss, scene: f => (f.c2_clue2 && !f.c2_clue3) ? 'c2_lecture' : 'c2_keeper' },
-        { x: 19, y: 4, sprite: 'innkeeper', on: 'bump', scene: f => f.c2_met ? 'c2_inn' : 'c2_inn_first' },
+        { x: 19, y: 4, sprite: 'innkeeper', on: 'bump', scene: f => (f.c2_met || f.c2_boss) ? 'c2_inn' : 'c2_inn_first' },
         // 夜
         { x: 23, y: 8, on: 'step', when: f => f.night && !f.c2_lens, scene: 'c2_warehouse' },
         { x: 21, y: 9, sprite: 'guard', on: 'bump', when: f => f.night, scene: f => f.c2_lens ? 'c2_guard_night' : 'c2_guard_night0' },
@@ -794,8 +801,8 @@ const Maps = (() => {
       passable: { z: f => f.c4_bull && !f.c4_boss },
       blockedText: {
         z: f => f.c4_boss ? '湖には、もう神殿は映っていない。さざ波が立っている。' : ['湖の水面だ。神殿が、逆さまにくっきりと映っている。', '……踏み出しても、大丈夫だろうか。'],
-        v: f => f.c4_boss ? '湖に、さざ波が立っている。' : '湖の水面だ。波ひとつなく、神殿が逆さまに映っている。',
-        7: f => f.c4_bull ? ['正面の大扉だ。……びくともしない。', 'ブルバレン「正面の扉は飾りだよー」（遠くから声がする）'] : ['正面の大扉だ。……びくともしない。'],
+        v: f => f.c4_boss ? '湖に、さざ波が立っている。' : f.c4_bull ? ['湖の水面だ。逆さまの神殿の、柱のあたりが映っている。', '……足を乗せたら、沈みそうだ。'] : '湖の水面だ。波ひとつなく、神殿が逆さまに映っている。',
+        7: f => f.c4_bull ? ['正面の大扉だ。……びくともしない。', '見上げると、扉の上の飾りが、夜空のほうを向いている。'] : ['正面の大扉だ。……びくともしない。'],
       },
       inspect: { '+': '青い炎のかがり火だ。近づいても、ちっとも熱くない。', C: '白い大理石の神殿だ。左右が寸分違わず対称に組まれている。' },
       reflect: { when: f => !f.c4_boss, x0: 3, x1: 21, y0: 12, y1: 20, axis: 11 },

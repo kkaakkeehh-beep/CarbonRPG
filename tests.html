@@ -282,6 +282,18 @@
     mustStep('capital', [16, 27], [16, 13], { c3_king1: true }, 'ラジカとの出会い');
     check('物語の出来事を、踏まずに回りこめない', !gateBad.length, gateBad.join('\n'));
 
+    // ---- 村・森・港の住人は、章が進むと台詞が変わる（第 1 章の台詞のまま、第 4 章まで残らない） ----
+    const later = { boss: true, elder: true, clear: true, ch2: true, c2_met: true, c2_reveal: true, c2_kidnap: true, c2_rescued: true, c2_boss: true };
+    const stageFlags = [later, { ...later, ch3: true, c3_boss: true, clear3: true, ch4: true }, { ...later, ch3: true, c3_boss: true, clear3: true, ch4: true, c4_boss: true }];
+    const npcBad = [];
+    for (const [mid, sp] of [['town', 'water'], ['town', 'methane'], ['town', 'guard'], ['forest', 'lumber'], ['forest', 'victim'], ['forest', 'carvoneR'], ['port', 'kidA'], ['port', 'director'], ['port', 'menthone'], ['port', 'methylBoss'], ['port', 'granny'], ['port', 'twins']]) {
+      const e = Maps.MAPS[mid].events.find(x => x.sprite === sp && typeof x.scene === 'function' && (!x.when || x.when(later)));
+      const ids = stageFlags.map(f => e.scene(f));
+      ids.forEach(id => { if (!Story.SCENES[id]) npcBad.push(`${mid} の ${sp}: 台本 ${id} がない`); });
+      if (ids[0] === ids[1]) npcBad.push(`${mid} の ${sp}: 第 3 章のあとも、前と同じ台詞（${ids[0]}）`);
+    }
+    check('村・森・港の住人の台詞が、章ごとに変わる', !npcBad.length, npcBad.join('\n'));
+
     out.insertAdjacentHTML('afterbegin', `<h2 class="${fail ? 'ng' : 'ok'}" id="summary">${pass} 件成功 / ${fail} 件失敗</h2>`);
   </script>
 </body>
