@@ -404,6 +404,12 @@ a.btn { display: inline-block; text-decoration: none; }
   .battle .hero-bar .bar { width: 110px; }
 }
 .comp.locked { opacity: .45; cursor: not-allowed; }
+/* バトル中の形態変化などのセリフ（問題と同じ場所に、セリフだけを出す） */
+.talk { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+.t-line { display: flex; gap: 12px; align-items: flex-start; }
+.t-face { flex: none; width: 64px; height: 64px; border: 2px solid var(--line); border-radius: 8px; image-rendering: pixelated; }
+.t-text { font-size: 17px; line-height: 1.7; }
+.t-narr { margin: 0; color: var(--dim); font-size: 15px; line-height: 1.7; }
 .skill.up { cursor: pointer; }
 .skill.up .accent { color: var(--accent); }
 

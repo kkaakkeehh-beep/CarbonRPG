@@ -185,6 +185,20 @@
       if (!Sprites.CHAR_IDS.includes(sp)) faceBad.push(`${w}: 顔の絵 ${sp} がない`);
     }
     check('話している人の顔', !faceBad.length, [...new Set(faceBad)].join('\n'));
+    // バトル中のセリフ（形態変化など）の話者にも、顔がある（いま戦っている相手、カーボ、FACES のどれか）
+    const base = n => n.replace(/（.*）$/, ''), talkBad = [];
+    for (const [k, E] of Object.entries(GameData.ENEMIES)) {
+      const names = [E.name, ...(E.phases || []).filter(ph => ph.name).map(ph => ph.name), ...Object.values(E.forms || {}).map(F => F.name)].map(base);
+      const lines = [...(E.phases || []).flatMap(ph => ph.text.split('\n')), ...Object.values(E.forms || {}).map(F => `${F.name}「${F.into}」`)];
+      for (const l of lines) {
+        if (l.startsWith('（')) continue;
+        const m = l.match(/^([^「]+)「[\s\S]*」$/);
+        if (!m) { talkBad.push(`${k}: 「${l}」が話者とセリフに分けられない`); continue; }
+        const w = m[1];
+        if (w !== 'カーボ' && !names.includes(base(w)) && !Story.FACES[w] && !Story.FACES[base(w)]) talkBad.push(`${k}: 話者「${w}」の顔がない`);
+      }
+    }
+    check('バトル中のセリフの話者と顔', !talkBad.length, talkBad.join('\n'));
 
     // ---- 仲間：CIP 順位が重ならない（R/S が決まる）、技の種類がバトルで扱える、売店だけの仲間は高い ----
     const compBad = [], SKILLS = ['heal', 'power', 'stink', 'fifty', 'time', 'guard', 'retry', 'drain'];

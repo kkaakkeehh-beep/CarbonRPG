@@ -108,7 +108,7 @@
     const fn = { title: vTitle, diff: vDiff, party: vParty, world: vWorld, battle: vBattle, over: vOver, clear: vClear, note: vNote }[UI.screen];
     app.innerHTML = fn();
     if (UI.screen === 'world') { setupCanvas(); renderOverlay(); }
-    if (UI.screen === 'battle') { drawEnemy(); startTyping(); }
+    if (UI.screen === 'battle') { drawEnemy(); drawTalkFaces(); startTyping(); }
     Mol.drawAll(app);
     applyFx();
     Sound.bgm(musicFor());
@@ -411,10 +411,18 @@
       const id = talkers.length ? talkers[(+w.slice(1)) % talkers.length] : null;
       w = id ? comp(id).name : '仲間';
       if (id) face = { comp: id };
-    } else if (w === 'カーボ') face = { hero: true };
-    else if (w && COMPANIONS.some(c => c.name === w)) face = { comp: COMPANIONS.find(c => c.name === w).id };
-    else if (w && Story.FACES[w]) face = { id: resolve(Story.FACES[w], S.flags) };
+    } else if (w) face = faceFor(w);
     return { w, t: fill(st.t), face };
+  }
+  // 話者の名前 → 顔（バトル中は、いま戦っている相手の名前なら、いまの姿の絵を使う）
+  function faceFor(w, B) {
+    const base = n => n.replace(/（.*）$/, '');
+    if (w === 'カーボ') return { hero: true };
+    if (B && base(w) === base(B.name)) return { id: B.sprite };
+    const c = COMPANIONS.find(x => x.name === w);
+    if (c) return { comp: c.id };
+    const f = Story.FACES[w] || Story.FACES[base(w)];
+    return f ? { id: resolve(f, S.flags) } : null;
   }
 
   function vMenu() {
@@ -863,7 +871,7 @@
       flash(`シリルの保護基が外れて、身代わりになった！ ${choice < 0 ? '30 秒で' : 'もう一度'}答え直せる`);
       return runTimer(B);
     }
-    const lines = [];
+    const lines = [], talk = [], pending = [];
     if (!E.practice) {
       S.stats.total++;
       const cs = S.chStats[E.ch || 1] || (S.chStats[E.ch || 1] = { c: 0, t: 0 }); cs.t++; if (ok) cs.c++;
@@ -889,8 +897,8 @@
       for (const [i, ph] of (E.phases || []).entries()) {
         if (B.phase < i + 1 && B.hp / B.maxHp <= ph.at && B.hp > 0) {
           B.phase = i + 1;
-          lines.push(...ph.text.split('\n'));
-          if (ph.transform) { B.sprite = ph.transform; B.name = ph.name; B.atk += ph.atkUp || 0; UI.fx.push({ t: 'transform' }); }
+          talk.push(...ph.text.split('\n'));
+          if (ph.transform) pending.push(() => { B.sprite = ph.transform; B.name = ph.name; B.atk += ph.atkUp || 0; UI.fx.push({ t: 'transform' }); });
         }
       }
     } else {
@@ -916,11 +924,11 @@
     if (E.forms && B.hp > 0 && S.hp > 0 && ++B.answered % E.switchEvery === 0) {
       B.form = B.form === 'keto' ? 'enol' : 'keto';
       const F = E.forms[B.form];
-      lines.push(`${F.name}「${F.into}」`, `（エノラスの姿が変わった。出題の分野が変わる）`);
-      B.name = F.name; B.sprite = F.sprite;
-      UI.fx.push({ t: 'swap' });
+      talk.push(`${F.name}「${F.into}」`, `（エノラスの姿が変わった。出題の分野が変わる）`);
+      pending.push(() => { B.name = F.name; B.sprite = F.sprite; UI.fx.push({ t: 'swap' }); });
     }
     B.result = { ok, choice, lines };
+    B.talk = talk; B.pending = pending;
     B.state = 'result';
     render();
   }
@@ -932,8 +940,11 @@
       if (S.hp <= 0) { B.state = 'lose'; Sound.se('lose'); return render(); }
       const practiceDone = B.queue && !B.queue.length;
       if (B.hp <= 0 || practiceDone) return winBattle();
+      // 形態変化などのセリフがあれば、次の問題の前に、問題と同じ場所に出す
+      if (B.talk && B.talk.length) { B.state = 'talk'; B.pending.forEach(fn => fn()); B.pending = []; return render(); }
       return nextQuestion();
     }
+    if (B.state === 'talk') { B.talk = null; return nextQuestion(); }
     if (B.state === 'win') return B.levels > 0 ? (B.state = 'levelup', render()) : endBattle(true);
     if (B.state === 'levelup') return; // 技を選ぶまで進まない
     if (B.state === 'lose') return endBattle(false);
@@ -1083,7 +1094,15 @@
   function vBattle() {
     const B = UI.battle, E = ENEMIES[B.key];
     let body = '';
-    if (B.state === 'intro' || B.state === 'win' || B.state === 'lose') {
+    if (B.state === 'talk') {
+      // 「名前「台詞」」は話者と台詞に分け、（　）はト書きとして出す
+      const rows = B.talk.map((l, i) => {
+        const m = !l.startsWith('（') && l.match(/^([^「]+)「([\s\S]*)」$/);
+        if (!m) return `<p class="t-narr">${esc(l)}</p>`;
+        return `<div class="t-line">${faceFor(m[1], B) ? `<canvas class="t-face" data-i="${i}" width="96" height="96"></canvas>` : ''}<div><div class="speaker">${esc(m[1])}</div><div class="t-text">${esc(m[2])}</div></div></div>`;
+      }).join('');
+      body = win(`<div class="talk">${rows}</div><div class="center"><button class="btn big" data-act="bNext">つぎへ</button></div>`, 'qwin talkwin');
+    } else if (B.state === 'intro' || B.state === 'win' || B.state === 'lose') {
       const lines = B.state === 'lose' ? ['カーボは力尽きた……'] : B.lines;
       body = win(`${lines.map(l => `<p>${esc(l)}</p>`).join('')}<div class="center"><button class="btn big" data-act="bNext">${B.state === 'intro' ? 'たたかう' : 'つぎへ'}</button>
         ${B.state === 'intro' && B.random ? '<button class="btn" data-act="run">にげる</button>' : ''}</div>`, 'msg');
@@ -1143,6 +1162,15 @@
     </div>`;
   }
 
+  // バトルのセリフの画面の顔
+  function drawTalkFaces() {
+    const B = UI.battle;
+    if (!B || B.state !== 'talk') return;
+    document.querySelectorAll('.t-face').forEach(cv => {
+      const m = B.talk[+cv.dataset.i].match(/^([^「]+)「/), face = m && faceFor(m[1], B);
+      if (face) drawFace(cv, face);
+    });
+  }
   function drawEnemy() {
     const c = document.getElementById('ecv');
     if (!c || !UI.battle) return;
