@@ -92,8 +92,8 @@ const Maps = (() => {
       if (!f.c4_mount) return G('森の北の端から、山道へ', ['town', 10, 0], ['town', 11, 0], ['forest', 14, 0], ['forest', 15, 0]);
       if (!f.c4_lake) return G('山道を登る', ['mount', 10, 0], ['mount', 11, 0]);
       if (!f.c4_bull) return V('湖の岸の門番を探す', ['lake', 13, 21]);
-      if (!f.c4_in) return V('神殿の入口を探す', ['lake', 12, 15]);
-      for (const [n, y] of [[1, 22], [2, 16], [3, 10], [4, 4]]) if (!f['c4_door' + n]) return V('回転の扉を開けて、回廊の奥へ', ['lake', 12, 15], ['kairo', 6, y]);
+      if (!f.c4_in) return V('神殿の入口を探す', ['lake', 12, 14]);
+      for (const [n, y] of [[1, 22], [2, 16], [3, 10], [4, 4]]) if (!f['c4_door' + n]) return V('回転の扉を開けて、回廊の奥へ', ['lake', 12, 14], ['kairo', 6, y]);
       for (const [fl, [lx, ly], [rx, ry]] of [['c4_mh1', [1, 13], [13, 13]], ['c4_mh2', [1, 7], [8, 7]], ['c4_mh3', [1, 1], [11, 1]]]) if (!f[fl]) return V('鏡の広間を抜ける', ['kairo', 6, 0], ['mhall', rx, ry], ['mhall', lx, ly]);
       if (!f.c4_shadow) return V('ガラスの向こうの影と、向き合う', ['mhall', 7, 3]);
       if (!f.c4_wed) return V('開いた格子の先へ', ['mhall', 3, 0], ['chapel', 8, 9]);
@@ -784,21 +784,23 @@ const Maps = (() => {
         'TTCC.888888888888888.CCTT',
         'T...+999999999999999+...T',
         'T99999999999999999999999T',
+        'T..vvvvvvvvvzvvvvvvvvv..T',
+        'T..vvvvvvvvvzvvvvvvvvv..T',
+        'T..vvvvvvvvvzvvvvvvvvv..T',
         'T..vvvvvvvvvvvvvvvvvvv..T',
         'T..vvvvvvvvvvvvvvvvvvv..T',
         'T..vvvvvvvvvvvvvvvvvvv..T',
-        'T..vvvvvvvvvzvvvvvvvvv..T',
-        'T..vvvvvvvvvzvvvvvvvvv..T',
-        'T..vvvvvvvvvzvvvvvvvvv..T',
-        'T..vvvvvvvvvzvvvvvvvvv..T',
-        'T..vvvvvvvvvzvvvvvvvvv..T',
-        'T..vvvvvvvvvzvvvvvvvvv..T',
+        'T..vvvvvvvvvvvvvvvvvvv..T',
+        'T..vvvvvvvvvvvvvvvvvvv..T',
+        'T..vvvvvvvvvvvvvvvvvvv..T',
         'T.......................T',
         'TTTTTTTTTTT,,,TTTTTTTTTTT',
         'TTTTTTTTTTT,,,TTTTTTTTTTT',
       ],
       onEnter: { flag: 'c4_lake', scene: 'c4_lake' },
-      // 湖に映った扉へ続く水面は、門番に話を聞いてから歩ける。鏡が割れたあとは、もう映っていない
+      // 神殿の前の石段（水ぎわ）から、湖に映った逆さまの石段を下りて、映った扉へ入る。
+      // 映った神殿は水ぎわから下へぶら下がっているので、入口は水ぎわのすぐ下（映った扉 = 22 − 扉の行）。
+      // この水面は、門番に話を聞いてから歩ける。鏡が割れたあとは、もう映っていない
       passable: { z: f => f.c4_bull && !f.c4_boss },
       blockedText: {
         z: f => f.c4_boss ? '湖には、もう神殿は映っていない。さざ波が立っている。' : ['湖の水面だ。神殿が、逆さまにくっきりと映っている。', '……踏み出しても、大丈夫だろうか。'],
@@ -815,8 +817,8 @@ const Maps = (() => {
         { x: 12, y: 23, on: 'step', warp: { map: 'mount', x: 11, y: 1, dir: 'down' } },
         { x: 13, y: 23, on: 'step', warp: { map: 'mount', x: 11, y: 1, dir: 'down' } },
         { x: 13, y: 21, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', scene: f => f.c4_boss ? 'c4_bull_end' : f.c4_bull ? 'c4_bull_again' : 'c4_bull' },
-        { x: 12, y: 15, on: 'step', when: f => f.c4_bull && !f.c4_in, scene: 'c4_enter' },
-        { x: 12, y: 15, on: 'step', when: f => f.c4_in && !f.c4_boss, warp: { map: 'kairo', x: 6, y: 27, dir: 'up' } },
+        { x: 12, y: 14, on: 'step', when: f => f.c4_bull && !f.c4_in, scene: 'c4_enter' },
+        { x: 12, y: 14, on: 'step', when: f => f.c4_in && !f.c4_boss, warp: { map: 'kairo', x: 6, y: 27, dir: 'up' } },
         { x: 10, y: 21, sprite: 'achiralOpen', on: 'bump', when: f => f.c4_boss, scene: 'c4_akiral_end' },
       ],
     },
@@ -858,7 +860,7 @@ const Maps = (() => {
       encounters: { tiles: ['9'], when: f => !f.c4_boss, enemies: ['c4Temple', 'c4Decalin'] },
       inspect: { C: '白い壁だ。左右の壁の模様が、鏡に映したようにそろっている。', 1: '柱だ。反対側にも、まったく同じ柱が立っている。' },
       events: [
-        { x: 6, y: 28, on: 'step', warp: { map: 'lake', x: 12, y: 16, dir: 'down' } },
+        { x: 6, y: 28, on: 'step', warp: { map: 'lake', x: 12, y: 11, dir: 'down' } },
         { x: 6, y: 0, on: 'step', warp: { map: 'mhall', x: 3, y: 17, dir: 'up' } },
         ...[[1, 22], [2, 16], [3, 10], [4, 4]].flatMap(([n, y]) => [5, 6, 7].map((x, i) => (
           { x, y, sprite: ['rotDoorL', 'rotDoorC', 'rotDoorR'][i], on: 'bump', when: f => !f['c4_door' + n], scene: 'c4_door' + n }))),
