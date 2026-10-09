@@ -38,7 +38,7 @@
       if (!q.explain) bad.push(`${q.id}: 解説がない`);
     }
     check(`問題データの形式（${Questions.LIST.length} 問）`, !bad.length, bad.join('\n'));
-    for (const ch of [1, 2, 3]) for (let d = 1; d <= 4; d++) {
+    for (const ch of [1, 2, 3, 4]) for (let d = 1; d <= 4; d++) {
       const n = Questions.pickSet(ch, d).length;
       check(`第${ch}章・${Questions.DIFFS[d].name}: 20 問以上（${n} 問）`, n >= 20, `${n} 問`);
     }
@@ -65,6 +65,20 @@
     const topicSet = new Set(Questions.LIST.map(q => q.topic));
     for (const [k, E] of Object.entries(GameData.ENEMIES)) for (const t of [...(E.topics || []), ...(E.stages || []).flatMap(s => s.topics)]) if (!topicSet.has(t)) c3Bad.push(`${k} の分野 ${t} の問題がない`);
     check('第3章: 分野・段階ごとの問題数と、敵の得意分野の名前', !c3Bad.length, c3Bad.join('\n'));
+    // 第 4 章：ペリ環状・鏡の両方が各難易度にあり、アキラルの熱・光の段階それぞれに出せる問題がある
+    check('第4章の問題すべてに tag（peri / mirror）', Questions.LIST.filter(q => q.ch === 4).every(q => ['peri', 'mirror'].includes(q.tag)), '');
+    const c4Bad = [];
+    for (let d = 1; d <= 4; d++) {
+      const band = Questions.LIST.filter(q => q.ch === 4 && (q.diff === d || q.diff === Math.min(4, d + 1)));
+      for (const tag of ['peri', 'mirror']) { const n = band.filter(q => q.tag === tag).length; if (n < 8) c4Bad.push(`難易度 ${d} の ${tag}: ${n} 問`); }
+      GameData.ENEMIES.akiral.stages.forEach((st, i) => {
+        const n = band.filter(q => q.tag === 'peri' && st.topics.includes(q.topic)).length;
+        if (n < 2) c4Bad.push(`難易度 ${d} のアキラル第 ${i + 1} 段階: ${n} 問`);
+      });
+      const sh = GameData.ENEMIES.shadow.topics, nSh = band.filter(q => q.tag === 'mirror' && sh.includes(q.topic)).length;
+      if (nSh < 6) c4Bad.push(`難易度 ${d} の影のカーボの分野: ${nSh} 問`);
+    }
+    check('第4章: 分野・段階ごとの問題数', !c4Bad.length, c4Bad.join('\n'));
     const smiBad = [];
     for (const q of Questions.LIST.filter(q => q.smiles)) {
       SmilesDrawer.parse(q.smiles, () => {}, () => smiBad.push(`${q.id}: ${q.smiles}`));
@@ -108,7 +122,11 @@
     const c3Order = ['c2_boss', 'ch3', 'c3_arrive', 'c3_gate', 'c3_king1', 'c3_radika1', 'c3_aniboy', 'c3_pyr', 'c3_duel1', 'c3_emblem', 'c3_ibu', 'c3_hint', 'c3_bmeso',
       'c3_octa', 'c3_mid', 'c3_king2', 'c3_tempo', 'c3_lastpillar', 'c3_tower', 'c3_top', 'c3_boss'];
     const c3Steps = c3Order.map((_, i) => Object.fromEntries(c3Order.slice(0, i + 1).map(k => [k, true])));
-    const flagSets = [{}, flagsAll, { ...flagsAll, night: true }, { night: true }, { c2_lens: true }, { c2_clue2: true }, ...c3Steps];
+    // 第 4 章の進み具合
+    const c4Order = ['clear3', 'ch4', 'c4_mount', 'c4_lake', 'c4_bull', 'c4_in', 'c4_kairo', 'c4_door1', 'c4_door2', 'c4_door3', 'c4_c2talk', 'c4_door4',
+      'c4_mhall', 'c4_mh1', 'c4_mh2', 'c4_mh3', 'c4_shadow', 'c4_wed', 'c4_guards', 'c4_racem', 'c4_shatter', 'c4_boss'];
+    const c4Steps = c4Order.map((_, i) => Object.fromEntries([...c3Order, ...c4Order.slice(0, i + 1)].map(k => [k, true])));
+    const flagSets = [{}, flagsAll, { ...flagsAll, night: true }, { night: true }, { c2_lens: true }, { c2_clue2: true }, ...c3Steps, ...c4Steps];
     for (const [id, m] of Object.entries(Maps.MAPS)) {
       const W = m.grid[0].length;
       m.grid.forEach((row, y) => { if (row.length !== W) mapBad.push(`${id}: ${y} 行目の幅が ${row.length}（期待 ${W}）`); });
@@ -182,13 +200,13 @@
 
     // ---- いまの目的：物語の順にフラグを立てても、クリアまで目的が途切れず、印の場所がマップの中にある ----
     const goalOrder = ['started', 'elder', 'f_entry', 'sisters', 'duo', 'boss', 'clear', 'c2_arrive', 'c2_met', 'c2_lens', 'c2_pier', 'c2_kidnap', 'c2_rescued',
-      'c2_clue2', 'c2_clue3', 'c2_chase', 'c2_reveal', ...c3Order];
+      'c2_clue2', 'c2_clue3', 'c2_chase', 'c2_reveal', ...c3Order, ...c4Order];
     const goalBad = [];
     goalOrder.forEach((k, i) => {
       const base = Object.fromEntries(goalOrder.slice(0, i + 1).map(x => [x, true]));
       for (const night of [false, true]) {
         const g = Maps.goalOf({ ...base, night });
-        if (k === 'c3_boss') { if (g) goalBad.push('クリア後にも目的が残っている'); continue; }
+        if (k === 'c3_boss' || k === 'c4_boss') { if (g) goalBad.push(`${k} のあとにも目的が残っている`); continue; }
         if (!g || !g.t || !g.at.length) { goalBad.push(`${k} のあとに目的がない`); continue; }
         for (const [mp, x, y] of g.at) { const m = Maps.MAPS[mp]; if (!m || !(m.grid[y] && m.grid[y][x])) goalBad.push(`${k}: 印 ${mp} (${x},${y}) がマップ外`); }
       }
@@ -198,6 +216,29 @@
     for (const here of ['port', 'town', 'lab']) { const g = Maps.goalOf(midC3, here); if (!g || g.at[0][0] !== 'port') goalBad.push(`第 3 章で ${here} にいるとき、船の案内がない`); }
     if (Maps.goalOf(midC3, 'capital').t !== Maps.goalOf(midC3).t) goalBad.push('王都の中で、船の案内が出てしまう');
     check('いまの目的が物語の最後まで途切れない', !goalBad.length, goalBad.join('\n'));
+
+    // ---- 鏡の広間：どの部屋も、カーボと影が同時にスイッチを踏めるように解ける ----
+    const mirBad = [];
+    const MH = Maps.MAPS.mhall, ax = MH.mirror.axis, cell = (x, y) => (MH.grid[y] && MH.grid[y][x]) || 'C';
+    MH.mirror.rooms.forEach(([a, b], k) => {
+      const open = (x, y) => y >= a && y <= b && (cell(x, y) === '%' || cell(x, y) === '$');
+      const sx0 = MH.mirror.startX, p0 = [sx0, b], s0 = [2 * ax - sx0, b], key = (p, q) => p.join() + '|' + q.join();
+      const seen = new Set([key(p0, s0)]), qu = [[p0, s0, 0]];
+      let found = null;
+      while (qu.length && found === null) {
+        const [p, q, n] = qu.shift();
+        if (cell(...p) === '$' && cell(...q) === '$') { found = n; break; }
+        for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+          const np = [p[0] + dx, p[1] + dy];
+          if (!(np[0] < ax && open(...np))) continue;
+          const nq = open(q[0] - dx, q[1] + dy) && q[0] - dx > ax ? [q[0] - dx, q[1] + dy] : q;
+          const kk = key(np, nq); if (!seen.has(kk)) { seen.add(kk); qu.push([np, nq, n + 1]); }
+        }
+      }
+      if (found === null) mirBad.push(`部屋 ${k + 1} が解けない`);
+      else if (found < 4) mirBad.push(`部屋 ${k + 1} が簡単すぎる（${found} 手）`);
+    });
+    check('鏡の広間の 3 つの部屋が、どれも解ける', !mirBad.length, mirBad.join('\n'));
 
     out.insertAdjacentHTML('afterbegin', `<h2 class="${fail ? 'ng' : 'ok'}" id="summary">${pass} 件成功 / ${fail} 件失敗</h2>`);
   </script>

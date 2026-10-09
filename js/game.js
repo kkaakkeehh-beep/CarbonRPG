@@ -139,7 +139,7 @@
           <p class="logo-sub">炭 素 の 勇 者</p>
         </div>
       </div>
-      <p class="title-chapter">第3章「芳香族の王国」まで遊べます</p>
+      <p class="title-chapter">第4章「鏡の回廊」まで遊べます</p>
       <div class="title-menu">
         <button class="tbtn" data-act="newGame">はじめから</button>
         ${sv ? `<button class="tbtn" data-act="continue">つづきから<small>${esc(where)}</small></button>` : ''}
@@ -368,7 +368,7 @@
     }
     const id = face.hero ? 'hero' : face.id, [top, rows] = FACE_FRAME[id] || [-0.66, 11];
     const sz = W * 16 / rows;
-    const o = face.hero ? { colors: S.party.length ? S.party.map(p => comp(p).color) : null, dir: 'down' } : undefined;
+    const o = (face.hero || id === 'shadow') ? { colors: S.party.length ? S.party.map(p => comp(p).color) : null, dir: 'down' } : undefined;
     Sprites.drawChar(g, id, Math.round((W - sz) / 2), Math.round(-top * sz / 16), sz, o);
   }
 
@@ -482,7 +482,8 @@
         continue;
       }
       if (st.do === 'party') { sc.i++; UI.pick = []; UI.screen = 'party'; render(); return; }
-      if (st.do === 'battle') { sc.i++; startBattle(st.e, false); return; }
+      // chance があれば、その確率でだけバトルになる（回転の扉を回し損ねたときなど）
+      if (st.do === 'battle') { sc.i++; if (st.chance && Math.random() > st.chance) continue; startBattle(st.e, false); return; }
       if (st.do === 'clear') {
         sc.i++; UI.scene = null;
         const ch = MAPS[S.map].ch || 1;
@@ -554,7 +555,10 @@
   function mapCanvas() {
     // openTile: 通れるようになった門を、開いた絵に差し替える
     const open = m0 => Object.keys(m0.openTile || {}).map(c => passableTile(c) ? 1 : 0).join('');
-    const m = map(), key = S.map + (S.flags.duo ? 1 : 0) + open(m);
+    // swap: フラグで見た目だけを差し替える（割れた鏡、さざ波の立った湖など）
+    const swapOf = (m0, ch) => (m0.swap && m0.swap[ch] && m0.swap[ch](S.flags)) || null;
+    const m = map(), key = S.map + (S.flags.duo ? 1 : 0) + open(m)
+      + (m.swap ? Object.keys(m.swap).map(c => swapOf(m, c) || '-').join('') : '') + (m.paintKey ? m.paintKey(S.flags) : '');
     if (mapCache.key === key) return mapCache.canvas;
     const W = m.grid[0].length, H = m.grid.length;
     const c = document.createElement('canvas');
@@ -565,10 +569,56 @@
       let ch = m.grid[y][x];
       if (ch === 'M' && passableTile('M')) ch = 'm';
       if (m.openTile && m.openTile[ch] && passableTile(ch)) ch = m.openTile[ch];
+      ch = swapOf(m, ch) || ch;
       Sprites.drawTile(g, ch, x * TILE, y * TILE, TILE, x, y, (dx, dy) => (m.grid[y + dy] && m.grid[y + dy][x + dx]) || 'T');
+    }
+    if (m.paint) m.paint(g, TILE, S.flags);
+    // 湖の水面に、上の景色を上下逆さまに映す（axis の行が水ぎわ）
+    const r = m.reflect;
+    if (r && r.when(S.flags)) {
+      const copy = document.createElement('canvas');
+      copy.width = c.width; copy.height = c.height; copy.getContext('2d').drawImage(c, 0, 0);
+      const x0 = r.x0 * TILE, y0 = r.y0 * TILE, w = (r.x1 - r.x0 + 1) * TILE, h = (r.y1 - r.y0 + 1) * TILE;
+      g.save(); g.beginPath(); g.rect(x0, y0, w, h); g.clip();
+      g.globalAlpha = 0.62; g.translate(0, (2 * r.axis + 1) * TILE); g.scale(1, -1); g.drawImage(copy, 0, 0);
+      g.restore();
+      g.save(); g.fillStyle = 'rgba(14, 32, 80, 0.36)'; g.fillRect(x0, y0, w, h);
+      g.fillStyle = 'rgba(210, 230, 255, 0.10)'; for (let yy = y0 + 5; yy < y0 + h; yy += 11) g.fillRect(x0, yy, w, 1);
+      g.fillStyle = 'rgba(255, 255, 255, 0.25)'; g.fillRect(x0, y0, w, 2);
+      g.restore();
     }
     mapCache = { key, canvas: c };
     return c;
+  }
+
+  // ---- 鏡の広間：影は、カーボと左右だけ逆に動く。壁にぶつかると止まる ----
+  // map.mirror = { axis: ガラスの壁の列, rooms: [[上の行, 下の行, 解いたときのフラグ], ...] }
+  const mirrorRoom = (m, y) => m.mirror.rooms.findIndex(([a, b]) => y >= a && y <= b);
+  function syncShadow() {
+    const m = map();
+    if (!m.mirror) { UI.shadow = null; return; }
+    const room = mirrorRoom(m, S.y);
+    if (room < 0) return;
+    // カーボのいる部屋が変わったら、影を鏡の位置に置き直す
+    if (!UI.shadow || UI.shadow.map !== S.map || UI.shadow.room !== room) UI.shadow = { map: S.map, room, x: 2 * m.mirror.axis - S.x, y: S.y, px: null, py: null };
+  }
+  function moveShadow(dx, dy) {
+    const m = map(), sh = UI.shadow;
+    if (!m.mirror || !sh || sh.map !== S.map) return;
+    const [a, b] = m.mirror.rooms[sh.room], nx = sh.x - dx, ny = sh.y + dy, ch = tileAt(nx, ny);
+    sh.px = sh.x; sh.py = sh.y;
+    if (nx > m.mirror.axis && ny >= a && ny <= b && (ch === '%' || ch === '$')) { sh.x = nx; sh.y = ny; }
+  }
+  // カーボと影が、同時にスイッチを踏んだら解ける。最後の部屋を解くと、影が出てくる
+  function checkMirror() {
+    const m = map(), sh = UI.shadow;
+    if (!m.mirror || !sh || sh.map !== S.map || mirrorRoom(m, S.y) !== sh.room) return false;
+    const fl = m.mirror.rooms[sh.room][2];
+    if (S.flags[fl] || tileAt(S.x, S.y) !== '$' || tileAt(sh.x, sh.y) !== '$') return false;
+    S.flags[fl] = true; save(); Sound.se('chest'); UI.held = null;
+    if (sh.room === m.mirror.rooms.length - 1) { playScene('c4_shadow'); return true; }
+    message(['カーボと影が、同時に金のスイッチを踏んだ。', '床の鏡が光り、上の格子が開いた！']);
+    return true;
   }
 
   function heroPos() {
@@ -592,14 +642,23 @@
       const dark = 6 - Maps.pillarsLit(S.flags);
       if (dark) { ctx.fillStyle = `rgba(40, 20, 70, ${dark * 0.05})`; ctx.fillRect(0, 0, cv.width, cv.height); }
     }
+    const colors = S.party.length ? S.party.map(id => comp(id).color) : null;
     for (const e of activeEvents()) {
       if (!e.sprite) continue;
       const sx = (e.x - camX) * TILE, sy = (e.y - camY) * TILE;
       const id = e.chest && S.flags[e.chest.flag] ? 'chestOpen' : resolve(e.sprite, S.flags);
-      if (e.mirror) { ctx.save(); ctx.translate(sx + TILE, sy); ctx.scale(-1, 1); Sprites.drawChar(ctx, id, 0, 0, TILE); ctx.restore(); }
-      else Sprites.drawChar(ctx, id, sx, sy, TILE);
+      if (e.mirror) { ctx.save(); ctx.translate(sx + TILE, sy); ctx.scale(-1, 1); Sprites.drawChar(ctx, id, 0, 0, TILE, { colors }); ctx.restore(); }
+      else Sprites.drawChar(ctx, id, sx, sy, TILE, { colors });
     }
-    const colors = S.party.length ? S.party.map(id => comp(id).color) : null;
+    if (m.mirror) {
+      if (!UI.shadow || UI.shadow.map !== S.map) syncShadow();
+      const sh = UI.shadow, last = m.mirror.rooms.length - 1;
+      if (sh && sh.map === S.map && !(sh.room === last && S.flags[m.mirror.rooms[last][2]])) {
+        const t = UI.move && sh.px !== null ? Math.min(1, (performance.now() - UI.move.t0) / STEP_MS) : 1;
+        const ox = sh.px === null ? sh.x : sh.px + (sh.x - sh.px) * t, oy = sh.py === null ? sh.y : sh.py + (sh.y - sh.py) * t;
+        Sprites.drawChar(ctx, 'shadow', (ox - camX) * TILE, (oy - camY) * TILE, TILE, { colors });
+      }
+    }
     Sprites.drawChar(ctx, 'hero', (hx - camX) * TILE, (hy - camY) * TILE, TILE, { colors, dir: S.dir });
     drawGoalMarks(camX, camY);
   }
@@ -641,9 +700,12 @@
     }
     UI.move = { fx: S.x, fy: S.y, t0: performance.now() };
     S.x = nx; S.y = ny;
+    moveShadow(dx, dy);
   }
 
   function afterStep() {
+    syncShadow();
+    if (checkMirror()) return;
     const ev = eventAt(S.x, S.y, 'step');
     if (ev) { UI.held = null; return trigger(ev); }
     const enc = map().encounters;
@@ -695,7 +757,7 @@
 
   function warp(w) {
     S.map = w.map; S.x = w.x; S.y = w.y; S.dir = w.dir || S.dir;
-    UI.move = null; UI.steps = 0;
+    UI.move = null; UI.steps = 0; UI.shadow = null;
     save();
     render();
     enterScene();
@@ -753,6 +815,8 @@
     };
     if (queue) UI.battle.lines = [`${E.name}「${E.start}」`, `ノートの問題 ${queue.length} 問に挑戦する。`];
     if (E.forms) { const F = E.forms.keto; Object.assign(UI.battle, { form: 'keto', name: F.name, sprite: F.sprite, answered: 0 }); }
+    // 影のカーボ：HP はカーボの最大 HP の 2 倍、攻撃力はカーボが正解したときのダメージの 3/4。R/S は逆
+    if (E.mirror) Object.assign(UI.battle, { hp: S.maxHp * 2, maxHp: S.maxHp * 2, atk: Math.round((10 + (S.lv - 1)) * 0.75), shadowCfg: S.cfg ? opp(S.cfg) : null, missStreak: 0 });
     UI.screen = 'battle';
     if (!queue) Sound.se('encounter');
     render();
@@ -806,13 +870,16 @@
       const tp = S.topics[q.topic] || (S.topics[q.topic] = { c: 0, t: 0 });
       tp.t++; if (ok) tp.c++;
     }
+    // アキラルの鏡面の結界のあいだは、カーボの R/S の特性が効かない
+    const trait = !(E.barrier && B.phase < 1);
     if (ok) {
       if (!E.practice) S.stats.correct++;
-      let dmg = E.practice ? 10 : 10 + (S.lv - 1) + (S.cfg === 'R' ? Math.min(B.streak, 3) * 4 : 0);
+      let dmg = E.practice ? 10 : 10 + (S.lv - 1) + (S.cfg === 'R' && trait ? Math.min(B.streak, 3) * 4 : 0);
       if (B.power && !E.practice) { dmg = Math.round(dmg * B.power); B.power = 0; lines.push('アジーの背面攻撃が決まった！'); }
-      B.streak++;
+      if (B.shadowCfg === 'S') dmg = Math.round(dmg * 0.75);    // (S) の影は守りが固い
+      B.streak++; B.missStreak = 0;
       B.hp = Math.max(0, B.hp - dmg);
-      lines.push(`正解！ ${B.name}に ${dmg} のダメージ！${S.cfg === 'R' && B.streak > 1 && !E.practice ? `（${B.streak} 連続正解）` : ''}`);
+      lines.push(`正解！ ${B.name}に ${dmg} のダメージ！${S.cfg === 'R' && trait && B.streak > 1 && !E.practice ? `（${B.streak} 連続正解）` : ''}`);
       // スズの連鎖：正解するたびに HP が戻る
       if (B.drain && !E.practice && S.hp < S.maxHp) { const v = Math.min(B.drain, S.maxHp - S.hp); S.hp += v; lines.push(`スズの連鎖で、HP が ${v} 回復した。`); UI.fx.push({ t: 'heroHeal', v }); }
       // 答え直しで正解した問題は、ノートに残す
@@ -833,7 +900,9 @@
         lines.push(`${choice < 0 ? '時間切れ。' : '不正解。'}（練習なのでダメージはない）`);
       } else {
         let dmg = Math.max(1, B.atk - B.stink - B.dr);
-        if (S.cfg === 'S') dmg = Math.max(1, Math.round(dmg * 0.75));
+        if (B.shadowCfg === 'R') dmg += Math.min(B.missStreak || 0, 3) * 4;    // (R) の影は、続けて間違えるほど強くなる
+        if (B.shadowCfg) B.missStreak = (B.missStreak || 0) + 1;
+        if (S.cfg === 'S' && trait) dmg = Math.max(1, Math.round(dmg * 0.75));
         if (B.guard) { dmg = 0; B.guard--; lines.push('ブトキが立ちはだかった！'); }
         S.hp = Math.max(0, S.hp - dmg);
         lines.push(`${choice < 0 ? '時間切れ！ ' : '不正解……。'}カーボは ${dmg} のダメージを受けた。`);
@@ -1048,7 +1117,8 @@
           return `<button class="skill item" data-act="item" data-arg="${id}" ${full ? 'disabled' : ''}>
             <span class="sk-name">${ITEMS[id].name} ×${S.items[id]}${full ? '<span class="sk-used">HP 満タン</span>' : ''}</span>
             <span class="sk-desc">${esc(ITEMS[id].desc)}</span></button>`; }).join('');
-        const flags = [B.power ? '背面攻撃 準備中' : '', B.guard ? '立体障害で守っている' : '', B.dr ? `被ダメージ −${B.dr}` : '', B.stink ? `悪臭で敵がひるんでいる（−${B.stink}）` : '', B.retry ? '保護基で守っている（1 回答え直せる）' : '', B.drain ? `連鎖：正解するたびに HP +${B.drain}` : ''].filter(Boolean).map(t => `<span class="chip ok">${t}</span>`).join('');
+        const flags = [B.power ? '背面攻撃 準備中' : '', B.guard ? '立体障害で守っている' : '', B.dr ? `被ダメージ −${B.dr}` : '', B.stink ? `悪臭で敵がひるんでいる（−${B.stink}）` : '', B.retry ? '保護基で守っている（1 回答え直せる）' : '', B.drain ? `連鎖：正解するたびに HP +${B.drain}` : '',
+          E.barrier && B.phase < 1 ? '鏡面の結界：R/S の特性が効かない' : '', B.shadowCfg ? `影は (${B.shadowCfg})：${B.shadowCfg === 'S' ? 'こちらの与えるダメージ −25%' : '続けて間違えるほど、影の攻撃が上がる'}` : ''].filter(Boolean).map(t => `<span class="chip ok">${t}</span>`).join('');
         body = win(`${qbox}<div class="timer"><div class="bar time"><div id="qtime" style="width:${B.timeLeft / B.timeCap * 100}%"></div></div><span id="qtnum" class="small">${Math.ceil(B.timeLeft)}</span></div>`, 'qwin')
           + `<div class="${grid}">${choices}</div>`
           + (E.practice ? '' : `<div class="skills-head small dim">仲間の技・どうぐ</div><div class="skills">${skills}${items}</div>`)
@@ -1080,7 +1150,7 @@
     g.imageSmoothingEnabled = false;
     g.clearRect(0, 0, c.width, c.height);
     const duo = UI.battle.sprite === 'mesoDuo', s = duo ? 80 : 112;
-    Sprites.drawChar(g, UI.battle.sprite, (c.width - s) / 2, c.height - s, s);
+    Sprites.drawChar(g, UI.battle.sprite, (c.width - s) / 2, c.height - s, s, { colors: S.party.map(id => comp(id).color) });
   }
 
   // ---- 復習ノート --------------------------------------------------
@@ -1114,10 +1184,10 @@
   }
 
   const TITLES = [[90, '不斉の勇者'], [75, '求核の剣士'], [60, '見習い化学者'], [0, 'ラセミの迷い子']];
-  const CHAPTERS = { 1: '第1章「求核の森」', 2: '第2章「カルボニル港」', 3: '第3章「芳香族の王国」' };
-  const NEXT = { 1: '第2章「カルボニル港」', 2: '第3章「芳香族の王国」', 3: '第4章「鏡の回廊」' };
-  const NEXT_ACT = { 1: 'toCh2', 2: 'toCh3' };
-  const clearCh = () => UI.clearCh || (S.flags.clear3 ? 3 : S.flags.clear2 ? 2 : 1);
+  const CHAPTERS = { 1: '第1章「求核の森」', 2: '第2章「カルボニル港」', 3: '第3章「芳香族の王国」', 4: '第4章「鏡の回廊」' };
+  const NEXT = { 1: '第2章「カルボニル港」', 2: '第3章「芳香族の王国」', 3: '第4章「鏡の回廊」', 4: '第5章「廃液街」' };
+  const NEXT_ACT = { 1: 'toCh2', 2: 'toCh3', 3: 'toCh4' };
+  const clearCh = () => UI.clearCh || (S.flags.clear4 ? 4 : S.flags.clear3 ? 3 : S.flags.clear2 ? 2 : 1);
   function clearResult() {
     const ch = clearCh();
     const cs = S.chStats[ch], st = cs ? { correct: cs.c, total: cs.t } : S.stats;
@@ -1264,6 +1334,12 @@
       save(); UI.screen = 'world'; render();
       if (!S.flags.ch3) playScene('c3_start');
     },
+    toCh4() {
+      S.ch = 4; S.hp = S.maxHp; UI.clearCh = null;
+      S.map = 'lab'; S.x = 5; S.y = 5; S.dir = 'up';
+      save(); UI.screen = 'world'; render();
+      if (!S.flags.ch4) playScene('c4_start');
+    },
     practice() {
       const ids = shuffle(Object.keys(S.notebook)).slice(0, 10);
       if (ids.length) startBattle('practice', false, ids);
@@ -1350,5 +1426,5 @@
   requestAnimationFrame(loop);
   // 動作確認用（アニメーションを待たずに 1 歩進める）
   const debugStep = dir => { if (busy()) return; tryMove(dir); if (UI.move) { UI.move = null; afterStep(); } };
-  window.__carbon = { get S() { return S; }, UI, actions, render, startBattle, warp, playScene, step: debugStep, action };
+  window.__carbon = { get S() { return S; }, UI, actions, render, startBattle, warp, playScene, step: debugStep, action, mapCanvas };
 })();

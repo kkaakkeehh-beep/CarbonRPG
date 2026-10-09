@@ -104,6 +104,11 @@ const Sound = (() => {
       E5 . B4 . E5 F5 E5 .  D5 . A4 . D5 Eb5 D5 .  C5 . G4 . C5 D5 Eb5 .  D5 . . . B4 . . .`),
       bass: T(`
       E2 E2 E3 E2 E2 E2 E3 E2  D2 D2 D3 D2 D2 D2 D3 D2  C2 C2 C3 C2 C2 C2 C3 C2  B1 B1 B2 B1 B1 B1 B2 B1`) },
+    // 鏡の回廊（前から読んでも後ろから読んでも同じ、鏡写しの旋律）
+    mirror: { bpm: 84, lead: T(`
+      A4 . C5 . E5 . A5 .  G#5 . E5 . D5 . B4 .  . B4 . D5 . E5 . G#5  . A5 . E5 . C5 . A4`),
+      bass: T(`
+      A2 . E3 . A2 . E3 .  G#2 . E3 . G#2 . E3 .  . E3 . G#2 . E3 . G#2  . E3 . A2 . E3 . A2`) },
     battle: { bpm: 152, lead: T(`
       E5 E5 G5 E5 B5 . A5 G5  F#5 F#5 A5 F#5 D6 . B5 A5  E5 E5 G5 E5 B5 . C6 B5  A5 G5 F#5 D5 E5 . . .`),
       bass: T(`

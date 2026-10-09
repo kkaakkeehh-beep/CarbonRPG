@@ -37,6 +37,8 @@ const Maps = (() => {
   function goalOf(f, here) {
     if (!f.started) return null;
     if (here && f.ch3 && !f.c3_boss && MAPS[here] && MAPS[here].ch !== 3) return G('港の船着き場のグリニャの船で、芳香族の王国へ戻る', ['port', 12, 15]);
+    // 第 3 章のあと、王国に残っているときは、まず船で港へ戻る
+    if (here && f.clear3 && !f.c4_boss && MAPS[here] && MAPS[here].ch === 3) return G('浜のグリニャの船で、港へ戻る', ['shore', 12, 17]);
     // 第 1 章
     if (!f.elder) return G('村の東、六角形の屋根の庵で、長老ベンゼンに会う', ['town', 16, 4]);
     if (!f.f_entry) return G('村の北の門から、求核の森へ向かう', ['town', 10, 0], ['town', 11, 0]);
@@ -71,7 +73,118 @@ const Maps = (() => {
       if (!f.c3_lastpillar) return G('王宮の北、パラ区の門へ', ['shore', 14, 1], ['capital', 16, 5]);
       return G('光の塔を登り、頂上のラジカを止める', ['capital', 16, 3], ['ltower', 1, 1], ['ltop', 4, 3]);
     }
+    // 第 4 章
+    if (!f.clear3) return null;
+    if (!f.c4_boss) {
+      if (!f.ch4) return G('研究所の鏡野教授に、話を聞く', ['town', 5, 11], ['lab', 5, 3]);
+      if (!f.c4_mount) return G('村の北の門から求核の森へ。森の北の端を抜けて、山道へ', ['town', 10, 0], ['town', 11, 0], ['forest', 14, 0], ['forest', 15, 0]);
+      if (!f.c4_lake) return G('山道を登り、鏡の湖へ', ['mount', 10, 0], ['mount', 11, 0]);
+      if (!f.c4_bull) return G('湖の岸にいる門番に、話しかける', ['lake', 13, 21]);
+      if (!f.c4_in) return G('湖に映った神殿の扉の上を、まっすぐ歩いて中へ入る', ['lake', 12, 15]);
+      const doors = [[1, 22, '4π・熱'], [2, 16, '6π・熱'], [3, 10, '6π・光'], [4, 4, '4π・光']];
+      for (const [n, y, label] of doors) if (!f['c4_door' + n]) return G(`回転の扉（${label}）を開ける。両端のハンドルを、同旋か逆旋に回す`, ['lake', 12, 15], ['kairo', 6, y]);
+      const rooms = [['c4_mh1', [1, 13], [13, 13]], ['c4_mh2', [1, 7], [8, 7]], ['c4_mh3', [1, 1], [11, 1]]];
+      for (const [fl, [lx, ly], [rx, ry]] of rooms) if (!f[fl]) return G('鏡の広間：カーボと影が、それぞれの部屋の金のスイッチを同時に踏む（影は左右が逆に動き、壁にぶつかると止まる）', ['kairo', 6, 0], ['mhall', rx, ry], ['mhall', lx, ly]);
+      if (!f.c4_shadow) return G('ガラスの向こうの影と、向き合う', ['mhall', 7, 3]);
+      if (!f.c4_wed) return G('上の格子を抜けて、婚礼の間へ', ['mhall', 3, 0], ['chapel', 8, 9]);
+      if (!f.c4_guards) return G('婚礼の間の奥から、奥の院への階段を上る', ['chapel', 8, 0], ['oku', 7, 13]);
+      return G('奥の院で、総帥アキラルと向き合う', ['oku', 7, 4]);
+    }
     return null;
+  }
+
+  // ---- 第 4 章：鏡の回廊の外観（タイルの上に、1 枚の絵として描く。湖への映り込みは game.js で重ねる） ----
+  // 中心は x = 12.5 タイル。破風・丸い鏡の窓・金の帯・柱廊・大扉・左右の塔・月
+  function paintTemple(g, T, f) {
+    const P = n => n * T, cx = P(12.5);
+    const marble = (y0, y1) => { const gr = g.createLinearGradient(0, y0, 0, y1); gr.addColorStop(0, '#fdfcf8'); gr.addColorStop(1, '#d6d0c0'); return gr; };
+    g.save();
+    // 月（神殿は左右対称、月だけが右に寄っている）
+    g.save(); g.shadowColor = '#fff6d0'; g.shadowBlur = T * 0.9;
+    g.fillStyle = '#fff4cf'; g.beginPath(); g.arc(P(20.6), P(0.95), T * 0.5, 0, Math.PI * 2); g.fill(); g.restore();
+    g.fillStyle = '#efe1b0'; g.beginPath(); g.arc(P(20.75), P(0.85), T * 0.12, 0, Math.PI * 2); g.fill();
+    // 左右の塔
+    for (const tx of [2, 21]) {
+      const x0 = P(tx) + T * 0.1, w = T * 1.8;
+      g.fillStyle = marble(P(2.4), P(10)); g.fillRect(x0, P(2.4), w, P(10) - P(2.4));
+      g.fillStyle = '#cdc6b4'; g.fillRect(x0 + w - T * 0.25, P(2.4), T * 0.25, P(10) - P(2.4));
+      g.fillStyle = '#d4af37'; g.fillRect(x0 - T * 0.1, P(2.4), w + T * 0.2, T * 0.14); g.fillRect(x0 - T * 0.1, P(6), w + T * 0.2, T * 0.1);
+      g.beginPath(); g.moveTo(x0 - T * 0.15, P(2.45)); g.lineTo(x0 + w / 2, P(0.55)); g.lineTo(x0 + w + T * 0.15, P(2.45)); g.closePath();
+      g.fillStyle = '#e9e5d8'; g.fill(); g.strokeStyle = '#d4af37'; g.lineWidth = 2; g.stroke();
+      g.save(); g.shadowColor = '#9fd0ff'; g.shadowBlur = T * 0.4; g.fillStyle = '#cfe8ff';
+      g.beginPath(); g.arc(x0 + w / 2, P(0.5), T * 0.13, 0, Math.PI * 2); g.fill();
+      for (const wy of [3.3, 4.6, 7.2]) { g.fillStyle = '#7fc4ff'; g.fillRect(x0 + w / 2 - T * 0.12, P(wy), T * 0.24, T * 0.6); }
+      g.restore();
+    }
+    // 破風（三角形の屋根）
+    const L = P(4.6), R = P(20.4), base = P(5.05), top = P(1.0);
+    g.beginPath(); g.moveTo(L, base); g.lineTo(cx, top); g.lineTo(R, base); g.closePath();
+    g.fillStyle = marble(top, base); g.fill(); g.strokeStyle = '#d4af37'; g.lineWidth = 3; g.stroke();
+    const k = 0.78, iL = cx - (cx - L) * k, iR = cx + (R - cx) * k, iTop = base - (base - top) * k;
+    g.beginPath(); g.moveTo(iL, base - T * 0.12); g.lineTo(cx, iTop); g.lineTo(iR, base - T * 0.12); g.closePath();
+    g.fillStyle = '#ece8dc'; g.fill(); g.strokeStyle = '#c9b98f'; g.lineWidth = 1.5; g.stroke();
+    // 破風の飾り：鏡に映したように左右に広がる金の線
+    g.strokeStyle = '#d4af37'; g.lineWidth = 1.5;
+    for (const sgn of [-1, 1]) for (let i = 1; i <= 3; i++) {
+      g.beginPath(); g.moveTo(cx + sgn * T * (0.9 + i * 0.9), base - T * 0.25); g.quadraticCurveTo(cx + sgn * T * (0.6 + i * 0.6), P(3.4) - i * 2, cx + sgn * T * 1.0, P(3.45)); g.stroke();
+    }
+    // 丸い鏡の窓（バラ窓）
+    const ry = P(3.45), rr = T * 0.95;
+    const rg = g.createRadialGradient(cx - rr * 0.3, ry - rr * 0.3, rr * 0.1, cx, ry, rr);
+    rg.addColorStop(0, '#ffffff'); rg.addColorStop(0.5, '#b9d2f2'); rg.addColorStop(1, '#55709f');
+    g.save(); g.shadowColor = '#bfe0ff'; g.shadowBlur = T * 0.6; g.fillStyle = rg; g.beginPath(); g.arc(cx, ry, rr, 0, Math.PI * 2); g.fill(); g.restore();
+    g.strokeStyle = '#d4af37'; g.lineWidth = 3; g.beginPath(); g.arc(cx, ry, rr, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 1; g.strokeStyle = 'rgba(212,175,55,.8)';
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; g.beginPath(); g.moveTo(cx + Math.cos(a) * rr * 0.35, ry + Math.sin(a) * rr * 0.35); g.lineTo(cx + Math.cos(a) * rr, ry + Math.sin(a) * rr); g.stroke(); }
+    g.beginPath(); g.arc(cx, ry, rr * 0.35, 0, Math.PI * 2); g.stroke();
+    if (f.c4_boss) {    // 鏡が割れたあと
+      g.strokeStyle = '#2a3150'; g.lineWidth = 1.5; g.beginPath();
+      g.moveTo(cx - rr * 0.2, ry - rr); g.lineTo(cx + rr * 0.1, ry - rr * 0.1); g.lineTo(cx - rr * 0.4, ry + rr * 0.5);
+      g.moveTo(cx + rr * 0.1, ry - rr * 0.1); g.lineTo(cx + rr * 0.8, ry + rr * 0.3); g.stroke();
+    } else { g.fillStyle = 'rgba(255,255,255,.85)'; g.beginPath(); g.ellipse(cx - rr * 0.38, ry - rr * 0.4, rr * 0.18, rr * 0.08, -0.6, 0, Math.PI * 2); g.fill(); }
+    // てっぺんと両端の飾り
+    g.fillStyle = '#d4af37';
+    for (const [ax, ay] of [[cx, top], [L, base], [R, base]]) { g.beginPath(); g.moveTo(ax, ay - T * 0.45); g.lineTo(ax + T * 0.18, ay); g.lineTo(ax - T * 0.18, ay); g.closePath(); g.fill(); }
+    // 金の帯（鏡に映した三角形が並ぶ）
+    const fg = g.createLinearGradient(0, P(5.05), 0, P(6));
+    fg.addColorStop(0, '#f2d27a'); fg.addColorStop(1, '#a8841f');
+    g.fillStyle = fg; g.fillRect(L, P(5.05), R - L, P(6) - P(5.05));
+    g.fillStyle = '#7a5f14';
+    for (let i = 0; i < 16; i++) {
+      const x0 = L + (R - L) * i / 16, w = (R - L) / 16;
+      g.beginPath(); g.moveTo(x0 + w * 0.15, P(5.25)); g.lineTo(x0 + w * 0.5, P(5.55)); g.lineTo(x0 + w * 0.15, P(5.85)); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(x0 + w * 0.85, P(5.25)); g.lineTo(x0 + w * 0.5, P(5.55)); g.lineTo(x0 + w * 0.85, P(5.85)); g.closePath(); g.fill();
+    }
+    // 柱廊の奥の暗がりと、大扉
+    const dg = g.createLinearGradient(0, P(6), 0, P(9));
+    dg.addColorStop(0, '#0d0e22'); dg.addColorStop(1, '#2a2c52');
+    g.fillStyle = dg; g.fillRect(P(5), P(6), P(15), P(3));
+    const doorL = P(11.3), doorR = P(13.7), doorTop = P(6.7);
+    g.save(); g.shadowColor = '#9fd0ff'; g.shadowBlur = T * 0.7;
+    const sg = g.createLinearGradient(doorL, 0, doorR, 0);
+    sg.addColorStop(0, '#9aa9c6'); sg.addColorStop(0.5, f.c4_boss ? '#7b86a0' : '#eef4ff'); sg.addColorStop(1, '#9aa9c6');
+    g.fillStyle = sg; g.beginPath(); g.moveTo(doorL, P(9)); g.lineTo(doorL, doorTop + T * 0.4); g.quadraticCurveTo(cx, doorTop - T * 0.5, doorR, doorTop + T * 0.4); g.lineTo(doorR, P(9)); g.closePath(); g.fill();
+    g.restore();
+    g.strokeStyle = '#d4af37'; g.lineWidth = 3; g.stroke();
+    g.fillStyle = '#7b86a0'; g.fillRect(cx - 1, doorTop, 2, P(9) - doorTop);
+    g.fillStyle = '#d4af37'; g.beginPath(); g.arc(cx - T * 0.2, P(8.1), 2.5, 0, Math.PI * 2); g.arc(cx + T * 0.2, P(8.1), 2.5, 0, Math.PI * 2); g.fill();
+    // 柱（縦溝・柱頭・柱礎）
+    for (const colX of [5.15, 6.5, 8.5, 10.5, 14.5, 16.5, 18.5, 19.85]) {
+      const xL = P(colX) - T * 0.31, w = T * 0.62;
+      g.fillStyle = marble(P(6), P(9)); g.fillRect(xL, P(6.15), w, P(9) - P(6.15));
+      g.fillStyle = '#cfc9b9'; g.fillRect(xL + w * 0.72, P(6.15), w * 0.28, P(9) - P(6.15));
+      g.fillStyle = '#ffffff'; g.fillRect(xL + w * 0.08, P(6.15), w * 0.14, P(9) - P(6.15));
+      g.fillStyle = '#ddd7c8'; for (let i = 1; i < 4; i++) g.fillRect(xL + w * i / 4, P(6.3), 1, P(8.8) - P(6.3));
+      g.fillStyle = '#d4af37'; g.fillRect(xL - T * 0.1, P(6), w + T * 0.2, T * 0.18);
+      g.fillStyle = '#b9b3a2'; g.fillRect(xL - T * 0.08, P(8.85), w + T * 0.16, T * 0.15);
+    }
+    // かがり火の光
+    for (const bx of [4.5, 20.5]) {
+      const gl = g.createRadialGradient(P(bx), P(10.3), 1, P(bx), P(10.3), T * 1.6);
+      gl.addColorStop(0, 'rgba(127,212,255,.35)'); gl.addColorStop(1, 'rgba(127,212,255,0)');
+      g.fillStyle = gl; g.fillRect(P(bx) - T * 1.6, P(10.3) - T * 1.6, T * 3.2, T * 3.2);
+    }
+    g.restore();
   }
 
   const MAPS = {
@@ -94,7 +207,7 @@ const Maps = (() => {
         B: { rest: true },
       },
       events: [
-        { x: 5, y: 3, sprite: 'prof', on: 'bump', scene: f => f.c3_boss ? 'lab_prof_c3end' : f.ch3 ? 'lab_prof_c3' : f.c2_boss ? 'lab_prof_c2end' : f.clear ? 'lab_prof3' : f.elder ? 'lab_prof2' : 'lab_prof' },
+        { x: 5, y: 3, sprite: 'prof', on: 'bump', scene: f => f.c4_boss ? 'lab_prof_c4end' : f.ch4 ? 'lab_prof_c4' : f.clear3 ? 'c4_start' : f.c3_boss ? 'lab_prof_c3end' : f.ch3 ? 'lab_prof_c3' : f.c2_boss ? 'lab_prof_c2end' : f.clear ? 'lab_prof3' : f.elder ? 'lab_prof2' : 'lab_prof' },
         { x: 5, y: 8, on: 'step', warp: { map: 'town', x: 5, y: 12, dir: 'down' } },
       ],
     },
@@ -136,7 +249,7 @@ const Maps = (() => {
       name: '求核の森',
       encounters: { tiles: ['g'], when: f => f.f_entry && !f.boss, enemies: ['meso', 'meso', 'mesoTartaric', 'mesoCis'] },
       grid: [
-        'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+        'TTTTTTTTTTTTTTxxTTTTTTTTTTTTTT',
         'TTTTTTTTTTTmmmmmmmmTTTTTTTTTTT',
         'TTTTTTTTTTmmmmmmmmmmTTTTTTTTTT',
         'T.....fffTmmmmmmmmmmT..ggggg.T',
@@ -163,15 +276,19 @@ const Maps = (() => {
       ],
       onEnter: { flag: 'f_entry', scene: 'forest_entry' },
       // 濃い霧 M は、2 人組を倒すまで通れない
-      passable: { M: f => f.duo },
+      passable: { M: f => f.duo, x: f => f.ch4 },
+      openTile: { x: ',' },
       blockedText: { M: f => f.sisters ? '霧が濃くて進めない。' : '霧が濃くて進めない。西の花畑のほうから、すすり泣く声が聞こえる……' },
       events: [
         { x: 14, y: 23, on: 'step', warp: { map: 'town', x: 10, y: 1, dir: 'down' } },
+        // 第 4 章：霧が晴れた先の、北の山道へ
+        { x: 14, y: 0, on: 'step', when: f => f.ch4, warp: { map: 'mount', x: 10, y: 20, dir: 'up' } },
+        { x: 15, y: 0, on: 'step', when: f => f.ch4, warp: { map: 'mount', x: 11, y: 20, dir: 'up' } },
         { x: 15, y: 23, on: 'step', warp: { map: 'town', x: 11, y: 1, dir: 'down' } },
         { x: 16, y: 23, on: 'step', warp: { map: 'town', x: 11, y: 1, dir: 'down' } },
         { x: 13, y: 18, sprite: 'sign', on: 'bump', text: '↑ 霧の奥　　← 花畑' },
-        { x: 5, y: 4, sprite: 'carvoneR', on: 'bump', scene: f => f.boss ? 'sisters_after2' : f.sisters ? 'sisters_after' : 'sisters' },
-        { x: 6, y: 4, sprite: 'carvoneS', on: 'bump', scene: f => f.boss ? 'sisters_after2' : f.sisters ? 'sisters_after' : 'sisters' },
+        { x: 5, y: 4, sprite: 'carvoneR', on: 'bump', scene: f => (f.ch4 && !f.c4_boss) ? 'c4_sisters' : f.boss ? 'sisters_after2' : f.sisters ? 'sisters_after' : 'sisters' },
+        { x: 6, y: 4, sprite: 'carvoneS', on: 'bump', scene: f => (f.ch4 && !f.c4_boss) ? 'c4_sisters' : f.boss ? 'sisters_after2' : f.sisters ? 'sisters_after' : 'sisters' },
         { x: 25, y: 9, sprite: 'victim', on: 'bump', scene: 'victim' },
         { x: 5, y: 13, sprite: 'lumber', on: 'bump', scene: 'lumber' },
         { x: 25, y: 5, sprite: 'chest', on: 'bump', chest: { item: 'coffee', flag: 'chest1' } },
@@ -600,6 +717,259 @@ const Maps = (() => {
       events: [
         { x: 4, y: 7, on: 'step', warp: { map: 'ltower', x: 2, y: 1, dir: 'right' } },
         { x: 4, y: 3, sprite: 'radika', on: 'bump', when: f => !f.c3_boss, scene: 'c3_boss' },
+      ],
+    },
+    // ================= 第 4 章 =================
+    mount: {
+      name: '北の山道', ch: 4, bgm: 'forest',
+      grid: [
+        'HHHHHHHHHH,,HHHHHHHHHH',
+        'HHHTT....,,.....TTHHHH',
+        'HHT..gg..,,..gg....THH',
+        'HH...gg,,,,..gg.....HH',
+        'HH....,,HHHH.......HHH',
+        'HHH...,,HHHHH..ggg..HH',
+        'HH.....,,,,,,,.ggg..HH',
+        'HH..ggg....HH,,.....HH',
+        'HHH.ggg....HH.,,,...HH',
+        'HHHH.......HHH..,,..HH',
+        'HHHHHH..rr...H..,,.HHH',
+        'HHH....rr.....,,,..HHH',
+        'HH..gg....,,,,,....THH',
+        'HH..gg...,,HHH..gg..HH',
+        'HHT.....,,HHHHH.gg..HH',
+        'HH.....,,..HHH......HH',
+        'HH..ggg,,.......ggg.HH',
+        'HHH.ggg.,,......ggg.HH',
+        'HHHT.....,,..T.....HHH',
+        'HHHHT.....,,...THHHHHH',
+        'HHHHHHT...,,..THHHHHHH',
+        'HHHHHHHHHH,,HHHHHHHHHH',
+      ],
+      onEnter: { flag: 'c4_mount', scene: 'c4_mount' },
+      encounters: { tiles: ['g'], when: f => f.ch4 && !f.c4_boss, enemies: ['c4Mountain', 'c4Mountain', 'c4Decalin'] },
+      inspect: { H: '切り立った岩肌だ。上のほうが、鏡のように光っている。', r: '大きな岩だ。' },
+      events: [
+        { x: 10, y: 21, on: 'step', warp: { map: 'forest', x: 14, y: 1, dir: 'down' } },
+        { x: 11, y: 21, on: 'step', warp: { map: 'forest', x: 15, y: 1, dir: 'down' } },
+        { x: 10, y: 0, on: 'step', warp: { map: 'lake', x: 12, y: 22, dir: 'up' } },
+        { x: 11, y: 0, on: 'step', warp: { map: 'lake', x: 12, y: 22, dir: 'up' } },
+        { x: 13, y: 19, sprite: 'sign', on: 'bump', text: '↑ 鏡の湖' },
+        { x: 3, y: 2, sprite: 'chest', on: 'bump', chest: { item: 'energy', flag: 'c4_chest1' } },
+      ],
+    },
+
+    lake: {
+      name: '鏡の湖', ch: 4, bgm: 'mirror',
+      grid: [
+        '`````````````````````````',
+        '`````````````````````````',
+        '``CC`````````````````CC``',
+        '``CC`````````````````CC``',
+        'HHCC`````````````````CCHH',
+        'HHCCHCCCCCCCCCCCCCCCHCCHH',
+        'HHCCHC1"1"1"""1"1"1CHCCHH',
+        'HHCCHC1"1"1"7"1"1"1CHCCHH',
+        'HHCCHC1"1"1"7"1"1"1CHCCHH',
+        'TTCC.888888888888888.CCTT',
+        'T...+999999999999999+...T',
+        'T99999999999999999999999T',
+        'T..vvvvvvvvvvvvvvvvvvv..T',
+        'T..vvvvvvvvvvvvvvvvvvv..T',
+        'T..vvvvvvvvvvvvvvvvvvv..T',
+        'T..vvvvvvvvvzvvvvvvvvv..T',
+        'T..vvvvvvvvvzvvvvvvvvv..T',
+        'T..vvvvvvvvvzvvvvvvvvv..T',
+        'T..vvvvvvvvvzvvvvvvvvv..T',
+        'T..vvvvvvvvvzvvvvvvvvv..T',
+        'T..vvvvvvvvvzvvvvvvvvv..T',
+        'T.......................T',
+        'TTTTTTTTTTT,,,TTTTTTTTTTT',
+        'TTTTTTTTTTT,,,TTTTTTTTTTT',
+      ],
+      onEnter: { flag: 'c4_lake', scene: 'c4_lake' },
+      // 湖に映った扉へ続く水面は、門番に話を聞いてから歩ける。鏡が割れたあとは、もう映っていない
+      passable: { z: f => f.c4_bull && !f.c4_boss },
+      blockedText: {
+        z: f => f.c4_boss ? '湖には、もう神殿は映っていない。さざ波が立っている。' : ['湖の水面だ。神殿が、逆さまにくっきりと映っている。', '……踏み出しても、大丈夫だろうか。'],
+        v: f => f.c4_boss ? '湖に、さざ波が立っている。' : '湖の水面だ。波ひとつなく、神殿が逆さまに映っている。',
+        7: f => f.c4_bull ? ['正面の大扉だ。……びくともしない。', 'ブルバレン「正面の扉は飾りだよー」（遠くから声がする）'] : ['正面の大扉だ。……びくともしない。'],
+      },
+      inspect: { '+': '青い炎のかがり火だ。近づいても、ちっとも熱くない。', C: '白い大理石の神殿だ。左右が寸分違わず対称に組まれている。' },
+      reflect: { when: f => !f.c4_boss, x0: 3, x1: 21, y0: 12, y1: 20, axis: 11 },
+      swap: { v: f => f.c4_boss ? 'j' : null, z: f => f.c4_boss ? 'j' : null },
+      paintKey: f => (f.c4_boss ? 1 : 0),
+      paint: (g, T, f) => paintTemple(g, T, f),
+      events: [
+        { x: 11, y: 23, on: 'step', warp: { map: 'mount', x: 10, y: 1, dir: 'down' } },
+        { x: 12, y: 23, on: 'step', warp: { map: 'mount', x: 11, y: 1, dir: 'down' } },
+        { x: 13, y: 23, on: 'step', warp: { map: 'mount', x: 11, y: 1, dir: 'down' } },
+        { x: 13, y: 21, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', scene: f => f.c4_boss ? 'c4_bull_end' : f.c4_bull ? 'c4_bull_again' : 'c4_bull' },
+        { x: 12, y: 15, on: 'step', when: f => f.c4_bull && !f.c4_in, scene: 'c4_enter' },
+        { x: 12, y: 15, on: 'step', when: f => f.c4_in && !f.c4_boss, warp: { map: 'kairo', x: 6, y: 27, dir: 'up' } },
+        { x: 10, y: 21, sprite: 'achiralOpen', on: 'bump', when: f => f.c4_boss, scene: 'c4_akiral_end' },
+      ],
+    },
+
+    kairo: {
+      name: '鏡の回廊', ch: 4, bgm: 'mirror',
+      grid: [
+        'CCCCCC9CCCCCC',
+        'C19999999991C',
+        'C19999999991C',
+        'C19999999991C',
+        'CCCCC999CCCCC',
+        'C19999999991C',
+        'C99999999999C',
+        'C99999999999C',
+        'C99999999999C',
+        'C19999999991C',
+        'CCCCC999CCCCC',
+        'C19999999991C',
+        'C19999999991C',
+        'C19999999991C',
+        'C19999999991C',
+        'C19999999991C',
+        'CCCCC999CCCCC',
+        'C19999999991C',
+        'C19999999991C',
+        'C19999999991C',
+        'C19999999991C',
+        'C19999999991C',
+        'CCCCC999CCCCC',
+        'C19999999991C',
+        'C19999999991C',
+        'C19999999991C',
+        'C19999999991C',
+        'C19999999991C',
+        'CCCCCC9CCCCCC',
+      ],
+      onEnter: { flag: 'c4_kairo', scene: 'c4_kairo' },
+      encounters: { tiles: ['9'], when: f => !f.c4_boss, enemies: ['c4Temple', 'c4Decalin'] },
+      inspect: { C: '白い壁だ。左右の壁の模様が、鏡に映したようにそろっている。', 1: '柱だ。反対側にも、まったく同じ柱が立っている。' },
+      events: [
+        { x: 6, y: 28, on: 'step', warp: { map: 'lake', x: 12, y: 16, dir: 'down' } },
+        { x: 6, y: 0, on: 'step', warp: { map: 'mhall', x: 3, y: 17, dir: 'up' } },
+        ...[[1, 22], [2, 16], [3, 10], [4, 4]].flatMap(([n, y]) => [5, 6, 7].map((x, i) => (
+          { x, y, sprite: ['rotDoorL', 'rotDoorC', 'rotDoorR'][i], on: 'bump', when: f => !f['c4_door' + n], scene: 'c4_door' + n }))),
+        { x: 3, y: 25, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', when: f => !f.c4_boss, scene: 'c4_bull2' },
+        { x: 1, y: 7, sprite: 'molMeso', on: 'bump', text: ['逆旋で閉じた、cis 体の分子たちだ。', '2 つのメチル基が同じ側にある。分子の真ん中に、鏡面が通っている（メソ体）。'] },
+        { x: 11, y: 7, sprite: 'molChiral', on: 'bump', text: ['同旋で閉じた、trans 体の分子たちだ。', '2 つのメチル基が反対側にある。鏡面はないが、180° 回すと自分に重なる（C₂ 軸）。'] },
+        ...[5, 6, 7].map(x => ({ x, y: 9, on: 'step', when: f => f.c4_door3 && !f.c4_c2talk, scene: 'c4_c2talk' })),
+        { x: 9, y: 2, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', when: f => f.c4_door4 && !f.c4_boss, scene: 'c4_bull3' },
+        { x: 3, y: 13, sprite: 'chest', on: 'bump', chest: { item: 'coffee', flag: 'c4_chest2' } },
+      ],
+    },
+
+    // 鏡の広間：左の部屋をカーボが、右の部屋を影が歩く。影は左右だけ逆に動く（game.js の mirror の処理）
+    mhall: {
+      name: '鏡の広間', ch: 4, bgm: 'mirror',
+      grid: [
+        'CCC}CCCCCCCCCCC',
+        'C$%%%%%!%%%$%%C',
+        'C%1%%%%!%%1%%%C',
+        'C1%1%1%!11%%%1C',
+        'C1%%%%%!1%%%%1C',
+        'C%%%%%%!%%%%%%C',
+        'CCC]CCCCCCCCCCC',
+        'C$%%%%%!$%%%%%C',
+        'C%%%%%%!%1%%%1C',
+        'C1%1%%%!%%%%%%C',
+        'C%%%%%%!%%%%%%C',
+        'C%%%%%%!%%%%%%C',
+        'CCC[CCCCCCCCCCC',
+        'C$%%%%%!%%%%%$C',
+        'C%%%%%%!%%%%%%C',
+        'C%%%%%%!%%%%%%C',
+        'C%%%%%%!%%%%%%C',
+        'C%%%%%%!%%%%%%C',
+        'CCC9CCCCCCCCCCC',
+      ],
+      mirror: { axis: 7, startX: 3, rooms: [[13, 17, 'c4_mh1'], [7, 11, 'c4_mh2'], [1, 5, 'c4_mh3']] },
+      onEnter: { flag: 'c4_mhall', scene: 'c4_mhall' },
+      passable: { '[': f => f.c4_mh1, ']': f => f.c4_mh2, '}': f => f.c4_shadow },
+      openTile: { '[': '%', ']': '%', '}': '%' },
+      blockedText: {
+        '[': () => ['銀の格子が閉じている。', '【ヒント】カーボと影が、それぞれの部屋の金のスイッチを同時に踏むと開く。'],
+        ']': () => ['銀の格子が閉じている。', '【ヒント】影は、壁にぶつかると止まる。止まっているあいだも、カーボは動ける。'],
+        '}': () => ['銀の格子が閉じている。ガラスの向こうから、影がこちらを見ている……。'],
+      },
+      inspect: { '!': 'ガラスの壁だ。向こうの部屋で、左右が逆の自分が、同じようにこちらを見ている。' },
+      events: [
+        { x: 3, y: 18, on: 'step', warp: { map: 'kairo', x: 6, y: 1, dir: 'down' } },
+        { x: 3, y: 0, on: 'step', when: f => f.c4_shadow, warp: { map: 'chapel', x: 8, y: 12, dir: 'up' } },
+        { x: 7, y: 3, sprite: 'shadow', on: 'bump', when: f => f.c4_mh3 && !f.c4_shadow, scene: 'c4_shadow' },
+      ],
+    },
+
+    chapel: {
+      name: '婚礼の間', ch: 4, bgm: 'mirror',
+      grid: [
+        'CCCCCCCCDCCCCCCCC',
+        'CCCCCCCC9CCCCCCCC',
+        'C999999^9^999999C',
+        'Cff99999999999ffC',
+        'C9::::::&::::::9C',
+        'C9999999&9999999C',
+        'C9::::::&::::::9C',
+        'C9999999&9999999C',
+        'C9::::::&::::::9C',
+        'C9999999&9999999C',
+        'C9999999&9999999C',
+        'C9999999&9999999C',
+        'C9999999&9999999C',
+        'CCCCCCCCDCCCCCCCC',
+      ],
+      inspect: { ':': '長いすだ。左右に同じ数ずつ、きっちり並んでいる。', '^': '祭壇だ。左右に 1 本ずつ、ろうそくが灯っている。' },
+      events: [
+        { x: 8, y: 13, on: 'step', warp: { map: 'mhall', x: 3, y: 1, dir: 'down' } },
+        { x: 8, y: 0, on: 'step', when: f => f.c4_wed, warp: { map: 'oku', x: 7, y: 18, dir: 'up' } },
+        { x: 8, y: 2, sprite: 'priest', on: 'bump', when: f => !f.c4_wed, scene: 'c4_wedding' },
+        { x: 8, y: 9, on: 'step', when: f => !f.c4_wed, scene: 'c4_wedding' },
+        { x: 7, y: 3, sprite: 'cpd', on: 'bump', scene: f => f.c4_wed ? 'c4_couple2' : 'c4_couple' },
+        { x: 9, y: 3, sprite: 'maleic', on: 'bump', scene: f => f.c4_wed ? 'c4_couple2' : 'c4_couple' },
+        { x: 3, y: 5, sprite: 'dicyclo', on: 'bump', scene: 'c4_dicyclo' },
+        { x: 4, y: 7, sprite: 'meso', on: 'bump', text: ['参列者「対称！ 対称！ ……あ、今日はお祝いだった。おめでとう！」'] },
+        { x: 12, y: 7, sprite: 'meso', on: 'bump', text: ['参列者「新郎新婦の席の数も、左右で同じにしてあるのです」'] },
+      ],
+    },
+
+    oku: {
+      name: '奥の院', ch: 4, bgm: 'mirror',
+      grid: [
+        'CCCCCCCCCCCCCCC',
+        'CCCC@@@@@@@CCCC',
+        'CCCC@@@@@@@CCCC',
+        'C9999999999999C',
+        'C1999999999991C',
+        'C1999999999991C',
+        'C1999999999991C',
+        'C1999999999991C',
+        'C1999999999991C',
+        'CCCC8888888CCCC',
+        'CCCC8888888CCCC',
+        'CCCC8888888CCCC',
+        'C9999999999999C',
+        'C9999999999999C',
+        'C1999999999991C',
+        'C9999999999999C',
+        'C1999999999991C',
+        'C9999999999999C',
+        'C9999999999999C',
+        'CCCCCCCDCCCCCCC',
+      ],
+      swap: { '@': f => f.c4_shatter ? '?' : null },
+      inspect: { '@': f => f.c4_shatter ? '粉々に割れた大鏡だ。かけらの 1 枚 1 枚に、自分の顔が小さく映っている。' : '天井まで届く大きな鏡だ。のぞきこむと、自分の顔が映る。' },
+      events: [
+        { x: 7, y: 19, on: 'step', warp: { map: 'chapel', x: 8, y: 1, dir: 'down' } },
+        // ボスの前の休み場所（ブルバレンが茶を出してくれる）
+        { x: 2, y: 17, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', when: f => !f.c4_boss, scene: 'c4_rest' },
+        ...[4, 5, 6, 7, 8, 9, 10].map(x => ({ x, y: 13, on: 'step', when: f => !f.c4_guards, scene: 'c4_okumae' })),
+        { x: 5, y: 11, sprite: 'meso', on: 'bump', when: f => !f.c4_guards, scene: 'c4_okumae' },
+        { x: 9, y: 11, sprite: 'meso', on: 'bump', when: f => !f.c4_guards, scene: 'c4_okumae' },
+        { x: 7, y: 4, sprite: f => f.c4_shatter ? 'achiralOpen' : 'achiral', on: 'bump', when: f => !f.c4_boss, scene: 'c4_boss' },
+        ...[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(x => ({ x, y: 7, on: 'step', when: f => f.c4_guards && !f.c4_boss, scene: 'c4_boss' })),
+        { x: 7, y: 3, sprite: 'racemizer', when: f => f.c4_racem && !f.c4_shatter },
       ],
     },
   };

@@ -386,7 +386,152 @@ const Sprites = (() => {
       circle(c, x, y, s, 8, 8, 3, null, '#cfe6ff');
       dot(c, x, y, s, 7.5, 2.5, 1, 5, '#e8f4ff');
     },
+
+    // ---- 第 4 章（鏡の回廊） ----
+    // 森の北の出口（第 4 章まで木でふさがっている。開くと道になる）
+    'x': (c, x, y, s, tx, ty) => TILE['T'](c, x, y, s, tx, ty),
+    // 山の岩肌
+    'H': (c, x, y, s, tx, ty, nb) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#5f6472');
+      for (let r = 0; r < 3; r++) dot(c, x, y, s, 0, 4 + r * 5 + Math.floor(hash(tx, ty, r) * 2), 16, 1, '#4d515e');
+      for (let i = 0; i < 3; i++) dot(c, x, y, s, Math.floor(hash(tx, ty, i + 4) * 13), Math.floor(hash(tx, ty, i + 7) * 13), 3, 2, '#727786');
+      if (nb(0, -1) !== 'H') { dot(c, x, y, s, 0, 0, 16, 2, '#8a8f9c'); dot(c, x, y, s, 0, 2, 16, 1, '#4d515e'); }
+    },
+    // 夜空（星が散らばる）
+    '`': (c, x, y, s, tx, ty) => {
+      const g = c.createLinearGradient(0, y, 0, y + s);
+      g.addColorStop(0, ty < 2 ? '#070920' : '#11123a'); g.addColorStop(1, ty < 2 ? '#0d0f2e' : '#1b1846');
+      c.fillStyle = g; c.fillRect(x, y, s, s);
+      for (let i = 0; i < 3; i++) if (hash(tx, ty, i + 20) < 0.5) dot(c, x, y, s, Math.floor(hash(tx, ty, i) * 15), Math.floor(hash(tx, ty, i + 3) * 15), 1, 1, i ? '#cfd6ff' : '#ffffff');
+      if (hash(tx, ty, 31) < 0.12) { dot(c, x, y, s, 7, 5, 1, 5, '#e8ecff'); dot(c, x, y, s, 5, 7, 5, 1, '#e8ecff'); }
+    },
+    // 白い大理石の壁
+    'C': (c, x, y, s, tx, ty, nb) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#e9e6dc');
+      for (let r = 0; r < 4; r++) { dot(c, x, y, s, 0, r * 4 + 3, 16, 1, '#cfcabb'); dot(c, x, y, s, (r + ty) % 2 ? 3 : 11, r * 4, 1, 3, '#cfcabb'); }
+      if (nb(0, 1) !== 'C' && nb(0, 1) !== '1') dot(c, x, y, s, 0, 14, 16, 2, '#b9b3a2');
+      if (nb(0, -1) !== 'C') { dot(c, x, y, s, 0, 0, 16, 2, '#d4af37'); }
+      void tx;
+    },
+    // 大理石の床（金の象眼）
+    '9': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, (tx + ty) % 2 ? '#dcd8cc' : '#e6e2d7');
+      dot(c, x, y, s, 0, 0, 16, 1, '#cbc6b7'); dot(c, x, y, s, 0, 0, 1, 16, '#cbc6b7');
+      circle(c, x, y, s, 0, 0, 1.4, '#d4af37');
+    },
+    // 柱（縦溝つき）
+    '1': (c, x, y, s, tx, ty) => {
+      TILE['9'](c, x, y, s, tx, ty);
+      dot(c, x, y, s, 2, 0, 12, 2, '#d4af37'); dot(c, x, y, s, 3, 2, 10, 12, '#f7f5ef');
+      for (let i = 0; i < 3; i++) dot(c, x, y, s, 5 + i * 2.5, 3, 1, 10, '#d9d4c6');
+      dot(c, x, y, s, 3, 2, 2, 12, '#ffffff'); dot(c, x, y, s, 11, 2, 2, 12, '#cfc9b9');
+      dot(c, x, y, s, 2, 14, 12, 2, '#b9b3a2');
+    },
+    // 柱廊の奥の暗がり
+    '"': (c, x, y, s) => { const g = c.createLinearGradient(0, y, 0, y + s); g.addColorStop(0, '#15162e'); g.addColorStop(1, '#262849'); c.fillStyle = g; c.fillRect(x, y, s, s); },
+    // 正面の大扉（飾り）
+    '7': (c, x, y, s, tx, ty, nb) => {
+      TILE['"'](c, x, y, s);
+      dot(c, x, y, s, 2, 0, 12, 16, '#c9d3e6'); dot(c, x, y, s, 7.5, 0, 1, 16, '#8a96b0');
+      dot(c, x, y, s, 2, 0, 1, 16, '#d4af37'); dot(c, x, y, s, 13, 0, 1, 16, '#d4af37');
+      if (nb(0, -1) !== '7') dot(c, x, y, s, 2, 0, 12, 2, '#d4af37');
+      circle(c, x, y, s, 6, 9, 0.8, '#d4af37'); circle(c, x, y, s, 10, 9, 0.8, '#d4af37');
+    },
+    // 大理石の階段
+    '8': (c, x, y, s) => {
+      for (let i = 0; i < 4; i++) { dot(c, x, y, s, 0, i * 4, 16, 3, '#f1eee6'); dot(c, x, y, s, 0, i * 4 + 3, 16, 1, '#bdb7a7'); }
+    },
+    // 青い炎のかがり火
+    '+': (c, x, y, s, tx, ty) => {
+      TILE['9'](c, x, y, s, tx, ty);
+      dot(c, x, y, s, 6, 11, 4, 5, '#8a8f99'); poly(c, x, y, s, [[3, 8], [13, 8], [11, 12], [5, 12]], '#d4af37', '#8a6a1a');
+      c.save(); c.shadowColor = '#7fd4ff'; c.shadowBlur = s / 2;
+      poly(c, x, y, s, [[5, 8], [8, 0.5], [11, 8]], '#5fb8ff'); poly(c, x, y, s, [[6.5, 8], [8, 3.5], [9.5, 8]], '#e8f8ff');
+      c.restore();
+    },
+    // 鏡の湖（波ひとつない水面。映り込みはマップの描画で重ねる）
+    'v': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#0f1d3d');
+      if (hash(tx, ty, 2) < 0.25) dot(c, x, y, s, Math.floor(hash(tx, ty) * 12), Math.floor(hash(tx, ty, 1) * 15), 4, 1, '#22386a');
+    },
+    // 湖に映った扉へ続く道（歩ける水面）
+    'z': (c, x, y, s, tx, ty) => {
+      TILE['v'](c, x, y, s, tx, ty);
+      dot(c, x, y, s, 7, 2 + (ty % 2) * 6, 2, 2, '#9fd0ff');
+    },
+    // 鏡が割れたあとの湖（さざ波）
+    'j': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#1d3b6e');
+      for (let i = 0; i < 2; i++) { const gx = Math.floor(hash(tx, ty, i) * 10), gy = 3 + i * 7; dot(c, x, y, s, gx, gy, 5, 1, '#6f9bd8'); dot(c, x, y, s, gx + 1, gy - 1, 3, 1, '#b8d4ff'); }
+    },
+    // 鏡の広間：鏡の床・ガラスの壁・スイッチ・閉じた格子
+    '%': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, (tx + ty) % 2 ? '#c4d0e4' : '#ccd8ea');
+      dot(c, x, y, s, 0, 0, 16, 1, '#a9b6cd'); dot(c, x, y, s, 0, 0, 1, 16, '#a9b6cd');
+      for (let i = 0; i < 3; i++) dot(c, x, y, s, 9 + i, 3 + i * 2, 4 - i, 1, 'rgba(255,255,255,.7)');
+    },
+    '!': (c, x, y, s, tx, ty) => {
+      TILE['%'](c, x, y, s, tx, ty);
+      c.fillStyle = 'rgba(150, 220, 255, 0.45)'; c.fillRect(x + s * 0.2, y, s * 0.6, s);
+      dot(c, x, y, s, 4, 0, 1, 16, '#eaf8ff'); dot(c, x, y, s, 11, 0, 1, 16, '#7fb0d8');
+      dot(c, x, y, s, 6, (ty * 5) % 12, 2, 3, 'rgba(255,255,255,.8)');
+    },
+    '$': (c, x, y, s, tx, ty) => {
+      TILE['%'](c, x, y, s, tx, ty);
+      c.save(); c.shadowColor = '#ffe58a'; c.shadowBlur = s / 3;
+      circle(c, x, y, s, 8, 8, 5.5, '#f6f1d0', '#d4af37'); c.restore();
+      circle(c, x, y, s, 8, 8, 3, null, '#d4af37'); dot(c, x, y, s, 7.5, 4, 1, 8, '#d4af37');
+    },
+    '[': (c, x, y, s, tx, ty) => mirrorGate(c, x, y, s, tx, ty),
+    ']': (c, x, y, s, tx, ty) => mirrorGate(c, x, y, s, tx, ty),
+    '}': (c, x, y, s, tx, ty) => mirrorGate(c, x, y, s, tx, ty),
+    // 婚礼の間：赤いじゅうたん・長いす・祭壇
+    '&': (c, x, y, s, tx, ty) => {
+      TILE['9'](c, x, y, s, tx, ty);
+      dot(c, x, y, s, 2, 0, 12, 16, '#9b1d2b'); dot(c, x, y, s, 2, 0, 1, 16, '#d4af37'); dot(c, x, y, s, 13, 0, 1, 16, '#d4af37');
+      if (ty % 2) dot(c, x, y, s, 7, 7, 2, 2, '#d4af37');
+    },
+    ':': (c, x, y, s, tx, ty) => {
+      TILE['9'](c, x, y, s, tx, ty);
+      dot(c, x, y, s, 0, 3, 16, 4, '#7a4b2a'); dot(c, x, y, s, 0, 8, 16, 4, '#8f5a33'); dot(c, x, y, s, 0, 3, 16, 1, '#a8703f');
+      dot(c, x, y, s, 1, 12, 2, 3, '#5a3519'); dot(c, x, y, s, 13, 12, 2, 3, '#5a3519');
+    },
+    '^': (c, x, y, s, tx, ty) => {
+      TILE['9'](c, x, y, s, tx, ty);
+      dot(c, x, y, s, 1, 5, 14, 11, '#f4f1e8'); dot(c, x, y, s, 1, 5, 14, 3, '#d4af37'); dot(c, x, y, s, 6, 8, 4, 8, '#e3d9b8');
+      c.save(); c.shadowColor = '#ffd27a'; c.shadowBlur = s / 4;
+      dot(c, x, y, s, 3, 1, 1.5, 4, '#f4f4f4'); dot(c, x, y, s, 11.5, 1, 1.5, 4, '#f4f4f4');
+      circle(c, x, y, s, 3.75, 0.8, 0.8, '#ffd27a'); circle(c, x, y, s, 12.25, 0.8, 0.8, '#ffd27a');
+      c.restore();
+    },
+    // 奥の院の大鏡（割れると ? になる）
+    '@': (c, x, y, s, tx, ty, nb) => bigMirror(c, x, y, s, tx, ty, nb, false),
+    '?': (c, x, y, s, tx, ty, nb) => bigMirror(c, x, y, s, tx, ty, nb, true),
   };
+  // 鏡の広間の格子（閉じている）
+  function mirrorGate(c, x, y, s, tx, ty) {
+    TILE['C'](c, x, y, s, tx, ty, () => 'C');
+    dot(c, x, y, s, 2, 1, 12, 15, '#20223f');
+    for (let i = 0; i < 4; i++) dot(c, x, y, s, 3 + i * 3, 1, 1, 15, '#c4d0e4');
+    dot(c, x, y, s, 2, 7, 12, 1, '#d4af37');
+  }
+  // 大きな鏡。となりのタイルを見て、金の縁を外側だけに描く
+  function bigMirror(c, x, y, s, tx, ty, nb, broken) {
+    const isM = d => nb(...d) === '@' || nb(...d) === '?';
+    const g = c.createLinearGradient(x, y, x + s, y + s);
+    g.addColorStop(0, broken ? '#6a7690' : '#e8f2ff'); g.addColorStop(1, broken ? '#3a4258' : '#8fa8cc');
+    c.fillStyle = g; c.fillRect(x, y, s, s);
+    if (!broken) { dot(c, x, y, s, (tx * 3) % 10, 2, 2, 12, 'rgba(255,255,255,.55)'); }
+    else {
+      c.strokeStyle = '#e8f2ff'; c.lineWidth = Math.max(1, s / 16);
+      c.beginPath(); c.moveTo(x + s * 0.5, y); c.lineTo(x + s * 0.3, y + s * 0.45); c.lineTo(x + s * 0.7, y + s * 0.6); c.lineTo(x + s * 0.45, y + s);
+      c.moveTo(x + s * 0.3, y + s * 0.45); c.lineTo(x, y + s * 0.35); c.moveTo(x + s * 0.7, y + s * 0.6); c.lineTo(x + s, y + s * 0.75); c.stroke();
+    }
+    if (!isM([0, -1])) dot(c, x, y, s, 0, 0, 16, 2, '#d4af37');
+    if (!isM([0, 1])) dot(c, x, y, s, 0, 14, 16, 2, '#d4af37');
+    if (!isM([-1, 0])) dot(c, x, y, s, 0, 0, 2, 16, '#d4af37');
+    if (!isM([1, 0])) dot(c, x, y, s, 14, 0, 2, 16, '#d4af37');
+  }
   // 配向性の門（閉じている）。色の旗で、どの紋章が要るかを示す
   function gate(c, x, y, s, color) {
     TILE['Z'](c, x, y, s, 0, 0);
@@ -396,7 +541,8 @@ const Sprites = (() => {
     dot(c, x, y, s, 5, 3, 6, 3, color);
   }
   const SOLID = new Set(['T', '~', 'M', 'r', '#', 'B', 'S', 'F', 'W', 'R', 'h', 'E', 'O', 'K', 'G', 'X', 'L', 'k', '|', 'Y',
-    'Z', 'I', 'J', 'V', 'N', 'U', 'P', 'A', 't', 'y', 'e', 'a']);
+    'Z', 'I', 'J', 'V', 'N', 'U', 'P', 'A', 't', 'y', 'e', 'a',
+    'x', 'H', '`', 'C', '1', '"', '7', '+', 'v', 'j', '!', '[', ']', '}', ':', '^', '@', '?']);
 
   // nb(dx, dy) はとなりのタイルの文字を返す（マップの外は木とみなす）
   function drawTile(ctx, ch, x, y, s, tx, ty, nb = () => '.') { (TILE[ch] || TILE['.'])(ctx, x, y, s, tx, ty, nb); }
@@ -441,10 +587,10 @@ const Sprites = (() => {
         c.strokeStyle = '#ddd'; c.lineWidth = u; c.beginPath(); c.moveTo(x + 8 * u, y + 8.5 * u); c.lineTo(x + hx * u, y + hy * u); c.stroke();
         circle(c, x, y, s, hx, hy, 1.8, cols[i], '#111');
       });
-      circle(c, x, y, s, 8, 8.5, 5, '#2b2f3a', '#fff');
+      circle(c, x, y, s, 8, 8.5, 5, o.body || '#2b2f3a', o.rim || '#fff');
       const d = o.dir || 'down';
       const ex = d === 'left' ? -1.2 : d === 'right' ? 1.2 : 0, ey = d === 'up' ? -1.5 : 0;
-      if (d !== 'up') { dot(c, x, y, s, 6 + ex, 7.5 + ey, 1, 2, '#fff'); dot(c, x, y, s, 9 + ex, 7.5 + ey, 1, 2, '#fff'); }
+      if (d !== 'up') { dot(c, x, y, s, 6 + ex, 7.5 + ey, 1, 2, o.eye || '#fff'); dot(c, x, y, s, 9 + ex, 7.5 + ey, 1, 2, o.eye || '#fff'); }
       else { c.fillStyle = '#fff'; c.font = `${Math.round(5 * u)}px sans-serif`; c.textAlign = 'center'; c.fillText('C', x + 8 * u, y + 10.3 * u); }
     },
     prof: (c, x, y, s) => person(c, x, y, s, { cloth: '#3b5ba5', coat: '#f0f0f0', hair: '#b8b8b8', glasses: true }),
@@ -716,7 +862,109 @@ const Sprites = (() => {
     fruit(c, x, y, s) { person(c, x, y, s, { cloth: '#e08a2e', hair: '#5a3a1e' }); dot(c, x, y, s, 5, 9, 6, 5, '#f4f4f4'); },
     butler(c, x, y, s) { person(c, x, y, s, { cloth: '#1f1f28', hair: '#9a9a9a' }); dot(c, x, y, s, 7, 8, 2, 3, '#f4f4f4'); dot(c, x, y, s, 7.3, 8, 1.4, 1, '#c0392b'); },
     student(c, x, y, s) { person(c, x, y, s, { cloth: '#6a7fb5', hair: '#3a2a1a', glasses: true }); dot(c, x, y, s, 10, 9, 4, 5, '#c0392b'); dot(c, x, y, s, 10.5, 9.5, 3, 4, '#f4f4f4'); },
+
+    // ---- 第 4 章 ----
+    // 影のカーボ：カーボを左右反転して、暗い色で描く（o.colors は仲間の色）
+    shadow(c, x, y, s, o = {}) {
+      const dark = (o.colors || ['#888', '#888', '#888', '#888']).map(col => col + '99');
+      c.save(); c.translate(x + s, y); c.scale(-1, 1);
+      c.shadowColor = '#b48cff'; c.shadowBlur = s / 5;
+      CHAR.hero(c, 0, 0, s, { colors: dark, dir: 'down', body: '#120a1e', rim: '#b48cff', eye: '#ff5c8a' });
+      c.restore();
+    },
+    // ブルバレン：会うたびに（時間とともに）形が変わる。3 つの形
+    bull0(c, x, y, s) { bullvalene(c, x, y, s, 0); },
+    bull1(c, x, y, s) { bullvalene(c, x, y, s, 1); },
+    bull2(c, x, y, s) { bullvalene(c, x, y, s, 2); },
+    priest(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#f4f1e8', mask: true, dress: true });
+      poly(c, x, y, s, [[4.5, 2], [11.5, 2], [10, -2.5], [8, -4], [6, -2.5]], '#f4f1e8', '#d4af37');   // 高い帽子
+      dot(c, x, y, s, 7.5, -3, 1, 5, '#d4af37');
+      dot(c, x, y, s, 7.5, 8, 1, 7, '#d4af37');
+    },
+    // 花婿シクロペンタジエン（五角形。蝶ネクタイ）
+    cpd(c, x, y, s) {
+      const pts = [...Array(5)].map((_, i) => [8 + 6 * Math.cos(-Math.PI / 2 + i * 2 * Math.PI / 5), 8.5 + 6 * Math.sin(-Math.PI / 2 + i * 2 * Math.PI / 5)]);
+      poly(c, x, y, s, pts, '#6fb3e0', '#2c5f86');
+      dot(c, x, y, s, 6, 7, 1, 2, '#111'); dot(c, x, y, s, 9, 7, 1, 2, '#111');
+      poly(c, x, y, s, [[5.5, 11], [8, 12.2], [5.5, 13.4]], '#111'); poly(c, x, y, s, [[10.5, 11], [8, 12.2], [10.5, 13.4]], '#111');
+    },
+    // 花嫁の無水マレイン酸（環とベール）
+    maleic(c, x, y, s) {
+      poly(c, x, y, s, [[8, 0.5], [14, 5], [15, 16], [1, 16], [2, 5]], 'rgba(255,255,255,.75)', '#e8e8f4');   // ベール
+      const pts = [...Array(5)].map((_, i) => [8 + 5 * Math.cos(-Math.PI / 2 + i * 2 * Math.PI / 5), 9.5 + 5 * Math.sin(-Math.PI / 2 + i * 2 * Math.PI / 5)]);
+      poly(c, x, y, s, pts, '#ffd1dc', '#c46a86');
+      circle(c, x, y, s, 3, 12.5, 1.6, '#ff7b72'); circle(c, x, y, s, 13, 12.5, 1.6, '#ff7b72');   // 2 つの C=O
+      dot(c, x, y, s, 6, 8.5, 1, 2, '#111'); dot(c, x, y, s, 9, 8.5, 1, 2, '#111');
+    },
+    // ジシクロ兄弟（勝手にくっついた 2 つの五角形）
+    dicyclo(c, x, y, s) {
+      [[5, '#7fb88a'], [11, '#6aa877']].forEach(([cx, col]) => {
+        const pts = [...Array(5)].map((_, i) => [cx + 4.2 * Math.cos(-Math.PI / 2 + i * 2 * Math.PI / 5), 10 + 4.2 * Math.sin(-Math.PI / 2 + i * 2 * Math.PI / 5)]);
+        poly(c, x, y, s, pts, col, '#2f5e3a');
+        dot(c, x, y, s, cx - 1.5, 9, 1, 1.5, '#111'); dot(c, x, y, s, cx + 0.5, 9, 1, 1.5, '#111');
+      });
+    },
+    // ラセマイザー：フードと、鏡の仮面
+    racemizer(c, x, y, s) {
+      poly(c, x, y, s, [[8, 0], [14, 6], [14.5, 16], [1.5, 16], [2, 6]], '#2a1a3f', '#6b4fb0');
+      const g = c.createLinearGradient(x + s * 0.3, y + s * 0.15, x + s * 0.7, y + s * 0.6);
+      g.addColorStop(0, '#f4f8ff'); g.addColorStop(0.5, '#a9b8d6'); g.addColorStop(1, '#e6eeff');
+      c.fillStyle = g; c.beginPath(); c.ellipse(x + s * 0.5, y + s * 0.36, s * 0.2, s * 0.24, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = '#d4af37'; c.lineWidth = Math.max(1, s / 16); c.stroke();
+      dot(c, x, y, s, 6, 3, 1, 4, 'rgba(255,255,255,.9)');
+      dot(c, x, y, s, 7.75, 11, 0.5, 5, '#6b4fb0');
+    },
+    // アキラル：光を浴びた姿 / 手をほどいた姿
+    achiralLit(c, x, y, s) {
+      CHAR.achiral(c, x, y, s);
+      c.save(); c.globalAlpha = 0.35; c.fillStyle = '#b48cff'; c.beginPath(); c.arc(x + s / 2, y + s / 2, s * 0.55, 0, Math.PI * 2); c.fill(); c.restore();
+      dot(c, x, y, s, 7.75, 1, 0.5, 15, '#ff9bd2');                // 鏡面がゆらぐ
+    },
+    achiralOpen(c, x, y, s) {
+      poly(c, x, y, s, [[8, 6], [13.5, 16], [2.5, 16]], '#f4f4f4', '#bbb');
+      poly(c, x, y, s, [[8, 6], [13.5, 16], [11, 16], [8, 9]], '#d8d8d8');   // 裂けたローブ
+      dot(c, x, y, s, 5, 2, 6, 6, '#f1e4d0'); dot(c, x, y, s, 5, 1, 6, 2, '#e8e8e8');
+      dot(c, x, y, s, 6, 4, 1, 1, '#222'); dot(c, x, y, s, 9, 4, 1, 1, '#222');
+      dot(c, x, y, s, 2.5, 10, 2.5, 2, '#f1e4d0'); dot(c, x, y, s, 11, 10, 2.5, 2, '#f1e4d0');   // ほどいた両手
+    },
+    // 回転の扉（左のハンドル・扉・右のハンドル）
+    rotDoorL(c, x, y, s) { rotHandle(c, x, y, s); },
+    rotDoorR(c, x, y, s) { rotHandle(c, x, y, s); },
+    rotDoorC(c, x, y, s) {
+      dot(c, x, y, s, 0, 0, 16, 16, '#c9d3e6'); dot(c, x, y, s, 0, 0, 16, 2, '#d4af37'); dot(c, x, y, s, 0, 14, 16, 2, '#d4af37');
+      circle(c, x, y, s, 8, 8, 5, null, '#6b7896'); circle(c, x, y, s, 8, 8, 2.5, '#8fa8cc', '#d4af37');
+      poly(c, x, y, s, [[3, 6], [5, 3], [6, 6.5]], '#6b7896'); poly(c, x, y, s, [[13, 10], [11, 13], [10, 9.5]], '#6b7896');
+    },
+    // 回廊の小部屋の分子（鏡面を持つ cis 体 / C₂ だけの trans 体）
+    molMeso(c, x, y, s) { ringWithMethyls(c, x, y, s, false); },
+    molChiral(c, x, y, s) { ringWithMethyls(c, x, y, s, true); },
   };
+  function bullvalene(c, x, y, s, k) {
+    // 3 本の腕（形が変わるたびに、二重結合の位置が回る）
+    const base = [[8, 2], [2.5, 12.5], [13.5, 12.5]];
+    circle(c, x, y, s, 8, 9, 3, '#c79bff', '#5a3a8a');
+    base.forEach(([bx, by], i) => {
+      c.strokeStyle = (i === k) ? '#ffe066' : '#8a6abf'; c.lineWidth = Math.max(1, s / 8);
+      c.beginPath(); c.moveTo(x + 8 * s / 16, y + 9 * s / 16); c.lineTo(x + bx * s / 16, y + by * s / 16); c.stroke();
+      circle(c, x, y, s, bx, by, 2, '#a07ae0', '#5a3a8a');
+    });
+    dot(c, x, y, s, 6.5, 8.5, 1, 0.6, '#111'); dot(c, x, y, s, 8.5, 8.5, 1, 0.6, '#111');   // 眠そうな目
+  }
+  function rotHandle(c, x, y, s) {
+    dot(c, x, y, s, 0, 0, 16, 16, '#8a96b0'); dot(c, x, y, s, 0, 0, 16, 2, '#d4af37'); dot(c, x, y, s, 0, 14, 16, 2, '#d4af37');
+    circle(c, x, y, s, 8, 8, 5.5, null, '#d4af37');
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; c.strokeStyle = '#d4af37'; c.lineWidth = Math.max(1, s / 12); c.beginPath(); c.moveTo(x + s / 2, y + s / 2); c.lineTo(x + s / 2 + Math.cos(a) * s * 0.34, y + s / 2 + Math.sin(a) * s * 0.34); c.stroke(); }
+    circle(c, x, y, s, 8, 8, 1.6, '#f2cc60');
+  }
+  function ringWithMethyls(c, x, y, s, trans) {
+    const pts = [...Array(6)].map((_, i) => [8 + 5 * Math.cos(Math.PI / 6 + i * Math.PI / 3), 9 + 5 * Math.sin(Math.PI / 6 + i * Math.PI / 3)]);
+    poly(c, x, y, s, pts, '#e8f0ff', '#6b7896');
+    circle(c, x, y, s, 3.5, 4, 1.6, '#ffb347');
+    circle(c, x, y, s, trans ? 12.5 : 12.5, trans ? 14 : 4, 1.6, '#ffb347');
+    if (!trans) dot(c, x, y, s, 7.75, 1, 0.5, 15, 'rgba(120,140,190,.6)');    // 鏡面
+    dot(c, x, y, s, 6.5, 8.5, 1, 1, '#111'); dot(c, x, y, s, 8.5, 8.5, 1, 1, '#111');
+  }
 
   function drawChar(ctx, id, x, y, s, o) { (CHAR[id] || CHAR.victim)(ctx, x, y, s, o); }
 
