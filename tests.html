@@ -324,7 +324,8 @@
     // 部屋 1：弟を扉の真上（有機層）へ連れて行き、酸
     at('amS', 7, 11); X.applyPh(st, 1, 'acid', free);
     if (st.res.amS.layer !== 'aq') exBad.push('部屋 1：酸で弟が水層へ下りない');
-    // 部屋 2：NaOH ではクレゾールも下りて扉の前をふさぐ。重曹に替えると、クレゾールだけ上がる
+    // 部屋 2：クレゾールは扉の前（有機層）から動かない。NaOH では扉の前（水層）に下りてふさぐ。重曹に替えると、クレゾールだけ上がる
+    if (!X.residents.cres.fixed || X.residents.cres.at.join() !== X.locks[1].front.join()) exBad.push('部屋 2：クレゾールが、扉の真上で動かない人になっていない');
     X.applyPh(st, 2, 'base', free);
     if (st.res.cres.layer !== 'aq' || st.res.ibu.layer !== 'aq') exBad.push('部屋 2：NaOH で 2 人とも水層へ下りない');
     X.applyPh(st, 2, 'bicarb', free);
@@ -334,6 +335,9 @@
     if (st.res.mand.layer !== 'aq') exBad.push('部屋 3：塩基で番人が水層へ下りない');
     at('amR', 7, 3); X.applyPh(st, 3, 'acid', free);
     if (st.res.amR.layer !== 'aq' || st.res.mand.layer !== 'org') exBad.push('部屋 3：酸で、姉と番人が入れ替わらない');
+    // 部屋 3：水層の扉の前は、まわりが壁の小部屋（上から下りるしかない）
+    const [px, py] = X.locks[2].front;
+    if ([[px - 1, py], [px + 1, py], [px, py + 1]].some(([x, y]) => floor('aq', x, y))) exBad.push('部屋 3：扉の前（水層）に、横か下から歩いて入れる');
     // 壁の下へは移らない（部屋 3 の水層は 2 行目が壁）
     const st2 = X.init(); st2.res.amR.x = 5; st2.res.amR.y = 2; X.applyPh(st2, 3, 'acid', free);
     if (st2.res.amR.layer !== 'org') exBad.push('壁の下へ移ってしまう');
@@ -342,7 +346,9 @@
       const cells = []; for (let y = r.y0; y <= r.y1; y++) for (let x = 1; x <= 13; x++) if (free(layer, x, y)) cells.push([x, y]);
       const seen = new Set([cells[0].join()]), q = [cells[0]];
       while (q.length) { const [x, y] = q.shift(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = [x + dx, y + dy]; if (y + dy < r.y0 || y + dy > r.y1) continue; if (free(layer, ...k) && !seen.has(k.join())) { seen.add(k.join()); q.push(k); } } }
-      if (seen.size !== cells.length) exBad.push(`${layer} の部屋 ${r.id} に、歩いて行けない場所がある`);
+      // 部屋 3 の水層の小部屋（扉の前）だけは、歩いては行けない
+      const pocket = layer === 'aq' && r.id === 3 ? 1 : 0;
+      if (seen.size !== cells.length - pocket) exBad.push(`${layer} の部屋 ${r.id} に、歩いて行けない場所がある（${cells.length - seen.size} マス）`);
     }
     check('分液区の 3 つの部屋が、どれも解ける', !exBad.length, exBad.join('\n'));
 

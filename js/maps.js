@@ -103,7 +103,7 @@ const Maps = (() => {
     // 第 5 章
     if (stage < 5) return null;
     if (!f.c5_boss) {
-      if (!f.ch5) return G('研究所へ戻る', ['town', 5, 11], ['lab', 5, 3]);
+      if (!f.ch5) return G('研究所で、教授たちと話す', ['town', 5, 11], ['lab', 5, 3]);
       if (!f.c5_gesui) return G('ドラフトの奥の階段から、地下へ', ['lab', 2, 1]);
       if (!f.c5_ambush) return V('地下の街の奥へ進む', ['lab', 2, 1], ['gesui', 5, 8], ['boeki', 10, 0], ['bridge5', 7, 6]);
       if (!f.c5_d5) return V('分液区を抜ける', ['boeki', 19, 5], ['tank5', 6, 9]);
@@ -122,19 +122,22 @@ const Maps = (() => {
     rooms: [{ id: 1, y0: 11, y1: 13, lock: 'c5_d1' }, { id: 2, y0: 6, y1: 9, lock: 'c5_d2' }, { id: 3, y0: 1, y1: 4, lock: 'c5_d3' }],
     residents: {
       amS: { name: 'フェニルエチルアミンの弟', sprite: 'peaS', type: 'amine', room: 1, at: [3, 12], talk: 'c5_res_amS' },
-      ibu: { name: '(R)-イブプロフェン', sprite: 'ibuR', type: 'acid', room: 2, at: [4, 8], talk: 'c5_res_ibu' },
-      cres: { name: 'クレゾールのおじさん', sprite: 'cresol', type: 'phenol', room: 2, at: [7, 6], talk: 'c5_res_cres' },
+      ibu: { name: '(R)-イブプロフェン', sprite: 'ibuR', type: 'acid', room: 2, at: [10, 8], talk: 'c5_res_ibu' },
+      // fixed：ついて歩かない（pH でだけ動く）
+      cres: { name: 'クレゾールのおじさん', sprite: 'cresol', type: 'phenol', room: 2, at: [4, 6], fixed: true, talk: 'c5_res_cres',
+        stay: 'わしは、のんびり屋でな。歩くのは好かん。……NaOH なら、ちと考えるがの' },
       amR: { name: 'フェニルエチルアミンの姉', sprite: 'peaR', type: 'amine', room: 3, at: [3, 3], talk: 'c5_res_amR' },
-      mand: { name: 'マンデル酸の番人', sprite: 'mandel', type: 'acid', room: 3, at: [7, 3], fixed: true, talk: 'c5_res_mand' },
+      mand: { name: 'マンデル酸の番人', sprite: 'mandel', type: 'acid', room: 3, at: [7, 3], fixed: true, talk: 'c5_res_mand',
+        stay: 'わたしは、ここを動けない。この鍵穴の番をしているからな。……pH には逆らえんが' },
     },
     // 鍵穴の扉：鍵になる住人が、その層で扉の前（front）に立つと開く
     locks: [
       { flag: 'c5_d1', layer: 'aq', at: [7, 10], front: [7, 11], key: 'amS', scene: 'c5_d1_open' },
-      { flag: 'c5_d2', layer: 'aq', at: [7, 5], front: [7, 6], key: 'ibu', scene: 'c5_d2_open' },
+      { flag: 'c5_d2', layer: 'aq', at: [4, 5], front: [4, 6], key: 'ibu', scene: 'c5_d2_open' },
       { flag: 'c5_d3', layer: 'aq', at: [7, 2], front: [7, 3], key: 'amR', scene: 'c5_d3_open' },
     ],
     // ついてくる住人は、扉や出口の上までは来ない（部屋の外へは出ない）
-    thresholds: [[7, 10], [7, 5], [7, 2], [7, 1], [7, 0], [7, 14]],
+    thresholds: [[7, 10, 'aq'], [4, 5, 'aq'], [7, 2, 'aq'], [7, 1, 'aq'], [7, 0, 'aq'], [7, 14, 'org']],
     PH: { neutral: '中性', acid: '酸性（HCl）', bicarb: '弱い塩基性（NaHCO₃）', base: '強い塩基性（NaOH）' },
     TYPE: { amine: 'アミン', acid: 'カルボン酸', phenol: 'フェノール類' },
     // その pH で、どちらの層に溶けるか
@@ -299,8 +302,10 @@ const Maps = (() => {
         { x: 5, y: 8, on: 'step', warp: { map: 'town', x: 5, y: 12, dir: 'down' } },
         { x: 2, y: 1, on: 'step', when: f => f.ch5, warp: { map: 'gesui', x: 5, y: 1, dir: 'down' } },
         // 第 5 章：地下へ行っているあいだ、灯台守とグリニャが研究所で待っている
-        { x: 8, y: 3, sprite: 'keeper', on: 'bump', when: f => f.ch5 && !f.c5_boss, scene: 'c5_lab_keeper' },
-        { x: 9, y: 3, sprite: 'grignard', on: 'bump', when: f => f.ch5 && !f.c5_boss, scene: 'c5_lab_grignard' },
+        { x: 8, y: 3, sprite: 'keeper', on: 'bump', when: f => (f.clear4 || f.ch5) && !f.c5_boss, scene: 'c5_lab_keeper' },
+        { x: 9, y: 3, sprite: 'grignard', on: 'bump', when: f => (f.clear4 || f.ch5) && !f.c5_boss, scene: 'c5_lab_grignard' },
+        { x: 8, y: 4, sprite: 'ketohNoMono', when: f => f.clear4 && !f.ch5 },
+        { x: 9, y: 6, sprite: 'achiralOpen', when: f => f.clear4 && !f.ch5 },
         // 第 5 章のあと：窓辺のボーカ
         { x: 7, y: 6, sprite: 'boka', on: 'bump', when: f => f.c5_boss, scene: 'c5_lab_boka' },
       ],
@@ -1126,7 +1131,8 @@ const Maps = (() => {
         { x: 10, y: 0, on: 'step', when: f => !f.c5_ambush, warp: { map: 'bridge5', x: 7, y: 10, dir: 'up' } },
         { x: 10, y: 0, on: 'step', when: f => f.c5_ambush, text: '配管の橋は、光る液に沈んでいる。もう渡れない。' },
         { x: 19, y: 5, on: 'step', when: f => f.c5_ambush, warp: { map: 'tank5', x: 11, y: 6, dir: 'left' } },
-        { x: 4, y: 10, sprite: 'oil', on: 'bump', scene: 'c5_oil' },
+        { x: 4, y: 10, sprite: 'oil', on: 'bump', scene: f => f.c5t_oil ? 'c5_oil2' : 'c5_oil' },
+        ...[[1, 1], [18, 1], [1, 12], [18, 12]].map(([x, y]) => ({ x, y, sprite: 'lamp', on: 'bump', text: '結晶の街灯だ。透きとおった結晶が、ぼんやり光っている。' })),
         { x: 7, y: 11, sprite: 'glucose', on: 'bump', when: f => !f.c5_ambush, scene: 'c5_glucose' },
         { x: 12, y: 11, sprite: 'aminoKids', on: 'bump', scene: 'c5_amino' },
         { x: 15, y: 10, sprite: 'ibuR', on: 'bump', when: f => !f.c5_ambush, scene: 'c5_ibuR' },
@@ -1188,7 +1194,7 @@ const Maps = (() => {
 
     // 分液区：有機層（上の層）と水層（下の層）は同じ大きさ。はしごで、同じ場所のまま行き来する
     orgL: {
-      name: '分液区（有機層）', ch: 5, bgm: 'waste', layer: 'org', twin: 'aqL',
+      name: '分液区　▲ 上の層（有機層）', ch: 5, bgm: 'waste', layer: 'org', twin: 'aqL',
       grid: [
         '///////////////',
         '/*************/',
@@ -1213,19 +1219,19 @@ const Maps = (() => {
         { x: 10, y: 13, sprite: 'oil', on: 'bump', scene: 'c5_oil_ex' },
         ...[[1, 11, 'acid', 1], [1, 13, 'base', 1], [1, 6, 'acid', 2], [1, 7, 'bicarb', 2], [1, 8, 'base', 2], [1, 3, 'acid', 3], [1, 4, 'base', 3]].map(([x, y, pump, room]) =>
           ({ x, y, sprite: { acid: 'pumpAcid', bicarb: 'pumpBicarb', base: 'pumpBase' }[pump], on: 'bump', pump, room })),
-        ...[[13, 12], [13, 7], [13, 3]].map(([x, y]) => ({ x, y, sprite: f => f.c5foam ? 'ladderFoam' : 'ladder', on: 'bump', ladder: true })),
-        ...[[13, 11], [13, 9], [13, 4]].map(([x, y]) => ({ x, y, sprite: 'brineTap', on: 'bump', tap: true })),
+        ...[[13, 12], [13, 7], [6, 4], [8, 2]].map(([x, y]) => ({ x, y, sprite: f => f.c5foam ? 'ladderFoam' : 'ladder', on: 'bump', ladder: true })),
+        ...[[13, 11], [13, 9], [5, 3]].map(([x, y]) => ({ x, y, sprite: 'brineTap', on: 'bump', tap: true })),
       ],
     },
     aqL: {
-      name: '分液区（水層）', ch: 5, bgm: 'waste', layer: 'aq', twin: 'orgL',
+      name: '分液区　▼ 下の層（水層）', ch: 5, bgm: 'waste', layer: 'aq', twin: 'orgL',
       grid: [
         '///////-///////',
         '///////-///////',
         '///////-///////',
-        '/-------------/',
-        '/-------------/',
-        '///////-///////',
+        '/-----/-///////',
+        '/------////////',
+        '////-//////////',
         '/-------------/',
         '/-------------/',
         '/-------------/',
@@ -1240,14 +1246,14 @@ const Maps = (() => {
       events: [
         { x: 7, y: 0, on: 'step', warp: { map: 'haikan', x: 5, y: 12, dir: 'up' } },
         { x: 7, y: 10, sprite: 'lockS', on: 'bump', when: f => !f.c5_d1, text: ['扉に、キラルな鍵穴がある。左向きの、アミンの手の形だ。', '【ヒント】鍵穴に合う分子が、水層で扉の前に立つと開く。'] },
-        { x: 7, y: 5, sprite: 'lockIbu', on: 'bump', when: f => !f.c5_d2, text: ['扉に、キラルな鍵穴がある。(R) の、カルボン酸の形だ。', '【ヒント】鍵穴に合う分子が、水層で扉の前に立つと開く。'] },
+        { x: 4, y: 5, sprite: 'lockIbu', on: 'bump', when: f => !f.c5_d2, text: ['扉に、キラルな鍵穴がある。(R) の、カルボン酸の形だ。', '【ヒント】鍵穴に合う分子が、水層で扉の前に立つと開く。'] },
         { x: 7, y: 2, sprite: 'lockR', on: 'bump', when: f => !f.c5_d3, text: ['扉に、キラルな鍵穴がある。右向きの、アミンの手の形だ。', '【ヒント】鍵穴に合う分子が、水層で扉の前に立つと開く。'] },
         { x: 7, y: 1, sprite: 'lockOwn', on: 'bump', when: f => !f.c5_d5, scene: 'c5_ownDoor' },
         { x: 10, y: 11, sprite: 'glucose', on: 'bump', scene: f => !f.c5_d1 ? 'c5_hint1' : !f.c5_d2 ? 'c5_hint2' : !f.c5_d3 ? 'c5_hint3' : 'c5_hint4' },
         ...[[1, 11, 'acid', 1], [1, 13, 'base', 1], [1, 6, 'acid', 2], [1, 7, 'bicarb', 2], [1, 8, 'base', 2], [1, 3, 'acid', 3], [1, 4, 'base', 3]].map(([x, y, pump, room]) =>
           ({ x, y, sprite: { acid: 'pumpAcid', bicarb: 'pumpBicarb', base: 'pumpBase' }[pump], on: 'bump', pump, room })),
-        ...[[13, 12], [13, 7], [13, 3]].map(([x, y]) => ({ x, y, sprite: f => f.c5foam ? 'ladderFoam' : 'ladder', on: 'bump', ladder: true })),
-        ...[[13, 11], [13, 9], [13, 4]].map(([x, y]) => ({ x, y, sprite: 'brineTap', on: 'bump', tap: true })),
+        ...[[13, 12], [13, 7], [6, 4], [8, 2]].map(([x, y]) => ({ x, y, sprite: f => f.c5foam ? 'ladderFoam' : 'ladder', on: 'bump', ladder: true })),
+        ...[[13, 11], [13, 9], [5, 3]].map(([x, y]) => ({ x, y, sprite: 'brineTap', on: 'bump', tap: true })),
       ],
     },
 
@@ -1301,6 +1307,7 @@ const Maps = (() => {
       blockedText: { '4': '噴水の代わりに、光る液がゆっくり渦を巻いている。' },
       events: [
         { x: 7, y: 12, on: 'step', warp: { map: 'haikan', x: 5, y: 1, dir: 'down' } },
+        ...[[1, 2], [13, 2], [1, 11], [13, 11]].map(([x, y]) => ({ x, y, sprite: 'lamp', on: 'bump', text: '結晶の街灯だ。透きとおった結晶が、ぼんやり光っている。' })),
         { x: 7, y: 1, on: 'step', when: f => f.c5_cation, warp: { map: 'hoshi', x: 6, y: 9, dir: 'up' } },
         { x: 7, y: 3, sprite: 'cation', on: 'bump', when: f => !f.c5_boss, scene: f => f.c5_cation ? 'c5_cation_rest' : 'c5_cation' },
         // 広場を横切る 1 行（おかみの前を素通りできないように）
@@ -1328,6 +1335,7 @@ const Maps = (() => {
       events: [
         { x: 6, y: 10, on: 'step', warp: { map: 'hiroba', x: 7, y: 2, dir: 'down' } },
         { x: 6, y: 0, on: 'step', warp: { map: 'hannou', x: 7, y: 11, dir: 'up' } },
+        { x: 6, y: 3, sprite: 'boka', when: f => f.c5_star && !f.c5_starGone },
       ],
     },
 

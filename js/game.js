@@ -536,6 +536,7 @@
     const o = UI.choice && UI.choice[+i];
     if (!o) return;
     UI.choice = null;
+    if (o.fn) { renderOverlay(); return o.fn(); }
     if (o.shop) { UI.scene = null; return openShop(o.shop); }
     const sc = UI.scene; UI.scene = null;
     if (o.go) playScene(o.go, sc && sc.onDone);
@@ -585,7 +586,7 @@
   function talkResident(id) {
     const r = Maps.EXTRACT.residents[id];
     if (!S.flags['c5t_' + id] && r.talk) return playScene(r.talk, () => { S.flags['c5t_' + id] = true; save(); if (!r.fixed) followToggle(id); });
-    if (r.fixed) return message(`${r.name}「わたしは、ここを動けない。……pH には逆らえんがな」`);
+    if (r.fixed) return message(`${r.name}「${r.stay}」`);
     followToggle(id);
   }
   function followToggle(id) {
@@ -602,7 +603,7 @@
     if (!id) return;
     const p = st.res[id];
     if (p.layer !== m.layer || Math.abs(p.x - ox) + Math.abs(p.y - oy) > 1) { st.follow = null; return; }
-    if (Maps.EXTRACT.thresholds.some(([x, y]) => x === S.x && y === S.y)) { st.follow = null; flash(`${resName(id)}は、ここで待っている`); return; }
+    if (Maps.EXTRACT.thresholds.some(([x, y, layer]) => x === S.x && y === S.y && layer === m.layer)) { st.follow = null; flash(`${resName(id)}は、ここで待っている`); return; }
     Object.assign(p, { fx: p.x, fy: p.y, mt: UI.move ? UI.move.t0 : 0, x: ox, y: oy });
     checkLocks();
   }
@@ -631,6 +632,15 @@
   }
   const PUMP = { acid: '酸（HCl）', bicarb: '弱い塩基（NaHCO₃）', base: '強い塩基（NaOH）' };
   const INTO = { amine: 'アンモニウム塩になって', acid: 'カルボキシラートになって', phenol: 'フェノキシドになって' };
+  // ポンプは、入れるかどうかを聞いてから（歩いてぶつかっただけで何度も入らないように）
+  function askPump(ev) {
+    const E = Maps.EXTRACT, room = ex().ph[ev.room];
+    UI.held = null;
+    message([`${PUMP[ev.pump]}のポンプだ。（この部屋はいま ${E.PH[room]}）`], () => {
+      UI.choice = [{ t: `${PUMP[ev.pump]}を入れる`, fn: () => usePump(ev) }, { t: 'やめておく' }];
+      renderOverlay();
+    });
+  }
   function usePump(ev) {
     const E = Maps.EXTRACT, st = ex();
     const moved = E.applyPh(st, ev.room, ev.pump, freeIn);
@@ -649,15 +659,27 @@
     save(); Sound.se('transform'); UI.held = null;
     message(lines, () => checkLocks());
   }
-  // はしご：同じ場所のまま、もう片方の層へ
+  // はしご：上る（有機層へ）か下りる（水層へ）かを聞いてから。押しっぱなしで行ったり来たりしないように
+  const LAYER = { org: '上の有機層', aq: '下の水層' };
+  function askLadder() {
+    const m = map(), down = m.layer === 'org';
+    UI.held = null;
+    if (S.flags.c5foam) return useLadder();
+    message([`はしごだ。${down ? '▼ 下の水層へ続いている。' : '▲ 上の有機層へ続いている。'}`], () => {
+      UI.choice = [{ t: down ? '▼ 下の水層へ下りる' : '▲ 上の有機層へ上る', fn: useLadder }, { t: 'やめておく' }];
+      renderOverlay();
+    });
+  }
   function useLadder() {
     const m = map(), st = ex(), other = m.layer === 'org' ? 'aq' : 'org', tw = MAPS[m.twin];
     if (S.flags.c5foam) return message(['はしごのまわりに、泡のかたまり（エマルション）がたまっていて、通れない。', '【ヒント】飽和食塩水の蛇口で、泡を消せる。']);
     if (Sprites.SOLID.has(tw.grid[S.y][S.x])) return message('ここからは、はしごを使えない。はしごの横に立とう。');
     if (Object.values(st.res).some(p => p.layer === other && p.x === S.x && p.y === S.y)) return message('はしごの先に、誰かいる。少し場所を変えよう。');
+    if (tw.events.some(e => e.x === S.x && e.y === S.y && e.on === 'bump' && (!e.when || e.when(S.flags)))) return message('はしごの先は、閉じた扉だ。まだ下りられない。');
     st.follow = null; st.pumps = 0;
-    Sound.se('blip');
+    Sound.se('blip'); UI.held = null;
     warp({ map: m.twin, x: S.x, y: S.y, dir: S.dir });
+    flash(other === 'aq' ? '▼ はしごを下りて、下の水層に来た' : '▲ はしごを上って、上の有機層に来た');
   }
   // 外から分液区に入ったら、まだ扉の開いていない部屋は、はじめに戻す（詰まないように）
   function enterDistrict() {
@@ -767,6 +789,11 @@
         const p = st.res[id];
         if (p.layer !== m.layer) Sprites.drawChar(ctx, r.sprite, (p.x - camX) * TILE, (p.y - camY) * TILE, TILE, { colors });
       }
+      for (const e of MAPS[m.twin].events) {
+        if (!e.sprite || e.pump || e.ladder || e.tap || (e.when && !e.when(S.flags))) continue;
+        if (m.events.some(o => o.x === e.x && o.y === e.y && o.sprite)) continue;
+        Sprites.drawChar(ctx, resolve(e.sprite, S.flags), (e.x - camX) * TILE, (e.y - camY) * TILE, TILE, { colors });
+      }
       ctx.restore();
     }
     for (const e of activeEvents()) {
@@ -789,6 +816,15 @@
     }
     Sprites.drawChar(ctx, 'hero', (hx - camX) * TILE, (hy - camY) * TILE, TILE, { colors, dir: S.dir });
     drawGoalMarks(camX, camY);
+    // 分液区：いまどちらの層にいるかを、左上に出す
+    if (m.layer) {
+      const label = m.layer === 'org' ? '▲ 上の層（有機層）' : '▼ 下の層（水層）';
+      ctx.save(); ctx.font = 'bold 15px sans-serif'; const tw = ctx.measureText(label).width;
+      const bx = Math.round((cv.width - tw) / 2) - 7;   // 画面の端は狭い画面で切れるので、上の真ん中に出す
+      ctx.fillStyle = 'rgba(0, 0, 0, .65)'; ctx.fillRect(bx, 4, tw + 14, 24);
+      ctx.fillStyle = m.layer === 'org' ? '#ffe28a' : '#9fd0ff'; ctx.textBaseline = 'middle'; ctx.fillText(label, bx + 7, 16.5);
+      ctx.restore();
+    }
   }
   // 目的の場所に、上下に揺れる黄色い矢印を出す（会話中は出さない）
   function drawGoalMarks(camX, camY) {
@@ -864,8 +900,8 @@
 
   function trigger(ev) {
     if (ev.res) return talkResident(ev.res);
-    if (ev.pump) return usePump(ev);
-    if (ev.ladder) return useLadder();
+    if (ev.pump) return askPump(ev);
+    if (ev.ladder) return askLadder();
     if (ev.tap) return playScene('c5_tap');
     if (ev.scene) return playScene(resolve(ev.scene, S.flags));
     if (ev.text) return message(resolve(ev.text, S.flags));
@@ -1281,7 +1317,7 @@
       body = win(`<div class="talk">${rows}</div><div class="center"><button class="btn big" data-act="bNext">つぎへ</button></div>`, 'qwin talkwin');
     } else if (B.state === 'intro' || B.state === 'win' || B.state === 'lose') {
       const lines = B.state === 'lose' ? ['カーボは力尽きた……'] : B.lines;
-      body = win(`${lines.map(l => `<p>${esc(l)}</p>`).join('')}<div class="center"><button class="btn big" data-act="bNext">${B.state === 'intro' ? 'たたかう' : 'つぎへ'}</button>
+      body = win(`${lines.map(l => `<p>${esc(l)}</p>`).join('')}<div class="center"><button class="btn big" data-act="bNext">${B.state === 'intro' ? (E.practice ? 'はじめる' : 'たたかう') : 'つぎへ'}</button>
         ${B.state === 'intro' && B.random ? '<button class="btn" data-act="run">にげる</button>' : ''}</div>`, 'msg');
     } else if (B.state === 'levelup') {
       const opts = S.party.map((id, k) => {
@@ -1387,13 +1423,14 @@
 
   // ---- 最後の一枚絵：棚に並んだ 2 本の瓶。文字はアルファベットと数字だけ ----
   function vEnding() {
-    return `<div class="ending" data-act="endingNext"><canvas id="endcv" width="480" height="300" role="img" aria-label="(${S.cfg})-carbo / (${opp(S.cfg)})-obrac"></canvas><div class="end-next">▶</div></div>`;
+    return `<div class="ending" data-act="endingNext"><canvas id="endcv" width="960" height="600" role="img" aria-label="(${S.cfg})-carbo / (${opp(S.cfg)})-obrac"></canvas><div class="end-next">▶</div></div>`;
   }
   function drawEnding() {
     const c = document.getElementById('endcv');
     if (!c) return;
-    const g = c.getContext('2d'), W = c.width, H = c.height;
+    const g = c.getContext('2d'), W = c.width / 2, H = c.height / 2;
     g.imageSmoothingEnabled = false;
+    g.setTransform(2, 0, 0, 2, 0, 0);
     // 朝の光の研究所の壁と、窓の光
     const bg = g.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0, '#f7e7c4'); bg.addColorStop(1, '#d9c39a');
@@ -1426,8 +1463,8 @@
       g.fillStyle = '#fbf8ef'; g.fillRect(x + 4, y + 30, w - 8, 40);
       g.strokeStyle = '#c9bfa6'; g.lineWidth = 1; g.strokeRect(x + 4, y + 30, w - 8, 40);
       g.fillStyle = '#2a2a3a'; g.textAlign = 'center';
-      g.font = 'italic bold 13px "Courier New", monospace'; g.fillText(label, x + w / 2, y + 48);
-      g.font = '11px "Courier New", monospace'; g.fillText(date, x + w / 2, y + 64);
+      g.font = 'italic bold 15px "Courier New", monospace'; g.fillText(label, x + w / 2, y + 48);
+      g.font = '12px "Courier New", monospace'; g.fillText(date, x + w / 2, y + 64);
     });
   }
 

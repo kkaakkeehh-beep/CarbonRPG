@@ -1106,6 +1106,14 @@ const Sprites = (() => {
       circle(c, x, y, s, 12.5, 9, 1.4, '#ff7b72', '#8a1d18');   // COOH
       dot(c, x, y, s, 2, 6, 1, 9, '#d4af37');                    // 番人の杖
     },
+    // 廃液街の、結晶の街灯
+    lamp(c, x, y, s) {
+      dot(c, x, y, s, 7, 7, 2, 9, '#5d6b63'); dot(c, x, y, s, 5, 14, 6, 2, '#3a4547');
+      c.save(); c.shadowColor = '#9fe0ff'; c.shadowBlur = s / 2;
+      poly(c, x, y, s, [[8, 0], [11, 4], [8, 8], [5, 4]], '#d8f4ff', '#7fc4e8');
+      c.restore();
+      dot(c, x, y, s, 7, 2, 1, 3, '#ffffff');
+    },
     // pH のポンプ（酸・弱い塩基・強い塩基で色が違う）
     pumpAcid(c, x, y, s) { pump(c, x, y, s, '#ff6b6b', 'HCl'); },
     pumpBicarb(c, x, y, s) { pump(c, x, y, s, '#8fd16a', 'HCO₃'); },
