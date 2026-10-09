@@ -331,7 +331,7 @@ const Maps = (() => {
         'TTTTTTTTTTTTTTTTTTTTTT',
       ],
       events: [
-        { x: 16, y: 4, sprite: f => f.c3_lastpillar ? 'elderCl' : 'elder', on: 'bump', when: f => !f.ch3 || f.c3_boss, scene: f => f.c5_boss ? 'elder_c5end' : f.c4_boss ? 'elder_c4end' : f.c3_boss ? 'elder_c3' : f.boss ? 'elder_after2' : f.elder ? 'elder_after' : 'elder' },
+        { x: 16, y: 4, sprite: f => f.c3_lastpillar ? 'elderCl' : 'elder', on: 'bump', when: f => !f.ch3 || f.clear3, scene: f => f.c5_boss ? 'elder_c5end' : f.c4_boss ? 'elder_c4end' : f.c3_boss ? 'elder_c3' : f.boss ? 'elder_after2' : f.elder ? 'elder_after' : 'elder' },
         { x: 5, y: 11, on: 'step', warp: { map: 'lab', x: 5, y: 7, dir: 'up' } },
         { x: 10, y: 0, on: 'step', gate: true },
         { x: 11, y: 0, on: 'step', gate: true },
@@ -455,7 +455,7 @@ const Maps = (() => {
         { x: 6, y: 8, sprite: 'granny', on: 'bump', when: f => !f.night && (!f.c2_kidnap || f.c2_rescued), scene: f => f.c2_boss ? staged('c2_granny2', f) : f.c2_rescued ? 'c2_granny2' : 'c2_granny' },
         { x: 8, y: 8, sprite: 'twins', on: 'bump', when: f => !f.night, scene: f => staged('c2_twins_day', f) },
         // 第 3 章が始まったあとも、グリニャの船で港と王国の浜を行き来できる
-        { x: 12, y: 15, sprite: 'grignard', on: 'bump', when: f => !f.night || f.ch3, scene: f => f.ch3 ? 'c3_ferry' : f.c2_boss ? 'c3_board' : 'c2_grignard' },
+        { x: 12, y: 15, sprite: 'grignard', on: 'bump', when: f => (!f.night || f.ch3) && !((f.clear4 || f.ch5) && !f.c5_boss), scene: f => f.ch3 ? 'c3_ferry' : f.c2_boss ? 'c3_board' : 'c2_grignard' },
         { x: 23, y: 20, sprite: 'keeper', on: 'bump', when: f => !f.night && !f.c2_boss, scene: f => (f.c2_clue2 && !f.c2_clue3) ? 'c2_lecture' : 'c2_keeper' },
         { x: 19, y: 4, sprite: 'innkeeper', on: 'bump', scene: f => (f.c2_met || f.c2_boss) ? 'c2_inn' : 'c2_inn_first' },
         // 夜
@@ -519,7 +519,7 @@ const Maps = (() => {
         { x: 1, y: 1, on: 'step', warp: { map: 'port', x: 28, y: 9, dir: 'down' } },
         { x: 12, y: 3, sprite: 'chest', on: 'bump', chest: { item: 'energy', flag: 'c2_chest1' } },
         { x: 17, y: 11, sprite: 'iodo', on: 'bump', when: f => !f.c2_rescued, scene: 'c2_iodo' },
-        { x: 18, y: 11, sprite: 'granny', on: 'bump', when: f => !f.c2_rescued, scene: 'c2_iodo' },
+        { x: 18, y: 11, sprite: 'granny', on: 'bump', when: f => f.c2_kidnap && !f.c2_rescued, scene: 'c2_iodo' },
       ],
     },
 
@@ -587,7 +587,7 @@ const Maps = (() => {
         { x: 16, y: 2, sprite: 'bht', on: 'bump', scene: f => f.c3_boss ? 'c3_guard_end' : 'c3_guard' },
         { x: 27, y: 5, on: 'step', warp: { map: 'tempo', x: 4, y: 6, dir: 'up' } },
         { x: 5, y: 9, sprite: 'octa', on: 'bump', scene: f => f.c3_boss ? 'c3_octa_end' : f.c3_octa ? 'c3_octa2' : 'c3_octa' },
-        { x: 12, y: 17, sprite: 'grignard', on: 'bump', scene: f => f.c3_boss ? 'c3_grignard_end' : 'c3_grignard' },
+        { x: 12, y: 17, sprite: 'grignard', on: 'bump', when: f => !((f.clear4 || f.ch5) && !f.c5_boss), scene: f => f.c3_boss ? 'c3_grignard_end' : 'c3_grignard' },
         { x: 14, y: 16, sprite: 'boat' },
         // 戦いのあと、テンポとラジカは塔の前にいる
         { x: 26, y: 7, sprite: 'tempo', on: 'bump', when: f => f.c3_boss, scene: 'c3_tempo_end' },
@@ -699,7 +699,7 @@ const Maps = (() => {
         { x: 16, y: 5, on: 'step', when: f => f.c3_tempo && !f.c3_lastpillar, scene: 'c3_lastpillar' },
         { x: 13, y: 4, sprite: 'elder', on: 'bump', when: f => f.c3_lastpillar && !f.c3_boss, scene: 'c3_hold' },
         { x: 14, y: 4, sprite: 'naphthaNoCrown', on: 'bump', when: f => f.c3_lastpillar && !f.c3_boss, scene: 'c3_hold_king' },
-        { x: 12, y: 4, sprite: 'elderCl', on: 'bump', when: f => f.c3_boss, scene: 'c3_elder_end' },
+        { x: 12, y: 4, sprite: 'elderCl', on: 'bump', when: f => f.c3_boss && !f.clear3, scene: 'c3_elder_end' },
       ],
     },
 
@@ -908,10 +908,10 @@ const Maps = (() => {
         { x: 11, y: 23, on: 'step', warp: { map: 'mount', x: 10, y: 1, dir: 'down' } },
         { x: 12, y: 23, on: 'step', warp: { map: 'mount', x: 11, y: 1, dir: 'down' } },
         { x: 13, y: 23, on: 'step', warp: { map: 'mount', x: 11, y: 1, dir: 'down' } },
-        { x: 13, y: 21, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', scene: f => f.c4_boss ? 'c4_bull_end' : f.c4_bull ? 'c4_bull_again' : 'c4_bull' },
+        { x: 13, y: 21, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', when: f => !f.c4_in || f.c4_boss, scene: f => f.c4_boss ? 'c4_bull_end' : f.c4_bull ? 'c4_bull_again' : 'c4_bull' },
         { x: 12, y: 14, on: 'step', when: f => f.c4_bull && !f.c4_in, scene: 'c4_enter' },
         { x: 12, y: 14, on: 'step', when: f => f.c4_in && !f.c4_boss, warp: { map: 'kairo', x: 6, y: 27, dir: 'up' } },
-        { x: 10, y: 21, sprite: 'achiralOpen', on: 'bump', when: f => f.c4_boss, scene: f => f.c5_boss ? 'c5_epi_akiral' : 'c4_akiral_end' },
+        { x: 10, y: 21, sprite: 'achiralOpen', on: 'bump', when: f => f.c4_boss && (!f.clear4 || f.c5_boss), scene: f => f.c5_boss ? 'c5_epi_akiral' : 'c4_akiral_end' },
       ],
     },
 
@@ -956,11 +956,11 @@ const Maps = (() => {
         { x: 6, y: 0, on: 'step', warp: { map: 'mhall', x: 3, y: 17, dir: 'up' } },
         ...[[1, 22], [2, 16], [3, 10], [4, 4]].flatMap(([n, y]) => [5, 6, 7].map((x, i) => (
           { x, y, sprite: ['rotDoorL', 'rotDoorC', 'rotDoorR'][i], on: 'bump', when: f => !f['c4_door' + n], scene: 'c4_door' + n }))),
-        { x: 3, y: 25, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', when: f => !f.c4_boss, scene: 'c4_bull2' },
+        { x: 3, y: 25, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', when: f => !f.c4_door4 && !f.c4_boss, scene: 'c4_bull2' },
         { x: 1, y: 7, sprite: 'molMeso', on: 'bump', text: ['逆旋で閉じた、cis 体の分子たちだ。', '2 つのメチル基が同じ側にある。分子の真ん中に、鏡面が通っている（メソ体）。'] },
         { x: 11, y: 7, sprite: 'molChiral', on: 'bump', text: ['同旋で閉じた、trans 体の分子たちだ。', '2 つのメチル基が反対側にある。鏡面はないが、180° 回すと自分に重なる（C₂ 軸）。'] },
         ...[5, 6, 7].map(x => ({ x, y: 9, on: 'step', when: f => f.c4_door3 && !f.c4_c2talk, scene: 'c4_c2talk' })),
-        { x: 9, y: 2, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', when: f => f.c4_door4 && !f.c4_boss, scene: 'c4_bull3' },
+        { x: 9, y: 2, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', when: f => f.c4_door4 && !f.c4_wed && !f.c4_boss, scene: 'c4_bull3' },
         { x: 3, y: 13, sprite: 'chest', on: 'bump', chest: { item: 'coffee', flag: 'c4_chest2' } },
       ],
     },
@@ -1067,7 +1067,7 @@ const Maps = (() => {
       events: [
         { x: 7, y: 19, on: 'step', warp: { map: 'chapel', x: 8, y: 1, dir: 'down' } },
         // ボスの前の休み場所（ブルバレンが茶を出してくれる）
-        { x: 2, y: 17, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', when: f => !f.c4_boss, scene: 'c4_rest' },
+        { x: 2, y: 17, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', when: f => f.c4_wed && !f.c4_boss, scene: 'c4_rest' },
         // 階段の手前の 1 行すべて（端を回りこんで見張りを避けられないように）
         ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map(x => ({ x, y: 13, on: 'step', when: f => !f.c4_guards, scene: 'c4_okumae' })),
         { x: 5, y: 11, sprite: 'meso', on: 'bump', when: f => !f.c4_guards, scene: 'c4_okumae' },
@@ -1131,7 +1131,7 @@ const Maps = (() => {
         { x: 10, y: 0, on: 'step', when: f => !f.c5_ambush, warp: { map: 'bridge5', x: 7, y: 10, dir: 'up' } },
         { x: 10, y: 0, on: 'step', when: f => f.c5_ambush, text: '配管の橋は、光る液に沈んでいる。もう渡れない。' },
         { x: 19, y: 5, on: 'step', when: f => f.c5_ambush, warp: { map: 'tank5', x: 11, y: 6, dir: 'left' } },
-        { x: 4, y: 10, sprite: 'oil', on: 'bump', scene: f => f.c5t_oil ? 'c5_oil2' : 'c5_oil' },
+        { x: 4, y: 10, sprite: 'oil', on: 'bump', when: f => !f.c5_bunEki || f.c5_boss, scene: f => f.c5t_oil ? 'c5_oil2' : 'c5_oil' },
         ...[[1, 1], [18, 1], [1, 12], [18, 12]].map(([x, y]) => ({ x, y, sprite: 'lamp', on: 'bump', text: '結晶の街灯だ。透きとおった結晶が、ぼんやり光っている。' })),
         { x: 7, y: 11, sprite: 'glucose', on: 'bump', when: f => !f.c5_ambush, scene: 'c5_glucose' },
         { x: 12, y: 11, sprite: 'aminoKids', on: 'bump', scene: 'c5_amino' },
@@ -1216,7 +1216,7 @@ const Maps = (() => {
       inspect: { '/': ['分液漏斗のガラスの壁だ。下の水層が、青く透けて見える。'] },
       events: [
         { x: 7, y: 14, on: 'step', warp: { map: 'tank5', x: 6, y: 8, dir: 'up' } },
-        { x: 10, y: 13, sprite: 'oil', on: 'bump', scene: 'c5_oil_ex' },
+        { x: 10, y: 13, sprite: 'oil', on: 'bump', when: f => !f.c5_boss, scene: 'c5_oil_ex' },
         ...[[1, 11, 'acid', 1], [1, 13, 'base', 1], [1, 6, 'acid', 2], [1, 7, 'bicarb', 2], [1, 8, 'base', 2], [1, 3, 'acid', 3], [1, 4, 'base', 3]].map(([x, y, pump, room]) =>
           ({ x, y, sprite: { acid: 'pumpAcid', bicarb: 'pumpBicarb', base: 'pumpBase' }[pump], on: 'bump', pump, room })),
         ...[[13, 12], [13, 7], [6, 4], [8, 2]].map(([x, y]) => ({ x, y, sprite: f => f.c5foam ? 'ladderFoam' : 'ladder', on: 'bump', ladder: true })),
@@ -1249,7 +1249,7 @@ const Maps = (() => {
         { x: 4, y: 5, sprite: 'lockIbu', on: 'bump', when: f => !f.c5_d2, text: ['扉に、キラルな鍵穴がある。(R) の、カルボン酸の形だ。', '【ヒント】鍵穴に合う分子が、水層で扉の前に立つと開く。'] },
         { x: 7, y: 2, sprite: 'lockR', on: 'bump', when: f => !f.c5_d3, text: ['扉に、キラルな鍵穴がある。右向きの、アミンの手の形だ。', '【ヒント】鍵穴に合う分子が、水層で扉の前に立つと開く。'] },
         { x: 7, y: 1, sprite: 'lockOwn', on: 'bump', when: f => !f.c5_d5, scene: 'c5_ownDoor' },
-        { x: 10, y: 11, sprite: 'glucose', on: 'bump', scene: f => !f.c5_d1 ? 'c5_hint1' : !f.c5_d2 ? 'c5_hint2' : !f.c5_d3 ? 'c5_hint3' : 'c5_hint4' },
+        { x: 10, y: 11, sprite: 'glucose', on: 'bump', when: f => f.c5_ambush && !f.c5_boss, scene: f => !f.c5_d1 ? 'c5_hint1' : !f.c5_d2 ? 'c5_hint2' : !f.c5_d3 ? 'c5_hint3' : 'c5_hint4' },
         ...[[1, 11, 'acid', 1], [1, 13, 'base', 1], [1, 6, 'acid', 2], [1, 7, 'bicarb', 2], [1, 8, 'base', 2], [1, 3, 'acid', 3], [1, 4, 'base', 3]].map(([x, y, pump, room]) =>
           ({ x, y, sprite: { acid: 'pumpAcid', bicarb: 'pumpBicarb', base: 'pumpBase' }[pump], on: 'bump', pump, room })),
         ...[[13, 12], [13, 7], [6, 4], [8, 2]].map(([x, y]) => ({ x, y, sprite: f => f.c5foam ? 'ladderFoam' : 'ladder', on: 'bump', ladder: true })),
@@ -1283,7 +1283,7 @@ const Maps = (() => {
       events: [
         { x: 5, y: 13, on: 'step', warp: { map: 'aqL', x: 7, y: 1, dir: 'down' } },
         { x: 5, y: 0, on: 'step', warp: { map: 'hiroba', x: 7, y: 11, dir: 'up' } },
-        { x: 4, y: 4, sprite: 'tppo', on: 'bump', when: f => !f.c5_tppo, scene: 'c5_tppo_bridge' },
+        { x: 4, y: 4, sprite: 'tppo', on: 'bump', when: f => f.c5_ambush && !f.c5_tppo, scene: 'c5_tppo_bridge' },
       ],
     },
 
@@ -1362,7 +1362,7 @@ const Maps = (() => {
         { x: 7, y: 12, on: 'step', warp: { map: 'hoshi', x: 6, y: 1, dir: 'down' } },
         { x: 2, y: 3, sprite: 'ketohNoMono', when: f => !f.c5_boss },
         { x: 12, y: 3, sprite: 'achiralOpen', when: f => !f.c5_boss },
-        { x: 7, y: 5, sprite: 'boka', on: 'bump', when: f => !f.c5_boss, scene: 'c5_boss' },
+        { x: 7, y: 5, sprite: 'boka', on: 'bump', when: f => !f.c5_boss && (!f.c5_star || f.c5_starGone), scene: 'c5_boss' },
         ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map(x => ({ x, y: 8, on: 'step', when: f => !f.c5_boss, scene: 'c5_boss' })),
       ],
     },

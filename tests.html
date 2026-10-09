@@ -291,7 +291,7 @@
     mustStep('capital', [16, 27], [16, 13], { c3_king1: true }, 'ラジカとの出会い');
     const fC5 = Object.fromEntries(c5Order.slice(0, c5Order.indexOf('c5_tppo') + 1).map(k => [k, true]));
     mustStep('hiroba', [7, 11], [7, 2], fC5, 'カチオーネとの戦い');
-    mustStep('hannou', [7, 11], [7, 6], { ...fC5, c5_cation: true, c5_star: true }, 'ボーカとの戦い');
+    mustStep('hannou', [7, 11], [7, 6], { ...fC5, c5_cation: true, c5_star: true, c5_starGone: true }, 'ボーカとの戦い');
     mustStep('bridge5', [7, 10], [7, 1], { ch5: true }, '配管橋の待ち伏せ');
     check('物語の出来事を、踏まずに回りこめない', !gateBad.length, gateBad.join('\n'));
 
@@ -306,6 +306,32 @@
       if (ids[0] === ids[1]) npcBad.push(`${mid} の ${sp}: 第 3 章のあとも、前と同じ台詞（${ids[0]}）`);
     }
     check('村・森・港の住人の台詞が、章ごとに変わる', !npcBad.length, npcBad.join('\n'));
+
+    // ---- 同じ人が、同時に 2 か所にいない（物語の順にフラグを立てて、行けるマップどうしを比べる） ----
+    // 行けるマップ：その章のマップ。入ったときにフラグが立つマップは、そのフラグのあとから
+    const SAME = { elderCl: 'elder', naphthaNoCrown: 'naphtha', ketoh: 'enolas', thief: 'enolas', ketohNoMono: 'enolas', achiral: 'akiral', achiralOpen: 'akiral', radika3: 'radika', bull0: 'bull', bull1: 'bull', bull2: 'bull' };
+    const MANY = new Set(['sign', 'chest', 'victim', 'meso', 'bht', 'guard', 'lamp', 'pumpAcid', 'pumpBase', 'pumpBicarb', 'ladder', 'ladderFoam', 'brineTap', 'pillarOn', 'pillarOff']);
+    const OK2 = new Set([
+      'granny:capital,port', 'granny:capital,cellar,port', 'prof:capital,lab', 'innkeeper:capital,port', // 別の人（フェノール婆さん・工房の弟子・王都の宿の主人）
+      'grignard:port,shore',                                    // 船頭。乗らないと反対の岸は見えない
+    ]);
+    const twoBad = new Set(); let chNow = 1; const fNow = {};
+    const chOf = id => Maps.MAPS[id].ch || 1, enterFlag = id => Maps.MAPS[id].onEnter && Maps.MAPS[id].onEnter.flag;
+    for (const k of [...goalOrder.flatMap(k => /^clear\d?$/.test(k) ? [k, 'ch' + (k === 'clear' ? 2 : +k.slice(5) + 1)] : k === 'c5_star' ? [k, 'c5_starGone'] : [k]), 'c5_boss', 'clear5', 'ch6']) {
+      fNow[k] = true; const mm = /^ch(\d)$/.exec(k); if (mm) chNow = Math.max(chNow, +mm[1]);
+      const where = {};
+      for (const [id, m] of Object.entries(Maps.MAPS)) {
+        if (chOf(id) > chNow || (enterFlag(id) && !fNow[enterFlag(id)] && chOf(id) === chNow)) continue;
+        for (const e of m.events || []) {
+          if (!e.sprite || (e.when && !e.when(fNow))) continue;
+          let sp = typeof e.sprite === 'function' ? e.sprite(fNow) : e.sprite;
+          if (typeof sp !== 'string' || MANY.has(sp)) continue; sp = SAME[sp] || sp;
+          (where[sp] = where[sp] || new Set()).add(id);
+        }
+      }
+      for (const [sp, ids] of Object.entries(where)) { const key = sp + ':' + [...ids].sort().join(','); if (ids.size > 1 && !OK2.has(key)) twoBad.add(`${key}（${k} のあと）`); }
+    }
+    check('同じ人が、同時に 2 か所にいない', !twoBad.size, [...twoBad].join('\n'));
 
     // ---- 第 5 章：分液区の 3 つの部屋が、どれも解ける（pH の決まりと、扉の前に鍵の住人を立たせられること） ----
     const X = Maps.EXTRACT, exBad = [];
