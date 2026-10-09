@@ -156,6 +156,18 @@
     }
     check('台本の参照先（敵・台詞）', !scBad.length, scBad.join('\n'));
 
+    // ---- 話している人の顔：台本の話者に、顔の絵が決まっている ----
+    const faceBad = [], compNames = GameData.COMPANIONS.map(c => c.name);
+    for (const [id, steps] of Object.entries(Story.SCENES)) for (const st of steps) {
+      if (!st.w || st.w.startsWith('@') || st.w === 'カーボ' || compNames.includes(st.w)) continue;
+      if (!Story.FACES[st.w]) faceBad.push(`${id}: 話者「${st.w}」の顔がない`);
+    }
+    for (const [w, v] of Object.entries(Story.FACES)) for (const f of flagSets) {
+      const sp = typeof v === 'function' ? v(f) : v;
+      if (!Sprites.CHAR_IDS.includes(sp)) faceBad.push(`${w}: 顔の絵 ${sp} がない`);
+    }
+    check('話している人の顔', !faceBad.length, [...new Set(faceBad)].join('\n'));
+
     // ---- 仲間：CIP 順位が重ならない（R/S が決まる）、技の種類がバトルで扱える、売店だけの仲間は高い ----
     const compBad = [], SKILLS = ['heal', 'power', 'stink', 'fifty', 'time', 'guard', 'retry', 'drain'];
     const ranks = GameData.COMPANIONS.map(c => c.rank.join(','));

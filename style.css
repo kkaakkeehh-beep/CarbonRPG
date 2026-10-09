@@ -260,6 +260,17 @@ p { margin: .4em 0; }
   padding: 10px 14px 18px; min-height: 92px; cursor: pointer; position: relative;
 }
 .speaker { color: var(--accent); font-size: 14px; margin-bottom: 2px; }
+/* 話している人の顔（会話の窓の左上に、胸から上を大きく出す） */
+.dialog.has-face { margin-top: 128px; }
+.dialog .face {
+  position: absolute; left: 10px; bottom: calc(100% + 3px); width: 128px; height: 128px;
+  border: 3px solid var(--line); border-radius: 10px; background: #090c1f;
+  image-rendering: pixelated; image-rendering: crisp-edges; box-shadow: 0 0 0 3px rgba(0, 0, 0, .6);
+}
+@media (max-width: 560px) {
+  .dialog.has-face { margin-top: 84px; }
+  .dialog .face { width: 84px; height: 84px; }
+}
 .dtext { font-size: 16px; line-height: 1.7; white-space: pre-line; }
 .dnext { position: absolute; right: 12px; bottom: 4px; font-size: 12px; animation: blink 1s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0; } }

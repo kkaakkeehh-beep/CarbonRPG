@@ -1054,5 +1054,22 @@ const Story = (() => {
     { w: 'オクタ', t: 'お城の柱、大丈夫かな……。わたしは中に入れないけど、ここから見てるね。' },
   ];
 
-  return { SCENES };
+  // ---- 話している人の顔（会話の窓に、胸から上を大きく出す） ----
+  // 話者の名前 → キャラの絵の ID（関数ならフラグ f で変わる）。カーボと仲間（@n）は game.js で描く
+  const FACES = {
+    '長老ベンゼン': f => f.c3_boss ? 'elderCl' : 'elder', '鏡野教授': 'prof', '門番': 'guard', '夜の倉庫番': 'guard',
+    'メソ団員': 'meso', 'メソ団員 A': 'meso', 'メソ団員 B': 'meso', '夜警のメソ団員': 'meso', 'ベンジル通りのメソ団員': 'meso',
+    'カチオーネ': 'cation', 'カルボン（姉）': 'carvoneR', 'カルボン（妹）': 'carvoneS', '平らにされた分子': 'victim', '住人': 'victim',
+    '第三級のきこり': 'lumber', 'メタンの少年': 'methane', '水のおばさん': 'water',
+    'ケトー卿': f => f.c2_lens ? 'ketohNoMono' : 'ketoh', 'エノラス': 'ketohNoMono', '怪盗エノール': 'thief', '総帥アキラル': 'achiral',
+    'ミナ': 'kidA', 'トト': 'kidB', '院長': 'director', 'グリニャ': 'grignard', 'アセトン婆さん': 'granny', 'フェノール婆さん': 'granny',
+    '双子の兄': 'twins', '双子の弟': 'twins', 'メントン夫人': 'menthone', 'メチル親方': 'methylBoss', '灯台守': 'keeper', '宿の主人': 'innkeeper',
+    'ヨードホルム長兄': 'iodo', 'ヨードホルム次兄': 'iodo', 'ヨードホルム末弟': 'iodo',
+    'ナフタ王': f => f.c3_lastpillar ? 'naphthaNoCrown' : 'naphtha', 'BHT の衛兵': 'bht', 'ピリジン商人': 'pyridine', '果物屋': 'fruit',
+    'アニリン坊や': 'aniBoy', 'ラジカ': 'radika', '少年': 'radika', 'アニリン家の当主': 'aniHead', 'メタ伯爵': 'metaCount', 'ニトラ': 'nitra',
+    '薬師イブ': 'ibu', '工房の弟子': 'prof', 'メタ家の執事': 'butler', '安息香酸の学生': 'student', '白衣の男': 'bromosuc', 'ブロモスクシ': 'bromosuc',
+    'テンポ': 'tempo', 'オクタ': 'octa',
+  };
+
+  return { SCENES, FACES };
 })();

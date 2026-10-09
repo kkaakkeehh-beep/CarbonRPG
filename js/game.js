@@ -335,11 +335,41 @@
     }
     const line = currentLine();
     if (!line) { ov.innerHTML = ''; return; }
-    ov.innerHTML = `<div class="dialog" data-act="advance">
+    ov.innerHTML = `<div class="dialog${line.face ? ' has-face' : ''}" data-act="advance">
+      ${line.face ? '<canvas class="face" id="face" width="96" height="96" aria-hidden="true"></canvas>' : ''}
       ${line.w ? `<div class="speaker">${esc(line.w)}</div>` : ''}
       <div class="dtext" id="dtext" data-full="${esc(line.t)}"></div>
       <div class="dnext">▼</div></div>`;
+    if (line.face) drawFace(document.getElementById('face'), line.face);
     startTyping();
+  }
+
+  // 話している人の、胸から上（16 マスの絵のうち上の 11 マスほど）を大きく描く。仲間は原子の顔で描く
+  // 人の形でない絵（分子のかたまりなど）は全身、子どもの絵は小さく描かれているので、見せる範囲 [上端の行, 行数] を変える
+  const FACE_FRAME = {
+    hero: [0, 16], elder: [0, 16], elderCl: [0, 16], carvoneR: [0, 16], carvoneS: [0, 16], victim: [6, 10], lumber: [0, 16], twins: [3, 12],
+    methane: [1, 15], water: [1, 15], iodo: [0, 16], kidA: [4.6, 8.4], kidB: [4.6, 8.4], aniBoy: [4.6, 8.4], nitra: [3.4, 9.6],
+  };
+  function drawFace(cv, face) {
+    const g = cv.getContext('2d'), W = cv.width;
+    g.imageSmoothingEnabled = false;
+    const bg = g.createLinearGradient(0, 0, 0, W);
+    bg.addColorStop(0, '#1d2652'); bg.addColorStop(1, '#090c1f');
+    g.fillStyle = bg; g.fillRect(0, 0, W, W);
+    if (face.comp) {
+      const c = comp(face.comp), cx = W / 2, cy = W * 0.56, r = W * 0.36;
+      g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fillStyle = '#000'; g.fill();
+      g.lineWidth = 5; g.strokeStyle = c.color; g.stroke();
+      g.fillStyle = c.color;
+      g.fillRect(cx - 12, cy - r * 0.5, 5, 8); g.fillRect(cx + 7, cy - r * 0.5, 5, 8);
+      g.font = `bold ${c.group.length > 3 ? 15 : 20}px monospace`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(c.group, cx, cy + r * 0.28);
+      return;
+    }
+    const id = face.hero ? 'hero' : face.id, [top, rows] = FACE_FRAME[id] || [-0.66, 11];
+    const sz = W * 16 / rows;
+    const o = face.hero ? { colors: S.party.length ? S.party.map(p => comp(p).color) : null, dir: 'down' } : undefined;
+    Sprites.drawChar(g, id, Math.round((W - sz) / 2), Math.round(-top * sz / 16), sz, o);
   }
 
   let typeTimer = null;
@@ -374,13 +404,17 @@
     if (!sc) return null;
     const st = sc.steps[sc.i];
     if (!st || st.do) return null;
-    let w = st.w || null;
+    let w = st.w || null, face = null;
     if (w && w.startsWith('@')) {
       // 仲間の台詞は順番に割り振る。ただし無口なブトキ（いつも「……」）には割り振らない
       const talkers = S.party.filter(id => id !== 'buto');
-      w = talkers.length ? comp(talkers[(+w.slice(1)) % talkers.length]).name : '仲間';
-    }
-    return { w, t: fill(st.t) };
+      const id = talkers.length ? talkers[(+w.slice(1)) % talkers.length] : null;
+      w = id ? comp(id).name : '仲間';
+      if (id) face = { comp: id };
+    } else if (w === 'カーボ') face = { hero: true };
+    else if (w && COMPANIONS.some(c => c.name === w)) face = { comp: COMPANIONS.find(c => c.name === w).id };
+    else if (w && Story.FACES[w]) face = { id: resolve(Story.FACES[w], S.flags) };
+    return { w, t: fill(st.t), face };
   }
 
   function vMenu() {
