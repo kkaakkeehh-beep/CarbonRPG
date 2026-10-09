@@ -19,6 +19,7 @@
   <script src="js/maps.js"></script>
   <script src="js/story.js"></script>
   <script src="js/sound.js"></script>
+  <script src="js/mol.js"></script>
   <script>
     const out = document.getElementById('out');
     let pass = 0, fail = 0;
@@ -293,6 +294,52 @@
       if (ids[0] === ids[1]) npcBad.push(`${mid} の ${sp}: 第 3 章のあとも、前と同じ台詞（${ids[0]}）`);
     }
     check('村・森・港の住人の台詞が、章ごとに変わる', !npcBad.length, npcBad.join('\n'));
+
+    // ---- 構造式の E/Z が、SMILES のとおりに描かれる（SmilesDrawer は共役ジエンで描き違えるので、Mol が直している） ----
+    // 期待値は RDKit で作った表：[二重結合の原子 a, b, a の隣, b の隣, 'cis'|'trans']。E/Z のある SMILES を足したら表も足す
+    const EZ = {
+      "Br/C(=C/c2ccccc2)c1ccccc1": [[1, 2, 0, 3, "trans"]],
+      "Br/C(=C\\c2ccccc2)c1ccccc1": [[1, 2, 0, 3, "cis"]],
+      "C/C=C/C": [[1, 2, 0, 3, "trans"]],
+      "C/C=C/C=C/C": [[1, 2, 0, 3, "trans"], [3, 4, 2, 5, "trans"]],
+      "C/C=C/C=C\\C": [[1, 2, 0, 3, "trans"], [3, 4, 2, 5, "cis"]],
+      "C/C=C/C=C\\C=C\\C": [[1, 2, 0, 3, "trans"], [3, 4, 2, 5, "cis"], [5, 6, 4, 7, "trans"]],
+      "C/C=C/C=O": [[1, 2, 0, 3, "trans"]],
+      "C/C=C/CC/C=C\\C": [[1, 2, 0, 3, "trans"], [5, 6, 4, 7, "cis"]],
+      "C/C=C/CCC": [[1, 2, 0, 3, "trans"]],
+      "C/C=C\\C": [[1, 2, 0, 3, "cis"]],
+      "C/C=C\\C=C/C": [[1, 2, 0, 3, "cis"], [3, 4, 2, 5, "cis"]],
+      "C/C=C\\CCC": [[1, 2, 0, 3, "cis"]],
+      "CC(C)(C#N)/N=N/C(C)(C)C#N": [[5, 6, 1, 7, "trans"]],
+      "CCCCC/C=C\\C/C=C\\CCCCCCCC(=O)O": [[5, 6, 4, 7, "cis"], [8, 9, 7, 10, "cis"]],
+      "CCOC(=O)/C=C/c1ccccc1": [[5, 6, 3, 7, "trans"]],
+      "CO/C=C/C(=C)O[Si](C)(C)C": [[2, 3, 1, 4, "trans"]],
+      "COC(=O)/C=C\\C(=O)OC": [[4, 5, 2, 6, "cis"]],
+      "Cl/C=C/Cl": [[1, 2, 0, 3, "trans"]],
+      "O=C(/C=C/c1ccccc1)/C=C/c1ccccc1": [[2, 3, 1, 4, "trans"], [10, 11, 1, 12, "trans"]],
+      "O=C(O)/C=C/c1ccccc1": [[3, 4, 1, 5, "trans"]],
+      "c1ccc(/N=N/c2ccccc2)cc1": [[4, 5, 3, 6, "trans"]],
+      "c1ccc(cc1)/C=C/c1ccccc1": [[6, 7, 3, 8, "trans"]],
+      "c1ccc(cc1)/C=C\\c1ccccc1": [[6, 7, 3, 8, "cis"]]
+    };
+    const ezBad = [], ezSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    document.body.appendChild(ezSvg);
+    const ezSmiles = new Set(Questions.LIST.flatMap(q => [...(q.cs || []), ...(q.mols || []).map(m => m[1])]).filter(x => x && /[\/\\]/.test(x)));
+    for (const smi of ezSmiles) {
+      if (!EZ[smi]) { ezBad.push(`${smi}: 期待値の表にない`); continue; }
+      SmilesDrawer.parse(smi, tree => {
+        const dr = Mol.newDrawer({ width: 200, height: 140, padding: 6, bondLength: 22, compactDrawing: false, themes: { dq: {} } });
+        dr.draw(tree, ezSvg, 'dq');
+        const P = dr.preprocessor.graph.vertices.map(v => v.position);
+        for (const [a, b, n1, n2, want] of EZ[smi]) {
+          const side = i => Math.sign((P[b].x - P[a].x) * (P[i].y - P[a].y) - (P[b].y - P[a].y) * (P[i].x - P[a].x));
+          const got = side(n1) === side(n2) ? 'cis' : 'trans';
+          if (got !== want) ezBad.push(`${smi}: ${a}=${b} が ${want} のはずが ${got} に描かれる`);
+        }
+      }, () => ezBad.push(`${smi}: 読めない`));
+    }
+    ezSvg.remove();
+    check(`構造式の E/Z が正しく描かれる（${ezSmiles.size} 個）`, !ezBad.length, ezBad.join('\n'));
 
     out.insertAdjacentHTML('afterbegin', `<h2 class="${fail ? 'ng' : 'ok'}" id="summary">${pass} 件成功 / ${fail} 件失敗</h2>`);
   </script>
