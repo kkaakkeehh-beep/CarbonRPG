@@ -445,3 +445,10 @@ a.btn { display: inline-block; text-decoration: none; }
 .choice-box { display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-height: 0; cursor: default; }
 .choice-box .btn { text-align: left; margin: 0; }
 .whiteout.soft { background: #bcd4ff; animation-duration: .7s; }
+
+/* 第 5 章：最後の一枚絵（文字はアルファベットと数字だけ） */
+.ending { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; gap: 12px; cursor: pointer; }
+.ending canvas { width: min(100%, 720px); height: auto; image-rendering: pixelated; border: 3px solid #fff; border-radius: 8px; background: #000; }
+.end-next { color: #ffd75e; font-size: 20px; animation: endblink 1.4s ease-in-out infinite; }
+@keyframes endblink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .end-next { animation: none; } }

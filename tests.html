@@ -34,9 +34,12 @@
       if (ids.has(q.id)) bad.push(`${q.id}: id が重複`);
       ids.add(q.id);
       if (!Questions.DIFFS[q.diff]) bad.push(`${q.id}: diff が不正`);
-      if (q.choices.length !== 4 || new Set(q.choices).size !== 4) bad.push(`${q.id}: 選択肢が 4 つの異なる値ではない`);
+      // 物語の中の決まった問題（special）は、選択肢が 2〜4 つでもよい。ボーカの問い（anyOk）は、選択肢ごとに返事がある
+      const nc = q.choices.length;
+      if (q.special ? (nc < 2 || nc > 4 || new Set(q.choices).size !== nc) : (nc !== 4 || new Set(q.choices).size !== 4)) bad.push(`${q.id}: 選択肢の数か重複`);
+      if (q.anyOk && !(q.replies && q.replies.length === nc)) bad.push(`${q.id}: 選択肢ごとの返事がない`);
       if (!(q.a >= 0 && q.a < q.choices.length)) bad.push(`${q.id}: 正解の添字が範囲外`);
-      if (!q.explain) bad.push(`${q.id}: 解説がない`);
+      if (!q.explain && !q.anyOk) bad.push(`${q.id}: 解説がない`);
     }
     check(`問題データの形式（${Questions.LIST.length} 問）`, !bad.length, bad.join('\n'));
     for (const ch of [1, 2, 3, 4]) for (let d = 1; d <= 4; d++) {
@@ -64,7 +67,7 @@
     }
     // 敵の得意分野（topics）が、実際にある分野名か
     const topicSet = new Set(Questions.LIST.map(q => q.topic));
-    for (const [k, E] of Object.entries(GameData.ENEMIES)) for (const t of [...(E.topics || []), ...(E.stages || []).flatMap(s => s.topics)]) if (!topicSet.has(t)) c3Bad.push(`${k} の分野 ${t} の問題がない`);
+    for (const [k, E] of Object.entries(GameData.ENEMIES)) for (const t of [...(E.topics || []), ...(E.stages || []).flatMap(s => s.topics || [])]) if (!topicSet.has(t)) c3Bad.push(`${k} の分野 ${t} の問題がない`);
     check('第3章: 分野・段階ごとの問題数と、敵の得意分野の名前', !c3Bad.length, c3Bad.join('\n'));
     // 第 4 章：ペリ環状・鏡の両方が各難易度にあり、アキラルの熱・光の段階それぞれに出せる問題がある
     check('第4章の問題すべてに tag（peri / mirror）', Questions.LIST.filter(q => q.ch === 4).every(q => ['peri', 'mirror'].includes(q.tag)), '');
@@ -127,7 +130,11 @@
     const c4Order = ['clear3', 'ch4', 'c4_mount', 'c4_lake', 'c4_bull', 'c4_in', 'c4_kairo', 'c4_door1', 'c4_door2', 'c4_door3', 'c4_c2talk', 'c4_door4',
       'c4_mhall', 'c4_mh1', 'c4_mh2', 'c4_mh3', 'c4_shadow', 'c4_wed', 'c4_guards', 'c4_racem', 'c4_shatter', 'c4_boss'];
     const c4Steps = c4Order.map((_, i) => Object.fromEntries([...c3Order, ...c4Order.slice(0, i + 1)].map(k => [k, true])));
-    const flagSets = [{}, flagsAll, { ...flagsAll, night: true }, { night: true }, { c2_lens: true }, { c2_clue2: true }, ...c3Steps, ...c4Steps];
+    // 第 5 章の進み具合
+    const c5Order = ['clear4', 'ch5', 'c5_gesui', 'c5_boeki', 'c5_ambush', 'c5_confess', 'c5_bunEki', 'c5_d1', 'c5_d2', 'c5_d3', 'c5_d5',
+      'c5_tppo', 'c5_cation', 'c5_star', 'c5_boss'];
+    const c5Steps = c5Order.map((_, i) => Object.fromEntries([...c3Order, ...c4Order, ...c5Order.slice(0, i + 1)].map(k => [k, true])));
+    const flagSets = [{}, flagsAll, { ...flagsAll, night: true }, { night: true }, { c2_lens: true }, { c2_clue2: true }, ...c3Steps, ...c4Steps, ...c5Steps];
     for (const [id, m] of Object.entries(Maps.MAPS)) {
       const W = m.grid[0].length;
       m.grid.forEach((row, y) => { if (row.length !== W) mapBad.push(`${id}: ${y} 行目の幅が ${row.length}（期待 ${W}）`); });
@@ -192,7 +199,7 @@
       const names = [E.name, ...(E.phases || []).filter(ph => ph.name).map(ph => ph.name), ...Object.values(E.forms || {}).map(F => F.name)].map(base);
       const lines = [...(E.phases || []).flatMap(ph => ph.text.split('\n')), ...Object.values(E.forms || {}).map(F => `${F.name}「${F.into}」`)];
       for (const l of lines) {
-        if (l.startsWith('（')) continue;
+        if (l.startsWith('（') || l.trim() === '---') continue;
         const m = l.match(/^([^「]+)「[\s\S]*」$/);
         if (!m) { talkBad.push(`${k}: 「${l}」が話者とセリフに分けられない`); continue; }
         const w = m[1];
@@ -215,13 +222,13 @@
 
     // ---- いまの目的：物語の順にフラグを立てても、クリアまで目的が途切れず、印の場所がマップの中にある ----
     const goalOrder = ['started', 'elder', 'f_entry', 'sisters', 'duo', 'boss', 'clear', 'c2_arrive', 'c2_met', 'c2_lens', 'c2_pier', 'c2_kidnap', 'c2_rescued',
-      'c2_clue2', 'c2_clue3', 'c2_chase', 'c2_reveal', ...c3Order, ...c4Order];
+      'c2_clue2', 'c2_clue3', 'c2_chase', 'c2_reveal', ...c3Order, ...c4Order, ...c5Order];
     const goalBad = [];
     goalOrder.forEach((k, i) => {
       const base = Object.fromEntries(goalOrder.slice(0, i + 1).map(x => [x, true]));
       for (const night of [false, true]) {
         const g = Maps.goalOf({ ...base, night });
-        if (k === 'c3_boss' || k === 'c4_boss') { if (g) goalBad.push(`${k} のあとにも目的が残っている`); continue; }
+        if (k === 'c3_boss' || k === 'c4_boss' || k === 'c5_boss') { if (g) goalBad.push(`${k} のあとにも目的が残っている`); continue; }
         if (!g || !g.t) { goalBad.push(`${k} のあとに目的がない`); continue; }
         if (!g.to.length) goalBad.push(`${k}: 目的の場所 to がない`);
         for (const [mp, x, y] of [...g.at, ...g.to]) { const m = Maps.MAPS[mp]; if (!m || !(m.grid[y] && m.grid[y][x])) goalBad.push(`${k}: 印 ${mp} (${x},${y}) がマップ外`); }
@@ -232,7 +239,7 @@
     for (const here of ['port', 'town', 'lab']) { const g = Maps.goalOf(midC3, here); if (!g || g.at[0][0] !== 'port') goalBad.push(`第 3 章で ${here} にいるとき、船の案内がない`); }
     if (Maps.goalOf(midC3, 'capital').t !== Maps.goalOf(midC3).t) goalBad.push('王都の中で、船の案内が出てしまう');
     // 前の章の記録が欠けたセーブでも、前の章の目的に戻らない
-    for (const [fl, want] of [[{ started: true, clear3: true, ch4: true }, '山道'], [{ started: true, ch3: true }, '城門'], [{ started: true, clear: true, ch2: true }, 'カルボニル港']]) {
+    for (const [fl, want] of [[{ started: true, clear4: true, ch5: true }, '地下'], [{ started: true, clear3: true, ch4: true }, '山道'], [{ started: true, ch3: true }, '城門'], [{ started: true, clear: true, ch2: true }, 'カルボニル港']]) {
       const g = Maps.goalOf(fl);
       if (!g || !g.t.includes(want)) goalBad.push(`${Object.keys(fl).join(',')} のとき、目的が「${g && g.t}」（期待：${want}）`);
     }
@@ -282,6 +289,10 @@
     mustStep('oku', [7, 18], [7, 4], fC4, '奥の院の見張りの場面');
     mustStep('kairo', [6, 11], [6, 1], { ...fC4, c4_door1: true, c4_door2: true, c4_door3: true, c4_door4: true }, 'テンポの話');
     mustStep('capital', [16, 27], [16, 13], { c3_king1: true }, 'ラジカとの出会い');
+    const fC5 = Object.fromEntries(c5Order.slice(0, c5Order.indexOf('c5_tppo') + 1).map(k => [k, true]));
+    mustStep('hiroba', [7, 11], [7, 2], fC5, 'カチオーネとの戦い');
+    mustStep('hannou', [7, 11], [7, 6], { ...fC5, c5_cation: true, c5_star: true }, 'ボーカとの戦い');
+    mustStep('bridge5', [7, 10], [7, 1], { ch5: true }, '配管橋の待ち伏せ');
     check('物語の出来事を、踏まずに回りこめない', !gateBad.length, gateBad.join('\n'));
 
     // ---- 村・森・港の住人は、章が進むと台詞が変わる（第 1 章の台詞のまま、第 4 章まで残らない） ----
@@ -295,6 +306,45 @@
       if (ids[0] === ids[1]) npcBad.push(`${mid} の ${sp}: 第 3 章のあとも、前と同じ台詞（${ids[0]}）`);
     }
     check('村・森・港の住人の台詞が、章ごとに変わる', !npcBad.length, npcBad.join('\n'));
+
+    // ---- 第 5 章：分液区の 3 つの部屋が、どれも解ける（pH の決まりと、扉の前に鍵の住人を立たせられること） ----
+    const X = Maps.EXTRACT, exBad = [];
+    const L = { amine: [], acid: [], phenol: [] };
+    for (const ph of ['neutral', 'acid', 'bicarb', 'base']) for (const t of Object.keys(L)) L[t].push(X.layerFor(t, ph));
+    if (L.amine.join() !== 'org,aq,org,org') exBad.push(`アミンの層: ${L.amine}`);
+    if (L.acid.join() !== 'org,org,aq,aq') exBad.push(`カルボン酸の層: ${L.acid}`);
+    if (L.phenol.join() !== 'org,org,org,aq') exBad.push(`フェノールの層: ${L.phenol}`);
+    const grid = layer => Maps.MAPS[X.maps[layer]].grid;
+    const floor = (layer, x, y) => grid(layer)[y] && grid(layer)[y][x] && !Sprites.SOLID.has(grid(layer)[y][x]);
+    const evAt = (layer, x, y) => Maps.MAPS[X.maps[layer]].events.some(e => e.x === x && e.y === y && e.on === 'bump');
+    const free = (layer, x, y) => floor(layer, x, y) && !evAt(layer, x, y);
+    for (const [id, r] of Object.entries(X.residents)) if (!free('org', ...r.at)) exBad.push(`${id} のはじめの場所が、有機層で歩けない`);
+    for (const lk of X.locks) if (!free(lk.layer, ...lk.front)) exBad.push(`${lk.flag} の扉の前が、歩けない`);
+    const st = X.init(), at = (id, x, y) => Object.assign(st.res[id], { x, y });
+    // 部屋 1：弟を扉の真上（有機層）へ連れて行き、酸
+    at('amS', 7, 11); X.applyPh(st, 1, 'acid', free);
+    if (st.res.amS.layer !== 'aq') exBad.push('部屋 1：酸で弟が水層へ下りない');
+    // 部屋 2：NaOH ではクレゾールも下りて扉の前をふさぐ。重曹に替えると、クレゾールだけ上がる
+    X.applyPh(st, 2, 'base', free);
+    if (st.res.cres.layer !== 'aq' || st.res.ibu.layer !== 'aq') exBad.push('部屋 2：NaOH で 2 人とも水層へ下りない');
+    X.applyPh(st, 2, 'bicarb', free);
+    if (st.res.cres.layer !== 'org' || st.res.ibu.layer !== 'aq') exBad.push('部屋 2：重曹で、クレゾールだけが上がらない');
+    // 部屋 3：塩基で番人を水層へ。姉を扉の真上へ。酸で 2 人が同じ場所で入れ替わる
+    X.applyPh(st, 3, 'base', free);
+    if (st.res.mand.layer !== 'aq') exBad.push('部屋 3：塩基で番人が水層へ下りない');
+    at('amR', 7, 3); X.applyPh(st, 3, 'acid', free);
+    if (st.res.amR.layer !== 'aq' || st.res.mand.layer !== 'org') exBad.push('部屋 3：酸で、姉と番人が入れ替わらない');
+    // 壁の下へは移らない（部屋 3 の水層は 2 行目が壁）
+    const st2 = X.init(); st2.res.amR.x = 5; st2.res.amR.y = 2; X.applyPh(st2, 3, 'acid', free);
+    if (st2.res.amR.layer !== 'org') exBad.push('壁の下へ移ってしまう');
+    // カーボが、両方の層で、部屋の中を歩いて扉の前・はしごの横・ポンプの横まで行ける
+    for (const layer of ['org', 'aq']) for (const r of X.rooms) {
+      const cells = []; for (let y = r.y0; y <= r.y1; y++) for (let x = 1; x <= 13; x++) if (free(layer, x, y)) cells.push([x, y]);
+      const seen = new Set([cells[0].join()]), q = [cells[0]];
+      while (q.length) { const [x, y] = q.shift(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = [x + dx, y + dy]; if (y + dy < r.y0 || y + dy > r.y1) continue; if (free(layer, ...k) && !seen.has(k.join())) { seen.add(k.join()); q.push(k); } } }
+      if (seen.size !== cells.length) exBad.push(`${layer} の部屋 ${r.id} に、歩いて行けない場所がある`);
+    }
+    check('分液区の 3 つの部屋が、どれも解ける', !exBad.length, exBad.join('\n'));
 
     // ---- 構造式の E/Z が、SMILES のとおりに描かれる（SmilesDrawer は共役ジエンで描き違えるので、Mol が直している） ----
     // 期待値は RDKit で作った表：[二重結合の原子 a, b, a の隣, b の隣, 'cis'|'trans']。E/Z のある SMILES を足したら表も足す

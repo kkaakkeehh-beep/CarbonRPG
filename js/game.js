@@ -105,10 +105,11 @@
   // =================================================================
   function render() {
     stopTyping();
-    const fn = { title: vTitle, diff: vDiff, party: vParty, world: vWorld, battle: vBattle, over: vOver, clear: vClear, note: vNote }[UI.screen];
+    const fn = { title: vTitle, diff: vDiff, party: vParty, world: vWorld, battle: vBattle, over: vOver, clear: vClear, note: vNote, ending: vEnding }[UI.screen];
     app.innerHTML = fn();
     if (UI.screen === 'world') { setupCanvas(); renderOverlay(); }
     if (UI.screen === 'battle') { drawEnemy(); drawTalkFaces(); startTyping(); }
+    if (UI.screen === 'ending') drawEnding();
     Mol.drawAll(app);
     applyFx();
     Sound.bgm(musicFor());
@@ -122,6 +123,7 @@
       if (MAPS[S.map].ch === 3) return 'kingdom';
       return 'town';
     }
+    if (UI.screen === 'ending') return 'mirror';
     if (UI.screen === 'over' || UI.screen === 'clear') return null;
     return 'town';
   }
@@ -139,7 +141,7 @@
           <p class="logo-sub">炭 素 の 勇 者</p>
         </div>
       </div>
-      <p class="title-chapter">第4章「鏡の回廊」まで遊べます</p>
+      <p class="title-chapter">全 5 章（第5章「廃液街」で完結）</p>
       <div class="title-menu">
         <button class="tbtn" data-act="newGame">はじめから</button>
         ${sv ? `<button class="tbtn" data-act="continue">つづきから<small>${esc(where)}</small></button>` : ''}
@@ -349,6 +351,7 @@
   const FACE_FRAME = {
     hero: [0, 16], elder: [0, 16], elderCl: [0, 16], carvoneR: [0, 16], carvoneS: [0, 16], victim: [6, 10], lumber: [0, 16], twins: [3, 12],
     methane: [1, 15], water: [1, 15], iodo: [0, 16], kidA: [4.6, 8.4], kidB: [4.6, 8.4], aniBoy: [4.6, 8.4], nitra: [3.4, 9.6],
+    boka: [0, 16], oil: [0, 16], tppo: [0, 16], cbd: [2, 14], glucose: [3.4, 9.6], aminoKids: [3.4, 11], peaR: [3.4, 9.6], peaS: [3.4, 9.6],
   };
   function drawFace(cv, face) {
     const g = cv.getContext('2d'), W = cv.width;
@@ -368,7 +371,7 @@
     }
     const id = face.hero ? 'hero' : face.id, [top, rows] = FACE_FRAME[id] || [-0.66, 11];
     const sz = W * 16 / rows;
-    const o = (face.hero || id === 'shadow') ? { colors: S.party.length ? S.party.map(p => comp(p).color) : null, dir: 'down' } : undefined;
+    const o = (face.hero || id === 'shadow' || id === 'boka') ? { colors: S.party.length ? S.party.map(p => comp(p).color) : null, dir: 'down' } : undefined;
     Sprites.drawChar(g, id, Math.round((W - sz) / 2), Math.round(-top * sz / 16), sz, o);
   }
 
@@ -470,7 +473,8 @@
   // ---- 台本の再生 ------------------------------------------------
   function playScene(id, onDone) {
     // need: その仲間がパーティにいるときだけの台詞
-    UI.scene = { steps: SCENES[id].filter(x => !x.need || S.party.includes(x.need)).map(x => ({ ...x })), i: 0, onDone };
+    // if: そのフラグのときだけの台詞
+    UI.scene = { steps: SCENES[id].filter(x => (!x.need || S.party.includes(x.need)) && (!x.if || x.if(S.flags))).map(x => ({ ...x })), i: 0, onDone };
     UI.held = null;
     runCommands();
   }
@@ -492,9 +496,17 @@
       if (st.do === 'party') { sc.i++; UI.pick = []; UI.screen = 'party'; render(); return; }
       // chance があれば、その確率でだけバトルになる（回転の扉を回し損ねたときなど）
       if (st.do === 'battle') { sc.i++; if (st.chance && Math.random() > st.chance) continue; startBattle(st.e, false); return; }
+      // 第 5 章：分液区の部屋をやり直す / はしごの泡を消す / 最後の一枚絵
+      if (st.do === 'resetRoom') { const room = Maps.EXTRACT.roomAt(S.y); if (room) Maps.EXTRACT.resetRoom(ex(), room); save(); sc.i++; continue; }
+      if (st.do === 'brine') {
+        const had = S.flags.c5foam; S.flags.c5foam = false; ex().pumps = 0; save();
+        sc.steps.splice(sc.i, 1, { t: had ? '（飽和食塩水を入れた。泡のかたまりが、すっと消えた。（塩析））' : '（飽和食塩水を入れた。……泡は、もともとたまっていなかった）' });
+        continue;
+      }
+      if (st.do === 'ending') { sc.i++; UI.screen = 'ending'; render(); return; }
       if (st.do === 'clear') {
         sc.i++; UI.scene = null;
-        const ch = MAPS[S.map].ch || 1;
+        const ch = st.ch || MAPS[S.map].ch || 1;
         S.flags[ch === 1 ? 'clear' : `clear${ch}`] = true; UI.clearCh = ch;
         save(); UI.screen = 'clear'; render(); Sound.se('clear'); return;
       }
@@ -557,7 +569,102 @@
     if (p) return p(S.flags);
     return !Sprites.SOLID.has(ch);
   }
-  const activeEvents = () => (map().events || []).filter(e => !e.when || e.when(S.flags));
+  const activeEvents = () => (map().events || []).filter(e => !e.when || e.when(S.flags)).concat(resEvents());
+
+  // ---- 第 5 章：分液区 ----
+  const ex = () => { if (!S.c5x) S.c5x = Maps.EXTRACT.init(); return S.c5x; };
+  // いまの層にいる住人を、話しかけられる人として出す
+  function resEvents() {
+    const m = map();
+    if (!m.layer) return [];
+    const st = ex();
+    return Object.entries(Maps.EXTRACT.residents).filter(([id]) => st.res[id].layer === m.layer)
+      .map(([id, r]) => { const p = st.res[id]; return { x: p.x, y: p.y, sprite: r.sprite, on: 'bump', res: id, fx: p.fx, fy: p.fy, mt: p.mt }; });
+  }
+  const resName = id => Maps.EXTRACT.residents[id].name;
+  function talkResident(id) {
+    const r = Maps.EXTRACT.residents[id];
+    if (!S.flags['c5t_' + id] && r.talk) return playScene(r.talk, () => { S.flags['c5t_' + id] = true; save(); if (!r.fixed) followToggle(id); });
+    if (r.fixed) return message(`${r.name}「わたしは、ここを動けない。……pH には逆らえんがな」`);
+    followToggle(id);
+  }
+  function followToggle(id) {
+    const st = ex();
+    if (st.follow === id) { st.follow = null; message(`${resName(id)}「ここで待ってるね」`); }
+    else { st.follow = id; message(`${resName(id)}「ついていくね」`); }
+    save();
+  }
+  // カーボが歩くと、ついてくる住人はカーボのいた場所に入る。扉や出口の上では、そこで待つ
+  function moveFollower(ox, oy) {
+    const m = map();
+    if (!m.layer) return;
+    const st = ex(), id = st.follow;
+    if (!id) return;
+    const p = st.res[id];
+    if (p.layer !== m.layer || Math.abs(p.x - ox) + Math.abs(p.y - oy) > 1) { st.follow = null; return; }
+    if (Maps.EXTRACT.thresholds.some(([x, y]) => x === S.x && y === S.y)) { st.follow = null; flash(`${resName(id)}は、ここで待っている`); return; }
+    Object.assign(p, { fx: p.x, fy: p.y, mt: UI.move ? UI.move.t0 : 0, x: ox, y: oy });
+    checkLocks();
+  }
+  // 鍵になる住人が、その層で扉の前に立つと開く
+  function checkLocks() {
+    const st = ex();
+    for (const L of Maps.EXTRACT.locks) {
+      if (S.flags[L.flag]) continue;
+      const p = st.res[L.key];
+      if (p.layer === L.layer && p.x === L.front[0] && p.y === L.front[1]) {
+        S.flags[L.flag] = true; save();
+        if (st.follow === L.key) st.follow = null;
+        UI.held = null; playScene(L.scene);
+        return true;
+      }
+    }
+    return false;
+  }
+  // 住人が移れる場所か（壁・人や物・カーボのいる場所には移れない）
+  function freeIn(layer, x, y) {
+    const mid = Maps.EXTRACT.maps[layer], m = MAPS[mid], ch = m.grid[y] && m.grid[y][x];
+    if (!ch || Sprites.SOLID.has(ch)) return false;
+    if (m.events.some(e => e.x === x && e.y === y && e.on === 'bump' && (!e.when || e.when(S.flags)))) return false;
+    if (map().layer === layer && S.x === x && S.y === y) return false;
+    return true;
+  }
+  const PUMP = { acid: '酸（HCl）', bicarb: '弱い塩基（NaHCO₃）', base: '強い塩基（NaOH）' };
+  const INTO = { amine: 'アンモニウム塩になって', acid: 'カルボキシラートになって', phenol: 'フェノキシドになって' };
+  function usePump(ev) {
+    const E = Maps.EXTRACT, st = ex();
+    const moved = E.applyPh(st, ev.room, ev.pump, freeIn);
+    if (moved.includes(st.follow)) st.follow = null;
+    st.pumps++;
+    const lines = [`${PUMP[ev.pump]}を入れた。この部屋は ${E.PH[ev.pump]} になった。`];
+    for (const id of moved) {
+      const r = E.residents[id], down = st.res[id].layer === 'aq';
+      lines.push(`${r.name}が、${down ? `${INTO[r.type]}、水層へ下りた` : 'もとの形に戻って、有機層へ上がった'}。`);
+    }
+    if (!moved.length) lines.push('……誰も、層を移らなかった。');
+    if (st.pumps >= 4 && !S.flags.c5foam) {
+      S.flags.c5foam = true;
+      lines.push('振りすぎた！ はしごのまわりに、泡のかたまり（エマルション）がたまった。', '【ヒント】飽和食塩水の蛇口で、泡を消せる。');
+    }
+    save(); Sound.se('transform'); UI.held = null;
+    message(lines, () => checkLocks());
+  }
+  // はしご：同じ場所のまま、もう片方の層へ
+  function useLadder() {
+    const m = map(), st = ex(), other = m.layer === 'org' ? 'aq' : 'org', tw = MAPS[m.twin];
+    if (S.flags.c5foam) return message(['はしごのまわりに、泡のかたまり（エマルション）がたまっていて、通れない。', '【ヒント】飽和食塩水の蛇口で、泡を消せる。']);
+    if (Sprites.SOLID.has(tw.grid[S.y][S.x])) return message('ここからは、はしごを使えない。はしごの横に立とう。');
+    if (Object.values(st.res).some(p => p.layer === other && p.x === S.x && p.y === S.y)) return message('はしごの先に、誰かいる。少し場所を変えよう。');
+    st.follow = null; st.pumps = 0;
+    Sound.se('blip');
+    warp({ map: m.twin, x: S.x, y: S.y, dir: S.dir });
+  }
+  // 外から分液区に入ったら、まだ扉の開いていない部屋は、はじめに戻す（詰まないように）
+  function enterDistrict() {
+    const E = Maps.EXTRACT, st = ex();
+    for (const r of E.rooms) if (!S.flags[r.lock]) E.resetRoom(st, r.id);
+    st.follow = null; st.pumps = 0; S.flags.c5foam = false;
+  }
   const eventAt = (x, y, on) => activeEvents().find(e => e.x === x && e.y === y && (!on || e.on === on));
 
   function mapCanvas() {
@@ -652,9 +759,21 @@
       if (dark) { ctx.fillStyle = `rgba(40, 20, 70, ${dark * 0.05})`; ctx.fillRect(0, 0, cv.width, cv.height); }
     }
     const colors = S.party.length ? S.party.map(id => comp(id).color) : null;
+    // 分液区：もう片方の層にいる住人は、ガラス越しに透けて見える
+    if (m.layer) {
+      const st = ex();
+      ctx.save(); ctx.globalAlpha = 0.28;
+      for (const [id, r] of Object.entries(Maps.EXTRACT.residents)) {
+        const p = st.res[id];
+        if (p.layer !== m.layer) Sprites.drawChar(ctx, r.sprite, (p.x - camX) * TILE, (p.y - camY) * TILE, TILE, { colors });
+      }
+      ctx.restore();
+    }
     for (const e of activeEvents()) {
       if (!e.sprite) continue;
-      const sx = (e.x - camX) * TILE, sy = (e.y - camY) * TILE;
+      let px = e.x, py = e.y;
+      if (e.res && UI.move && e.mt === UI.move.t0) { const t = Math.min(1, (performance.now() - UI.move.t0) / STEP_MS); px = e.fx + (e.x - e.fx) * t; py = e.fy + (e.y - e.fy) * t; }
+      const sx = (px - camX) * TILE, sy = (py - camY) * TILE;
       const id = e.chest && S.flags[e.chest.flag] ? 'chestOpen' : resolve(e.sprite, S.flags);
       if (e.mirror) { ctx.save(); ctx.translate(sx + TILE, sy); ctx.scale(-1, 1); Sprites.drawChar(ctx, id, 0, 0, TILE, { colors }); ctx.restore(); }
       else Sprites.drawChar(ctx, id, sx, sy, TILE, { colors });
@@ -708,8 +827,10 @@
       return;
     }
     UI.move = { fx: S.x, fy: S.y, t0: performance.now() };
+    const ox = S.x, oy = S.y;
     S.x = nx; S.y = ny;
     moveShadow(dx, dy);
+    moveFollower(ox, oy);
   }
 
   function afterStep() {
@@ -742,6 +863,10 @@
   }
 
   function trigger(ev) {
+    if (ev.res) return talkResident(ev.res);
+    if (ev.pump) return usePump(ev);
+    if (ev.ladder) return useLadder();
+    if (ev.tap) return playScene('c5_tap');
     if (ev.scene) return playScene(resolve(ev.scene, S.flags));
     if (ev.text) return message(resolve(ev.text, S.flags));
     if (ev.shop) return openShop(ev.shop);
@@ -765,7 +890,10 @@
   }
 
   function warp(w) {
+    const from = S.map;
     S.map = w.map; S.x = w.x; S.y = w.y; S.dir = w.dir || S.dir;
+    if (MAPS[S.map].layer && !MAPS[from].layer) enterDistrict();
+    if (MAPS[from].layer && !MAPS[S.map].layer && S.c5x) S.c5x.follow = null;
     UI.move = null; UI.steps = 0; UI.shadow = null;
     save();
     render();
@@ -783,7 +911,9 @@
   function questionPool(B) {
     const E = ENEMIES[B.key], d = S.diff, ch = E.ch || 1;
     const diffs = E.boss ? [d, Math.min(4, d + 1)] : B.key === 'duo' ? [d] : [d, Math.max(1, d - 1)];
-    let pool = Questions.LIST.filter(q => q.ch === ch && diffs.includes(q.diff));
+    // chs があれば、その章の問題から出す（物語の中の決まった問題 special は混ぜない）
+    const chs = E.chs || [ch];
+    let pool = Questions.LIST.filter(q => !q.special && chs.includes(q.ch) && diffs.includes(q.diff));
     // ボスの形態や中ボスの得意分野に合わせて絞る（足りなければ絞らない）
     const tag = B.form ? E.forms[B.form].tag : E.tag;
     if (tag) { const t = pool.filter(q => q.tag === tag); if (t.length >= 4) pool = t; }
@@ -794,6 +924,9 @@
   const voiceOf = (B, E) => (B.form ? E.forms[B.form] : { ...E, ...stageOf(B, E) });
   function pickQuestion(B) {
     if (B.queue) { const id = B.queue.shift(); return Questions.LIST.find(q => q.id === id); }
+    // 決まった順に出す段階（ボーカの最後の出題）
+    const sg = stageOf(B, ENEMIES[B.key]);
+    if (sg.queue) { if (!B.squeue) B.squeue = [...sg.queue]; const id = B.squeue.shift(); return Questions.LIST.find(q => q.id === id); }
     const pool = questionPool(B);
     // いまの難易度の問題を優先し、未出題のものから選ぶ
     let cand = pool.filter(q => !S.used[q.id] && q.diff === S.diff);
@@ -814,15 +947,23 @@
 
   function startBattle(key, random, queue) {
     const E = ENEMIES[key];
+    // queue を渡すのは復習ノートの練習。物語の中の決まった問題（E.queue）は、ノートには戻らない
+    const fromNote = !!queue;
+    if (!queue && E.queue) queue = E.queue;
     const hp = queue ? queue.length * 10 : E.hp;
     UI.battle = {
       key, random, name: E.name, sprite: E.sprite, hp, maxHp: hp, atk: E.atk, phase: 0,
       state: 'intro', lines: [`${E.name}があらわれた！`, `${E.name}「${E.start}」`],
       q: null, order: [], removed: new Set(), asked: new Set(), streak: 0, power: 0, guard: 0, stink: 0, dr: 0,
       uses: Object.fromEntries(S.party.map(id => [id, skillAt(id).uses])),
-      timeMax: S.diff >= 4 ? 120 : 90, timeLeft: 0, queue: queue ? [...queue] : null, levels: 0,
+      timeMax: S.diff >= 4 ? 120 : 90, timeLeft: 0, queue: queue ? [...queue] : null, fromNote, levels: 0,
     };
-    if (queue) UI.battle.lines = [`${E.name}「${E.start}」`, `ノートの問題 ${queue.length} 問に挑戦する。`];
+    if (fromNote) UI.battle.lines = [`${E.name}「${E.start}」`, `ノートの問題 ${queue.length} 問に挑戦する。`];
+    else if (E.queue) UI.battle.lines = [E.start];
+    // エノラスとアキラルの戦い：カーボではなく 2 人の HP で受ける（0 にはならない）
+    if (E.duo) Object.assign(UI.battle, { allyHp: E.ally.hp, allyMax: E.ally.hp });
+    // ボーカ：特性はカーボの逆
+    if (E.oppTrait) Object.assign(UI.battle, { shadowCfg: S.cfg ? opp(S.cfg) : null, missStreak: 0 });
     if (E.forms) { const F = E.forms.keto; Object.assign(UI.battle, { form: 'keto', name: F.name, sprite: F.sprite, answered: 0 }); }
     // 影のカーボ：HP はカーボの最大 HP の 2 倍、攻撃力はカーボが正解したときのダメージの 3/4。R/S は逆
     if (E.mirror) Object.assign(UI.battle, { hp: S.maxHp * 2, maxHp: S.maxHp * 2, atk: Math.round((10 + (S.lv - 1)) * 0.75), shadowCfg: S.cfg ? opp(S.cfg) : null, missStreak: 0 });
@@ -836,12 +977,14 @@
   function nextQuestion() {
     const B = UI.battle;
     B.q = pickQuestion(B);
-    B.order = shuffle([0, 1, 2, 3]);
+    // ボーカの問いは、選択肢を書いた順のまま出す。制限時間もない
+    const idx = B.q.choices.map((_, i) => i);
+    B.order = B.q.anyOk ? idx : shuffle(idx);
     B.removed = new Set();
     B.timeLeft = B.timeCap = B.timeMax;
     B.state = 'q';
     render();
-    runTimer(B);
+    if (B.q.anyOk) stopTimer(); else runTimer(B);
   }
   function runTimer(B) {
     stopTimer();
@@ -861,9 +1004,11 @@
     const B = UI.battle, E = ENEMIES[B.key], q = B.q;
     if (B.state !== 'q') return;
     stopTimer();
-    const ok = choice === q.a;
+    // ボーカの問い（anyOk）には、正解も不正解もない
+    const ok = q.anyOk ? choice >= 0 : choice === q.a;
+    const sg = stageOf(B, E), counts = !E.practice && !q.special;
     // シリルの保護基：間違えても 1 度だけ、ダメージなしで答え直せる（この 1 回は正答率に数えず、ノートには書く）
-    if (!ok && B.retry && !E.practice) {
+    if (!ok && B.retry && counts) {
       B.retry = false; B.streak = 0; B.retried = q.id;
       S.notebook[q.id] = (S.notebook[q.id] || 0) + 1;
       if (choice >= 0) B.removed.add(choice);
@@ -873,7 +1018,7 @@
       return runTimer(B);
     }
     const lines = [], talk = [], pending = [];
-    if (!E.practice) {
+    if (counts) {
       S.stats.total++;
       const cs = S.chStats[E.ch || 1] || (S.chStats[E.ch || 1] = { c: 0, t: 0 }); cs.t++; if (ok) cs.c++;
       const tp = S.topics[q.topic] || (S.topics[q.topic] = { c: 0, t: 0 });
@@ -882,19 +1027,26 @@
     // アキラルの鏡面の結界のあいだは、カーボの R/S の特性が効かない
     const trait = !(E.barrier && B.phase < 1);
     if (ok) {
-      if (!E.practice) S.stats.correct++;
+      if (counts) S.stats.correct++;
       let dmg = E.practice ? 10 : 10 + (S.lv - 1) + (S.cfg === 'R' && trait ? Math.min(B.streak, 3) * 4 : 0);
       if (B.power && !E.practice) { dmg = Math.round(dmg * B.power); B.power = 0; lines.push('アジーの背面攻撃が決まった！'); }
       if (B.shadowCfg === 'S') dmg = Math.round(dmg * 0.75);    // (S) の影は守りが固い
+      if (E.fixedDmg) dmg = E.fixedDmg;
+      // 決まった順の段階は、残りの問題で HP をちょうど使いきる（最後の問いで 0 になる）
+      if (sg.queue) { const rem = (B.squeue ? B.squeue.length : 0) + 1; dmg = rem <= 1 ? B.hp : Math.floor(B.hp / rem); }
       B.streak++; B.missStreak = 0;
-      B.hp = Math.max(0, B.hp - dmg);
-      lines.push(`正解！ ${B.name}に ${dmg} のダメージ！${S.cfg === 'R' && trait && B.streak > 1 && !E.practice ? `（${B.streak} 連続正解）` : ''}`);
+      // 最後に決まった順の段階があるボスは、その段階に入るまで HP が 0 にならない
+      const lastQ = E.stages && E.stages[E.stages.length - 1].queue;
+      B.hp = lastQ && B.phase < E.stages.length - 1 ? Math.max(1, B.hp - dmg) : Math.max(0, B.hp - dmg);
+      if (q.anyOk) lines.push(`${B.name}「${q.replies[choice]}」`);
+      else lines.push(`正解！ ${B.name}に ${dmg} のダメージ！${S.cfg === 'R' && trait && B.streak > 1 && !E.practice ? `（${B.streak} 連続正解）` : ''}`);
       // スズの連鎖：正解するたびに HP が戻る
       if (B.drain && !E.practice && S.hp < S.maxHp) { const v = Math.min(B.drain, S.maxHp - S.hp); S.hp += v; lines.push(`スズの連鎖で、HP が ${v} 回復した。`); UI.fx.push({ t: 'heroHeal', v }); }
       // 答え直しで正解した問題は、ノートに残す
       if (S.notebook[q.id] && B.retried !== q.id) { delete S.notebook[q.id]; lines.push('復習ノートの問題を克服した！'); }
-      if (B.hp > 0) lines.push(`${B.name}「${taunt(voiceOf(B, E).hit)}」`);
-      UI.fx.push({ t: 'enemyHit', v: dmg }); Sound.se('ok'); setTimeout(() => Sound.se('hit'), 120);
+      if (B.hp > 0 && !q.anyOk) lines.push(`${B.name}「${taunt(voiceOf(B, E).hit)}」`);
+      // ボーカの問いは攻撃ではないので、ダメージの数字も効果音も出さない
+      if (!q.anyOk) { UI.fx.push({ t: 'enemyHit', v: dmg }); Sound.se('ok'); setTimeout(() => Sound.se('hit'), 120); } else Sound.se('blip');
       for (const [i, ph] of (E.phases || []).entries()) {
         if (B.phase < i + 1 && B.hp / B.maxHp <= ph.at && B.hp > 0) {
           B.phase = i + 1;
@@ -904,18 +1056,30 @@
       }
     } else {
       B.streak = 0;
-      if (!E.practice) S.notebook[q.id] = (S.notebook[q.id] || 0) + 1;
+      if (counts) S.notebook[q.id] = (S.notebook[q.id] || 0) + 1;
+      // 物語の中の決まった問題は、間違えたら後ろに回して、もう一度出す
+      if (B.queue && !B.fromNote) B.queue.push(q.id);
+      if (sg.queue) {
+        const i = B.squeue.findIndex(id => (Questions.LIST.find(x => x.id === id) || {}).anyOk);
+        if (i < 0) B.squeue.push(q.id); else B.squeue.splice(i, 0, q.id);
+      }
       if (E.practice) {
-        lines.push(`${choice < 0 ? '時間切れ。' : '不正解。'}（練習なのでダメージはない）`);
+        lines.push(`${choice < 0 ? '時間切れ。' : '不正解。'}${B.fromNote ? '（練習なのでダメージはない）' : '（ダメージはない。あとで、もう一度）'}`);
       } else {
         let dmg = Math.max(1, B.atk - B.stink - B.dr);
         if (B.shadowCfg === 'R') dmg += Math.min(B.missStreak || 0, 3) * 4;    // (R) の影は、続けて間違えるほど強くなる
         if (B.shadowCfg) B.missStreak = (B.missStreak || 0) + 1;
         if (S.cfg === 'S' && trait) dmg = Math.max(1, Math.round(dmg * 0.75));
         if (B.guard) { dmg = 0; B.guard--; lines.push('ブトキが立ちはだかった！'); }
-        S.hp = Math.max(0, S.hp - dmg);
-        lines.push(`${choice < 0 ? '時間切れ！ ' : '不正解……。'}カーボは ${dmg} のダメージを受けた。`);
-        lines.push('この問題を復習ノートに書きとめた。');
+        if (E.duo) {
+          B.allyHp = Math.max(1, B.allyHp - dmg);
+          lines.push(`${choice < 0 ? '時間切れ！ ' : '不正解……。'}${E.ally.name}は ${dmg} のダメージを受けた。`);
+        } else {
+          // 負けない段階（ボーカの最後の出題）では、HP は 1 より下がらない
+          S.hp = sg.noLose ? Math.max(1, S.hp - dmg) : Math.max(0, S.hp - dmg);
+          lines.push(`${choice < 0 ? '時間切れ！ ' : '不正解……。'}カーボは ${dmg} のダメージを受けた。`);
+        }
+        if (counts) lines.push('この問題を復習ノートに書きとめた。');
         if (dmg > 0) UI.fx.push({ t: 'heroHit', v: dmg });
       }
       lines.push(`${B.name}「${taunt(voiceOf(B, E).miss)}」`);
@@ -928,6 +1092,8 @@
       talk.push(`${F.name}「${F.into}」`, `（エノラスの姿が変わった。出題の分野が変わる）`);
       pending.push(() => { B.name = F.name; B.sprite = F.sprite; UI.fx.push({ t: 'swap' }); });
     }
+    // 弁が全開の段階：問題ごとに、ボーカの攻撃力が上がる
+    if (sg.atkRise) B.atk = Math.min(E.atk + (sg.atkRiseMax || 99), B.atk + sg.atkRise);
     B.result = { ok, choice, lines };
     B.talk = talk; B.pending = pending;
     B.state = 'result';
@@ -942,10 +1108,19 @@
       const practiceDone = B.queue && !B.queue.length;
       if (B.hp <= 0 || practiceDone) return winBattle();
       // 形態変化などのセリフがあれば、次の問題の前に、問題と同じ場所に出す
-      if (B.talk && B.talk.length) { B.state = 'talk'; B.pending.forEach(fn => fn()); B.pending = []; return render(); }
+      if (B.talk && B.talk.length) {
+        // 長い会話は「---」の行でページに分けて、1 ページずつ出す
+        const pages = [[]];
+        for (const l of B.talk) { if (l.trim() === '---') pages.push([]); else pages[pages.length - 1].push(l); }
+        B.talk = pages.shift(); B.talkPages = pages.filter(p => p.length);
+        B.state = 'talk'; B.pending.forEach(fn => fn()); B.pending = []; return render();
+      }
       return nextQuestion();
     }
-    if (B.state === 'talk') { B.talk = null; return nextQuestion(); }
+    if (B.state === 'talk') {
+      if (B.talkPages && B.talkPages.length) { B.talk = B.talkPages.shift(); return render(); }
+      B.talk = null; return nextQuestion();
+    }
     if (B.state === 'win') return B.levels > 0 ? (B.state = 'levelup', render()) : endBattle(true);
     if (B.state === 'levelup') return; // 技を選ぶまで進まない
     if (B.state === 'lose') return endBattle(false);
@@ -955,9 +1130,10 @@
   function winBattle() {
     const B = UI.battle, E = ENEMIES[B.key];
     B.state = 'win';
-    B.lines = [`${B.name}「${E.win}」`];
+    B.lines = E.winLines ? [...E.winLines] : [`${B.name}「${E.win}」`];
     if (!E.practice) {
-      B.lines.push(`${B.name}をたおした！`, `経験値 ${E.exp} と、研究費 ${yen(E.money)} を手に入れた。`);
+      if (!E.winLines) B.lines.push(`${B.name}をたおした！`);
+      if (E.exp || E.money) B.lines.push(E.money ? `経験値 ${E.exp} と、研究費 ${yen(E.money)} を手に入れた。` : `経験値 ${E.exp} を手に入れた。`);
       S.exp += E.exp; S.money += E.money;
       while (S.exp >= expToNext(S.lv)) {
         S.exp -= expToNext(S.lv); S.lv++;
@@ -989,7 +1165,7 @@
     UI.battle = null;
     if (!won) { UI.scene = null; UI.screen = 'over'; return render(); }
     save();
-    if (B && B.queue) { UI.screen = 'note'; return render(); }
+    if (B && B.fromNote) { UI.screen = 'note'; return render(); }
     UI.screen = 'world';
     render();
     if (UI.scene) { runCommands(); }
@@ -1123,7 +1299,7 @@
     } else {
       const q = B.q;
       // 分野の名前がそのまま正解になる問題があるので、分野は答えたあとに見せる
-      const head = `<div class="q-head"><span class="chip dim">${esc(Questions.DIFFS[q.diff].name)}</span>${B.state === 'q' ? '' : `<span class="chip dim">${esc(q.topic)}</span>`}${q.cs ? '<span class="chip ok">構造式で答える</span>' : ''}${S.notebook[q.id] ? '<span class="chip bad">復習ノートの問題</span>' : ''}</div>`;
+      const head = `<div class="q-head">${q.special ? '' : `<span class="chip dim">${esc(Questions.DIFFS[q.diff].name)}</span>`}${B.state === 'q' && !q.special ? '' : `<span class="chip ${q.anyOk ? 'ok' : 'dim'}">${esc(q.topic)}</span>`}${q.cs ? '<span class="chip ok">構造式で答える</span>' : ''}${S.notebook[q.id] ? '<span class="chip bad">復習ノートの問題</span>' : ''}</div>`;
       const qbox = `${head}<p class="q-text">${esc(q.q)}</p>${q.smiles ? `<div class="q-mol">${Mol.svgTag(q.smiles, 220, 130, 'big')}</div>` : ''}${molsRow(q)}`;
       const grid = q.cs ? 'choices struct' : q.cm ? 'choices withmol' : 'choices';
       if (B.state === 'q') {
@@ -1138,16 +1314,20 @@
             <span class="sk-name">${ITEMS[id].name} ×${S.items[id]}${full ? '<span class="sk-used">HP 満タン</span>' : ''}</span>
             <span class="sk-desc">${esc(ITEMS[id].desc)}</span></button>`; }).join('');
         const flags = [B.power ? '背面攻撃 準備中' : '', B.guard ? '立体障害で守っている' : '', B.dr ? `被ダメージ −${B.dr}` : '', B.stink ? `悪臭で敵がひるんでいる（−${B.stink}）` : '', B.retry ? '保護基で守っている（1 回答え直せる）' : '', B.drain ? `連鎖：正解するたびに HP +${B.drain}` : '',
-          E.barrier && B.phase < 1 ? '鏡面の結界：R/S の特性が効かない' : '', B.shadowCfg ? `影は (${B.shadowCfg})：${B.shadowCfg === 'S' ? 'こちらの与えるダメージ −25%' : '続けて間違えるほど、影の攻撃が上がる'}` : ''].filter(Boolean).map(t => `<span class="chip ok">${t}</span>`).join('');
-        body = win(`${qbox}<div class="timer"><div class="bar time"><div id="qtime" style="width:${B.timeLeft / B.timeCap * 100}%"></div></div><span id="qtnum" class="small">${Math.ceil(B.timeLeft)}</span></div>`, 'qwin')
+          E.barrier && B.phase < 1 ? '鏡面の結界：R/S の特性が効かない' : '', B.shadowCfg ? `${E.mirror ? '影' : B.name}は (${B.shadowCfg})：${B.shadowCfg === 'S' ? 'こちらの与えるダメージ −25%' : '続けて間違えるほど、攻撃が上がる'}` : '',
+          stageOf(B, E).atkRise ? '弁が全開：問題ごとに攻撃が強くなる' : ''].filter(Boolean).map(t => `<span class="chip ok">${t}</span>`).join('');
+        const timer = q.anyOk ? '' : `<div class="timer"><div class="bar time"><div id="qtime" style="width:${B.timeLeft / B.timeCap * 100}%"></div></div><span id="qtnum" class="small">${Math.ceil(B.timeLeft)}</span></div>`;
+        body = win(`${qbox}${timer}`, 'qwin')
           + `<div class="${grid}">${choices}</div>`
-          + (E.practice ? '' : `<div class="skills-head small dim">仲間の技・どうぐ</div><div class="skills">${skills}${items}</div>`)
-          + (flags ? `<div class="status">${flags}</div>` : '');
+          + (E.practice || E.noSkills || q.anyOk ? '' : `<div class="skills-head small dim">仲間の技・どうぐ</div><div class="skills">${skills}${items}</div>`)
+          + (flags && !q.anyOk ? `<div class="status">${flags}</div>` : '');
       } else {
         const r = B.result;
-        const choices = B.order.map(i => `<div class="choice shown ${i === q.a ? 'right' : i === r.choice ? 'wrong' : ''}"><span class="c-key">${i === q.a ? '○' : i === r.choice ? '×' : '　'}</span>${choiceInner(q, i, true)}</div>`).join('');
+        // ボーカの問いは、選んだ答えだけを示す（正解も不正解もない）
+        const right = q.anyOk ? r.choice : q.a;
+        const choices = B.order.map(i => `<div class="choice shown ${i === right ? 'right' : i === r.choice ? 'wrong' : ''}"><span class="c-key">${i === right ? '○' : i === r.choice ? '×' : '　'}</span>${choiceInner(q, i, true)}</div>`).join('');
         body = win(qbox, 'qwin') + `<div class="${grid}">${choices}</div>`
-          + win(`<p class="${r.ok ? 'accent' : 'bad-text'}"><b>${r.ok ? '正解！' : r.choice < 0 ? '時間切れ' : '不正解'}</b></p><p class="explain">${esc(q.explain)}</p>
+          + win(`${q.anyOk ? '' : `<p class="${r.ok ? 'accent' : 'bad-text'}"><b>${r.ok ? '正解！' : r.choice < 0 ? '時間切れ' : '不正解'}</b></p><p class="explain">${esc(q.explain)}</p>`}
               <div class="dlog" id="dtext" data-full="${esc(r.lines.join('\n'))}"></div>
               <div class="center"><button class="btn big" data-act="bNext">つぎへ</button></div>`, 'msg');
       }
@@ -1155,11 +1335,11 @@
     return `<div class="battle">
       <div class="enemy-box win">
         <canvas id="ecv" width="128" height="128"></canvas>
-        <div class="enemy-info"><h3>${esc(B.name)}</h3>${hpBar(B.hp, B.maxHp, 'enemy')}<div class="small dim">${E.practice ? `残り ${B.queue ? B.queue.length + (B.state === 'q' ? 1 : 0) : 0} 問` : `攻撃力 ${Math.max(1, B.atk - B.stink)}`}</div></div>
+        <div class="enemy-info"><h3>${esc(B.name)}</h3>${hpBar(B.hp, B.maxHp, 'enemy')}<div class="small dim">${E.practice ? `残り ${B.queue ? B.queue.length + (B.state === 'q' ? 1 : 0) : 0} 問` : E.duo ? `仮面のひび ${Math.round((1 - B.hp / B.maxHp) * 100)}%` : `攻撃力 ${Math.max(1, B.atk - B.stink)}`}</div></div>
         <div class="b-mute">${muteBtn()}</div>
       </div>
       ${body}
-      <div class="hero-bar win small">${heroName()} Lv${S.lv}　HP ${Math.max(0, S.hp)}/${S.maxHp} ${hpBar(S.hp, S.maxHp, 'hp')}${S.cfg === 'R' && B.streak ? `<span class="chip ok">${B.streak} 連続正解</span>` : ''}</div>
+      <div class="hero-bar win small">${E.duo ? `${E.ally.name}　HP ${B.allyHp}/${B.allyMax} ${hpBar(B.allyHp, B.allyMax, 'hp')}` : `${heroName()} Lv${S.lv}　HP ${Math.max(0, S.hp)}/${S.maxHp} ${hpBar(S.hp, S.maxHp, 'hp')}${S.cfg === 'R' && B.streak ? `<span class="chip ok">${B.streak} 連続正解</span>` : ''}`}</div>
     </div>`;
   }
 
@@ -1205,6 +1385,52 @@
         <button class="btn" data-act="closeNote">もどる</button></div>`)}`;
   }
 
+  // ---- 最後の一枚絵：棚に並んだ 2 本の瓶。文字はアルファベットと数字だけ ----
+  function vEnding() {
+    return `<div class="ending" data-act="endingNext"><canvas id="endcv" width="480" height="300" role="img" aria-label="(${S.cfg})-carbo / (${opp(S.cfg)})-obrac"></canvas><div class="end-next">▶</div></div>`;
+  }
+  function drawEnding() {
+    const c = document.getElementById('endcv');
+    if (!c) return;
+    const g = c.getContext('2d'), W = c.width, H = c.height;
+    g.imageSmoothingEnabled = false;
+    // 朝の光の研究所の壁と、窓の光
+    const bg = g.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#f7e7c4'); bg.addColorStop(1, '#d9c39a');
+    g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(255, 250, 230, .55)';
+    g.beginPath(); g.moveTo(W * 0.62, 0); g.lineTo(W * 0.86, 0); g.lineTo(W * 0.66, H); g.lineTo(W * 0.38, H); g.closePath(); g.fill();
+    // 棚板
+    g.fillStyle = '#8a5f33'; g.fillRect(30, 222, W - 60, 14);
+    g.fillStyle = '#a8763f'; g.fillRect(30, 222, W - 60, 4);
+    g.fillStyle = '#5e3d1f'; g.fillRect(30, 236, W - 60, 4);
+    const date = (() => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })();
+    const me = S.cfg || 'R', other = opp(me);
+    // 2 本の瓶（左が carbo、右が obrac。中の結晶は鏡合わせ）
+    [[W / 2 - 110, `(${me})-carbo`, 1], [W / 2 + 14, `(${other})-obrac`, -1]].forEach(([x, label, twist]) => {
+      const y = 88, w = 96, h = 134;
+      g.fillStyle = 'rgba(0, 0, 0, .12)'; g.fillRect(x + 6, y + h - 4, w, 6);                  // 影
+      g.fillStyle = 'rgba(230, 245, 255, .55)'; g.fillRect(x, y + 22, w, h - 22);              // 瓶
+      g.fillStyle = 'rgba(255, 255, 255, .7)'; g.fillRect(x + 6, y + 30, 6, h - 40);
+      g.strokeStyle = '#7f98ad'; g.lineWidth = 3; g.strokeRect(x, y + 22, w, h - 22);
+      g.fillStyle = '#2f3a48'; g.fillRect(x + 8, y, w - 16, 24);                                // ふた
+      g.fillStyle = '#4a5868'; g.fillRect(x + 8, y, w - 16, 6);
+      // 結晶（ねじれの向きが逆）
+      const cx = x + w / 2, cy = y + h - 30;
+      g.save(); g.translate(cx, cy); g.scale(twist * 1.3, 1.3);
+      g.fillStyle = twist > 0 ? '#bfe8ff' : '#ffd9f2'; g.strokeStyle = twist > 0 ? '#5aa8d8' : '#d878b8'; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(-12, 16); g.lineTo(-4, -22); g.lineTo(12, -10); g.lineTo(6, 16); g.closePath(); g.fill(); g.stroke();
+      g.fillStyle = 'rgba(255, 255, 255, .8)'; g.fillRect(-4, -12, 3, 18);
+      g.restore();
+      // ラベル（手書き風。アルファベットと数字だけ）
+      g.fillStyle = '#fbf8ef'; g.fillRect(x + 4, y + 30, w - 8, 40);
+      g.strokeStyle = '#c9bfa6'; g.lineWidth = 1; g.strokeRect(x + 4, y + 30, w - 8, 40);
+      g.fillStyle = '#2a2a3a'; g.textAlign = 'center';
+      g.font = 'italic bold 13px "Courier New", monospace'; g.fillText(label, x + w / 2, y + 48);
+      g.font = '11px "Courier New", monospace'; g.fillText(date, x + w / 2, y + 64);
+    });
+  }
+
   // ---- ゲームオーバー・クリア・シェア --------------------------------
   function vOver() {
     return `<h2 class="screen-title">カーボは倒れた……</h2>
@@ -1213,10 +1439,10 @@
   }
 
   const TITLES = [[90, '不斉の勇者'], [75, '求核の剣士'], [60, '見習い化学者'], [0, 'ラセミの迷い子']];
-  const CHAPTERS = { 1: '第1章「求核の森」', 2: '第2章「カルボニル港」', 3: '第3章「芳香族の王国」', 4: '第4章「鏡の回廊」' };
+  const CHAPTERS = { 1: '第1章「求核の森」', 2: '第2章「カルボニル港」', 3: '第3章「芳香族の王国」', 4: '第4章「鏡の回廊」', 5: '第5章「廃液街」' };
   const NEXT = { 1: '第2章「カルボニル港」', 2: '第3章「芳香族の王国」', 3: '第4章「鏡の回廊」', 4: '第5章「廃液街」' };
-  const NEXT_ACT = { 1: 'toCh2', 2: 'toCh3', 3: 'toCh4' };
-  const clearCh = () => UI.clearCh || (S.flags.clear4 ? 4 : S.flags.clear3 ? 3 : S.flags.clear2 ? 2 : 1);
+  const NEXT_ACT = { 1: 'toCh2', 2: 'toCh3', 3: 'toCh4', 4: 'toCh5' };
+  const clearCh = () => UI.clearCh || (S.flags.clear5 ? 5 : S.flags.clear4 ? 4 : S.flags.clear3 ? 3 : S.flags.clear2 ? 2 : 1);
   function clearResult() {
     const ch = clearCh();
     const cs = S.chStats[ch], st = cs ? { correct: cs.c, total: cs.t } : S.stats;
@@ -1251,7 +1477,8 @@
           <button class="btn" data-act="shareCopy">文面をコピー</button>
         </div>
         <p class="small dim">ストーリーのネタバレは含まれません。</p>`)}
-      ${NEXT_ACT[ch] ? `<div class="center"><button class="btn big" data-act="${NEXT_ACT[ch]}">▶ ${NEXT[ch]}へ進む</button></div>` : `<p class="center dim">${NEXT[ch]}へ続く……（未実装）</p>`}
+      ${NEXT_ACT[ch] ? `<div class="center"><button class="btn big" data-act="${NEXT_ACT[ch]}">▶ ${NEXT[ch]}へ進む</button></div>`
+        : `<p class="center accent">全 5 章クリア！ 最後まで遊んでくれて、ありがとう。</p><div class="center"><button class="btn big" data-act="afterClear">▶ その後の世界を歩く</button></div>`}
       <div class="center"><button class="btn" data-act="clearNote">復習ノートを見る</button><button class="btn" data-act="toTitle">タイトルへ</button></div>`;
   }
   function fallbackCopy(t) {
@@ -1370,6 +1597,16 @@
       save(); UI.screen = 'world'; render();
       if (!S.flags.ch4) playScene('c4_start');
     },
+    toCh5() {
+      S.ch = 5; S.hp = S.maxHp; UI.clearCh = null;
+      S.map = 'lab'; S.x = 5; S.y = 5; S.dir = 'up';
+      save(); UI.screen = 'world'; render();
+      if (!S.flags.ch5) playScene('c5_start');
+    },
+    // 全章クリアのあと、その後の世界を歩く
+    afterClear() { UI.clearCh = null; UI.screen = 'world'; render(); },
+    // 最後の一枚絵から、クリア画面へ
+    endingNext() { UI.screen = 'world'; render(); runCommands(); },
     practice() {
       const ids = shuffle(Object.keys(S.notebook)).slice(0, 10);
       if (ids.length) startBattle('practice', false, ids);
@@ -1433,7 +1670,7 @@
     }
     if (UI.screen === 'battle') {
       const B = UI.battle;
-      if (B && B.state === 'q' && ['1', '2', '3', '4'].includes(e.key)) { const i = B.order[+e.key - 1]; if (!B.removed.has(i)) answer(i); }
+      if (B && B.state === 'q' && ['1', '2', '3', '4'].includes(e.key)) { const i = B.order[+e.key - 1]; if (i !== undefined && !B.removed.has(i)) answer(i); }
       // レベルアップ：1〜4 キーで強化する技を選ぶ（技がすべて最大なら Enter で進む）
       else if (B && B.state === 'levelup' && !e.repeat) {
         const id = S.party[+e.key - 1];
@@ -1443,6 +1680,7 @@
       else if (['Enter', ' ', 'z', 'Z'].includes(e.key) && B && !['q', 'levelup'].includes(B.state)) { e.preventDefault(); if (!finishTyping()) battleNext(); }
       return;
     }
+    if (UI.screen === 'ending' && ['Enter', ' ', 'z', 'Z'].includes(e.key)) { e.preventDefault(); actions.endingNext(); return; }
     if (UI.screen !== 'world') return;
     if (UI.choice && ['1', '2', '3', '4'].includes(e.key)) { choose(+e.key - 1); return; }
     if (KEYDIR[e.key]) { e.preventDefault(); if (!busy()) UI.held = KEYDIR[e.key]; return; }

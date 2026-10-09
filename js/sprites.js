@@ -507,6 +507,90 @@ const Sprites = (() => {
     // 奥の院の大鏡（割れると ? になる）
     '@': (c, x, y, s, tx, ty, nb) => bigMirror(c, x, y, s, tx, ty, nb, false),
     '?': (c, x, y, s, tx, ty, nb) => bigMirror(c, x, y, s, tx, ty, nb, true),
+
+    // ---- 第 5 章：廃液街 ----
+    // 研究所のドラフト（奥に階段が隠れている）。開くと '>' になる
+    '(': (c, x, y, s, tx, ty, nb) => { TILE['F'](c, x, y, s, tx, ty, nb); dot(c, x, y, s, 2, 13, 12, 1, '#555'); },
+    // 廃液街の壁（コンクリートと配管）
+    '0': (c, x, y, s, tx, ty, nb) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#2b3436');
+      for (let i = 0; i < 4; i++) dot(c, x, y, s, Math.floor(hash(tx, ty, i) * 14), Math.floor(hash(tx, ty, i + 4) * 14), 2, 1, '#3a4547');
+      if (ty % 3 === 0) { dot(c, x, y, s, 0, 5, 16, 3, '#5d6b63'); dot(c, x, y, s, 0, 5, 16, 1, '#7d8c82'); if (tx % 4 === 0) dot(c, x, y, s, 6, 4, 3, 5, '#8a7a4a'); }
+      if (nb(0, 1) !== '0') dot(c, x, y, s, 0, 14, 16, 2, '#1a2022');
+      if (hash(tx, ty, 9) < 0.15) dot(c, x, y, s, 9, 8, 1, 6, '#5fd4a0');   // したたる液
+    },
+    // ぬれたコンクリートの床
+    '2': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, (tx + ty) % 2 ? '#4a5552' : '#4f5a57');
+      if (hash(tx, ty, 3) < 0.3) { c.fillStyle = 'rgba(95, 212, 160, .18)'; c.beginPath(); c.ellipse(x + s * 0.5, y + s * 0.6, s * 0.3, s * 0.12, 0, 0, Math.PI * 2); c.fill(); }
+      dot(c, x, y, s, 0, 0, 16, 1, '#3e4846');
+    },
+    // 配管の橋（金網）
+    '3': (c, x, y, s, tx, ty) => {
+      TILE['4'](c, x, y, s, tx, ty);
+      dot(c, x, y, s, 1, 2, 14, 12, '#6e7778');
+      for (let i = 0; i < 4; i++) dot(c, x, y, s, 1, 3 + i * 3, 14, 1, '#4a5253');
+      for (let i = 0; i < 4; i++) dot(c, x, y, s, 2 + i * 4, 2, 1, 12, '#4a5253');
+      dot(c, x, y, s, 0, 1, 16, 1, '#a9b2b3'); dot(c, x, y, s, 0, 14, 16, 1, '#a9b2b3');
+    },
+    // うっすら光る液（通れない）
+    '4': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#0f3b33');
+      for (let i = 0; i < 2; i++) { const gx = Math.floor(hash(tx, ty, i) * 11), gy = 3 + i * 7; dot(c, x, y, s, gx, gy, 5, 1, '#2fae86'); }
+      if (hash(tx, ty, 5) < 0.3) circle(c, x, y, s, 4 + hash(tx, ty, 6) * 8, 4 + hash(tx, ty, 7) * 8, 1, 'rgba(160, 255, 210, .6)');
+    },
+    // 古いタンク（さびた鉄）
+    '5': (c, x, y, s, tx, ty, nb) => {
+      TILE['2'](c, x, y, s, tx, ty);
+      dot(c, x, y, s, 1, 0, 14, 16, '#6b5a48');
+      dot(c, x, y, s, 1, 0, 3, 16, '#85705a'); dot(c, x, y, s, 12, 0, 3, 16, '#4e4235');
+      if (nb(0, -1) !== '5') dot(c, x, y, s, 1, 0, 14, 2, '#9a8468');
+      if (ty % 2) dot(c, x, y, s, 1, 8, 14, 1, '#3e342a');
+      for (let i = 0; i < 3; i++) if (hash(tx, ty, i + 11) < 0.5) dot(c, x, y, s, 3 + i * 4, 3 + i * 3, 2, 2, '#a0522d');   // さび
+    },
+    // ホスフィンオキシドが結晶になる前の、液の切れ目（通れない）/ 結晶の足場
+    '6': (c, x, y, s, tx, ty) => TILE['4'](c, x, y, s, tx, ty),
+    '{': (c, x, y, s, tx, ty) => {
+      TILE['4'](c, x, y, s, tx, ty);
+      poly(c, x, y, s, [[1, 3], [15, 2], [14, 14], [2, 13]], '#e8f4ff', '#9ab4d0');
+      for (let i = 0; i < 3; i++) dot(c, x, y, s, 3 + i * 4, 4 + i * 2, 3, 1, '#ffffff');
+    },
+    // 分液区：有機層（黄色がかった油）と水層（青い水）の床、漏斗のガラスの壁
+    '*': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, (tx + ty) % 2 ? '#a08a3c' : '#a8913f');
+      for (let i = 0; i < 2; i++) if (hash(tx, ty, i) < 0.5) circle(c, x, y, s, 3 + hash(tx, ty, i + 2) * 10, 3 + hash(tx, ty, i + 4) * 10, 1.4, 'rgba(255, 230, 140, .5)');
+      dot(c, x, y, s, 0, 0, 16, 1, '#8a7632');
+    },
+    '-': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, (tx + ty) % 2 ? '#2f5f8f' : '#336697');
+      dot(c, x, y, s, Math.floor(hash(tx, ty) * 10), 5 + Math.floor(hash(tx, ty, 1) * 6), 5, 1, '#5d93c7');
+      dot(c, x, y, s, 0, 0, 16, 1, '#284f78');
+    },
+    '/': (c, x, y, s, tx, ty, nb) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#9fb8c8');
+      c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(x + s * 0.15, y, s * 0.15, s);
+      dot(c, x, y, s, 0, 0, 16, 1, '#e8f4ff'); dot(c, x, y, s, 0, 15, 16, 1, '#6d8696');
+      if (nb(0, 1) !== '/') dot(c, x, y, s, 0, 13, 16, 3, '#6d8696');
+    },
+    // 星の床（右にねじれた結晶と、左にねじれた結晶が、別々のまま並んで育っている）
+    ')': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#1c2a3e');
+      const right = (tx + ty) % 2 === 0;
+      c.save(); c.shadowColor = right ? '#9fe0ff' : '#ffc6f0'; c.shadowBlur = s / 6;
+      poly(c, x, y, s, right ? [[5, 13], [8, 3], [11, 6], [9, 13]] : [[11, 13], [8, 3], [5, 6], [7, 13]], right ? '#cdeeff' : '#ffe0f6', right ? '#6fb8e0' : '#e08ac8');
+      c.restore();
+      dot(c, x, y, s, 0, 15, 16, 1, '#0f1826');
+    },
+    // 反応槽（大きな機械。通れない）
+    "'": (c, x, y, s, tx, ty, nb) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#3a4446');
+      dot(c, x, y, s, 2, 0, 12, 16, '#56625f');
+      if (nb(0, -1) !== "'") dot(c, x, y, s, 0, 0, 16, 2, '#8a9692');
+      c.save(); c.shadowColor = '#5fd4a0'; c.shadowBlur = s / 4;
+      if ((tx + ty) % 3 === 0) dot(c, x, y, s, 6, 6, 4, 4, '#5fd4a0');
+      c.restore();
+      dot(c, x, y, s, 2, 0, 1, 16, '#6e7a77'); dot(c, x, y, s, 13, 0, 1, 16, '#2a3234');
+    },
   };
   // 鏡の広間の格子（閉じている）
   function mirrorGate(c, x, y, s, tx, ty) {
@@ -542,7 +626,8 @@ const Sprites = (() => {
   }
   const SOLID = new Set(['T', '~', 'M', 'r', '#', 'B', 'S', 'F', 'W', 'R', 'h', 'E', 'O', 'K', 'G', 'X', 'L', 'k', '|', 'Y',
     'Z', 'I', 'J', 'V', 'N', 'U', 'P', 'A', 't', 'y', 'e', 'a',
-    'x', 'H', '`', 'C', '1', '"', '7', '+', 'v', 'j', '!', '[', ']', '}', ':', '^', '@', '?']);
+    'x', 'H', '`', 'C', '1', '"', '7', '+', 'v', 'j', '!', '[', ']', '}', ':', '^', '@', '?',
+    '(', '0', '4', '5', '6', '/', "'"]);
 
   // nb(dx, dy) はとなりのタイルの文字を返す（マップの外は木とみなす）
   function drawTile(ctx, ch, x, y, s, tx, ty, nb = () => '.') { (TILE[ch] || TILE['.'])(ctx, x, y, s, tx, ty, nb); }
@@ -939,7 +1024,134 @@ const Sprites = (() => {
     // 回廊の小部屋の分子（鏡面を持つ cis 体 / C₂ だけの trans 体）
     molMeso(c, x, y, s) { ringWithMethyls(c, x, y, s, false); },
     molChiral(c, x, y, s) { ringWithMethyls(c, x, y, s, true); },
+
+    // ---- 第 5 章 ----
+    // ボーカ：カーボを鏡に映した姿。仲間の色の並びも左右が逆。縁は紫
+    boka(c, x, y, s, o = {}) {
+      c.save(); c.translate(x + s, y); c.scale(-1, 1);
+      CHAR.hero(c, 0, 0, s, { colors: o.colors, dir: 'down', body: '#241a36', rim: '#c9a8ff', eye: '#ffffff' });
+      c.restore();
+    },
+    // 仮面にひびの入ったラセマイザー
+    racemizerCrack(c, x, y, s) {
+      CHAR.racemizer(c, x, y, s);
+      c.strokeStyle = '#2a1a3f'; c.lineWidth = Math.max(1, s / 14);
+      c.beginPath(); c.moveTo(x + s * 0.5, y + s * 0.13); c.lineTo(x + s * 0.44, y + s * 0.32); c.lineTo(x + s * 0.56, y + s * 0.42); c.lineTo(x + s * 0.48, y + s * 0.6);
+      c.moveTo(x + s * 0.44, y + s * 0.32); c.lineTo(x + s * 0.34, y + s * 0.3); c.stroke();
+    },
+    // ラセミ団員：鏡の仮面（半分が反転した色）
+    racemi(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#3a4f5f', mask: true });
+      c.fillStyle = 'rgba(120, 200, 255, .45)'; c.fillRect(x + s * 0.5, y + s * 0.125, s * 0.19, s * 0.375);
+    },
+    racemiDuo(c, x, y, s) {
+      CHAR.racemi(c, x - s * 0.28, y, s);
+      c.save(); c.translate(x + s * 1.28, y); c.scale(-1, 1); CHAR.racemi(c, 0, 0, s); c.restore();
+    },
+    // 油状のオイル：結晶にならなかった、とろりとした人
+    oil(c, x, y, s) {
+      const u = s / 16;
+      c.fillStyle = '#d9b44a'; c.beginPath(); c.ellipse(x + 8 * u, y + 10.5 * u, 6 * u, 5 * u, 0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(x + 8 * u, y + 6.5 * u, 4 * u, 4 * u, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255, 245, 200, .7)'; c.beginPath(); c.ellipse(x + 6.5 * u, y + 5 * u, 1.4 * u, 0.9 * u, 0, 0, Math.PI * 2); c.fill();
+      dot(c, x, y, s, 3, 14, 1.5, 2, '#d9b44a'); dot(c, x, y, s, 11.5, 14.5, 1.5, 1.5, '#d9b44a');   // したたり
+      dot(c, x, y, s, 6.2, 6.4, 1, 1, '#4a3a10'); dot(c, x, y, s, 8.8, 6.4, 1, 1, '#4a3a10');
+    },
+    // L-グルコースの子（六員環の帽子をかぶった小さな子）
+    glucose(c, x, y, s) {
+      c.save(); c.translate(x + s * 0.15, y + s * 0.3); person(c, 0, 0, s * 0.7, { cloth: '#ff9ec4', hair: '#f4e3c0', long: true, dress: true }); c.restore();
+      const pts = [...Array(6)].map((_, i) => [8 + 3 * Math.cos(i * Math.PI / 3), 3.2 + 1.6 * Math.sin(i * Math.PI / 3)]);
+      poly(c, x, y, s, pts, '#fff4fa', '#d56a9a');
+    },
+    // D-アミノ酸の子どもたち
+    aminoKids(c, x, y, s) {
+      c.save(); c.translate(x - s * 0.05, y + s * 0.3); person(c, 0, 0, s * 0.66, { cloth: '#8fd16a', hair: '#3a2a1a' }); c.restore();
+      c.save(); c.translate(x + s * 0.42, y + s * 0.34); person(c, 0, 0, s * 0.62, { cloth: '#6ac0d1', hair: '#7a4b25', long: true }); c.restore();
+    },
+    // (R)-イブプロフェン（薬師イブと同じ形で、色が逆）
+    ibuR(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#3a2a1a', hair: '#f4f4f4', long: true });
+      dot(c, x, y, s, 7, 9, 2, 2, '#9aa0aa'); dot(c, x, y, s, 7.5, 8.5, 1, 3, '#9aa0aa');
+    },
+    // ホスフィンオキシド（P=O のまわりに、3 つのベンゼン環）
+    tppo(c, x, y, s) {
+      for (const [cx, cy] of [[3.5, 11], [12.5, 11], [8, 3.5]]) {
+        const pts = [...Array(6)].map((_, i) => [cx + 3 * Math.cos(Math.PI / 6 + i * Math.PI / 3), cy + 3 * Math.sin(Math.PI / 6 + i * Math.PI / 3)]);
+        poly(c, x, y, s, pts, '#eef0f4', '#6b7280');
+      }
+      circle(c, x, y, s, 8, 9.5, 2.6, '#ffa657', '#8a4a1a');
+      circle(c, x, y, s, 8, 14.6, 1.4, '#ff7b72', '#8a1d18');                 // P=O の O
+      dot(c, x, y, s, 7, 9, 0.8, 0.8, '#111'); dot(c, x, y, s, 8.4, 9, 0.8, 0.8, '#111');
+    },
+    // シクロブタジエンの双子（くっついて離れられない 2 つの四角）
+    cbd(c, x, y, s) {
+      poly(c, x, y, s, [[1, 6], [7, 6], [7, 12], [1, 12]], '#ffb3a7', '#a8463a');
+      poly(c, x, y, s, [[9, 6], [15, 6], [15, 12], [9, 12]], '#ffb3a7', '#a8463a');
+      dot(c, x, y, s, 7, 8.5, 2, 1, '#a8463a');
+      dot(c, x, y, s, 3, 8, 1, 1.5, '#111'); dot(c, x, y, s, 5, 8, 1, 1.5, '#111'); dot(c, x, y, s, 11, 8, 1, 1.5, '#111'); dot(c, x, y, s, 13, 8, 1, 1.5, '#111');
+    },
+    // フェニルエチルアミンの姉 (R) と弟 (S)。アミンの青い手が、左右逆についている
+    peaR(c, x, y, s) { pea(c, x, y, s, true); },
+    peaS(c, x, y, s) { pea(c, x, y, s, false); },
+    // クレゾールのおじさん（フェノール類。のんびり屋）
+    cresol(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#8a6a4a', hair: '#9a9a9a' });
+      const pts = [...Array(6)].map((_, i) => [8 + 2.6 * Math.cos(Math.PI / 6 + i * Math.PI / 3), 11 + 2.6 * Math.sin(Math.PI / 6 + i * Math.PI / 3)]);
+      poly(c, x, y, s, pts, '#f4f1e8', '#5a4a2a');
+      circle(c, x, y, s, 12.5, 9, 1.2, '#ff7b72');   // OH
+    },
+    // マンデル酸の番人（鍵穴の番をして、動かない）
+    mandel(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#7a3a6a', coat: '#4a1f40', hair: '#2a2a2a', helmet: true });
+      circle(c, x, y, s, 12.5, 9, 1.4, '#ff7b72', '#8a1d18');   // COOH
+      dot(c, x, y, s, 2, 6, 1, 9, '#d4af37');                    // 番人の杖
+    },
+    // pH のポンプ（酸・弱い塩基・強い塩基で色が違う）
+    pumpAcid(c, x, y, s) { pump(c, x, y, s, '#ff6b6b', 'HCl'); },
+    pumpBicarb(c, x, y, s) { pump(c, x, y, s, '#8fd16a', 'HCO₃'); },
+    pumpBase(c, x, y, s) { pump(c, x, y, s, '#79c0ff', 'NaOH'); },
+    // 飽和食塩水の蛇口
+    brineTap(c, x, y, s) {
+      dot(c, x, y, s, 4, 6, 8, 9, '#c9d3e6'); dot(c, x, y, s, 4, 6, 8, 2, '#f4f8ff');
+      dot(c, x, y, s, 11, 9, 4, 2, '#8a96b0'); dot(c, x, y, s, 13.5, 11, 1, 2, '#9fd0ff');
+      dot(c, x, y, s, 6, 2, 4, 4, '#8a96b0'); dot(c, x, y, s, 5, 1, 6, 1.5, '#5a6680');
+      c.fillStyle = '#2a3247'; c.font = `bold ${Math.round(s * 0.28)}px sans-serif`; c.textAlign = 'center'; c.fillText('Na', x + s * 0.5, y + s * 0.82);
+    },
+    // 界面のはしご（泡がたまると使えない）
+    ladder(c, x, y, s) { ladderArt(c, x, y, s, false); },
+    ladderFoam(c, x, y, s) { ladderArt(c, x, y, s, true); },
+    // キラルな鍵穴の扉（鍵穴の形で、合う分子がわかる）
+    lockS(c, x, y, s) { lockDoor(c, x, y, s, '#79c0ff', false); },
+    lockR(c, x, y, s) { lockDoor(c, x, y, s, '#ff9ec4', true); },
+    lockIbu(c, x, y, s) { lockDoor(c, x, y, s, '#9aa0aa', true); },
+    lockOwn(c, x, y, s) { lockDoor(c, x, y, s, '#ffe066', null); },
   };
+  function pea(c, x, y, s, right) {
+    c.save(); c.translate(x + s * 0.12, y + s * 0.22);
+    person(c, 0, 0, s * 0.76, right ? { cloth: '#ff9ec4', hair: '#5a3a1e', long: true, dress: true } : { cloth: '#79c0ff', hair: '#5a3a1e' });
+    c.restore();
+    circle(c, x, y, s, right ? 13.5 : 2.5, 9.5, 1.5, '#79c0ff', '#2f5f8f');   // NH₂ の手（姉は右、弟は左）
+  }
+  function pump(c, x, y, s, col, letter) {
+    dot(c, x, y, s, 3, 3, 10, 12, '#5d6b6e'); dot(c, x, y, s, 3, 3, 10, 2, '#8a9692');
+    c.save(); c.shadowColor = col; c.shadowBlur = s / 5; dot(c, x, y, s, 5, 6, 6, 5, col); c.restore();
+    dot(c, x, y, s, 7, 0, 2, 3, '#8a9692'); dot(c, x, y, s, 6, 0, 4, 1, '#c9d3e6');
+    c.fillStyle = '#10181a'; c.font = `bold ${Math.round(s * (letter.length > 3 ? 0.2 : 0.24))}px sans-serif`; c.textAlign = 'center'; c.fillText(letter, x + s * 0.5, y + s * 0.64);
+  }
+  function ladderArt(c, x, y, s, foam) {
+    dot(c, x, y, s, 3, 0, 1.5, 16, '#c9a227'); dot(c, x, y, s, 11.5, 0, 1.5, 16, '#c9a227');
+    for (let i = 0; i < 4; i++) dot(c, x, y, s, 3, 2 + i * 4, 10, 1.2, '#e6c75a');
+    if (foam) for (let i = 0; i < 7; i++) circle(c, x, y, s, 2 + (i * 5) % 12, 3 + (i * 7) % 11, 2 + (i % 3) * 0.6, 'rgba(250, 250, 255, .9)', '#c9d3e6');
+  }
+  function lockDoor(c, x, y, s, col, right) {
+    dot(c, x, y, s, 0, 0, 16, 16, '#3a4446'); dot(c, x, y, s, 1, 1, 14, 15, '#56625f');
+    dot(c, x, y, s, 1, 1, 14, 1, col);
+    c.save(); c.shadowColor = col; c.shadowBlur = s / 5;
+    circle(c, x, y, s, 8, 6.5, 2.6, '#10181a', col);
+    if (right === null) poly(c, x, y, s, [[8, 8], [10.5, 14], [5.5, 14]], '#10181a', col);           // カーボの形（4 本の手）
+    else poly(c, x, y, s, right ? [[7, 8], [11.5, 13.5], [7, 14]] : [[9, 8], [4.5, 13.5], [9, 14]], '#10181a', col);   // 右向き・左向きの鍵穴
+    c.restore();
+  }
   function bullvalene(c, x, y, s, k) {
     // 3 本の腕（形が変わるたびに、二重結合の位置が回る）
     const base = [[8, 2], [2.5, 12.5], [13.5, 12.5]];
