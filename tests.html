@@ -229,6 +229,11 @@
     const midC3 = Object.fromEntries(goalOrder.slice(0, goalOrder.indexOf('c3_mid')).map(x => [x, true]));
     for (const here of ['port', 'town', 'lab']) { const g = Maps.goalOf(midC3, here); if (!g || g.at[0][0] !== 'port') goalBad.push(`第 3 章で ${here} にいるとき、船の案内がない`); }
     if (Maps.goalOf(midC3, 'capital').t !== Maps.goalOf(midC3).t) goalBad.push('王都の中で、船の案内が出てしまう');
+    // 前の章の記録が欠けたセーブでも、前の章の目的に戻らない
+    for (const [fl, want] of [[{ started: true, clear3: true, ch4: true }, '山道'], [{ started: true, ch3: true }, '城門'], [{ started: true, clear: true, ch2: true }, 'カルボニル港']]) {
+      const g = Maps.goalOf(fl);
+      if (!g || !g.t.includes(want)) goalBad.push(`${Object.keys(fl).join(',')} のとき、目的が「${g && g.t}」（期待：${want}）`);
+    }
     check('いまの目的が物語の最後まで途切れない', !goalBad.length, goalBad.join('\n'));
 
     // ---- 鏡の広間：どの部屋も、カーボと影が同時にスイッチを踏めるように解ける ----

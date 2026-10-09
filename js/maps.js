@@ -39,16 +39,18 @@ const Maps = (() => {
     if (here && f.ch3 && !f.c3_boss && MAPS[here] && MAPS[here].ch !== 3) return G('港の船着き場のグリニャの船で、芳香族の王国へ戻る', ['port', 12, 15]);
     // 第 3 章のあと、王国に残っているときは、まず船で港へ戻る
     if (here && f.clear3 && !f.c4_boss && MAPS[here] && MAPS[here].ch === 3) return G('浜のグリニャの船で、港へ戻る', ['shore', 12, 17]);
+    // いまの章。前の章の記録が欠けていても（古いセーブなど）、先の章の記録を優先して、前の章の目的に戻らない
+    const stage = (f.clear3 || f.ch4) ? 4 : (f.ch3 || f.c2_boss || f.clear2) ? 3 : (f.clear || f.ch2 || f.c2_arrive) ? 2 : 1;
     // 第 1 章
-    if (!f.elder) return G('村の東、六角形の屋根の庵で、長老ベンゼンに会う', ['town', 16, 4]);
-    if (!f.f_entry) return G('村の北の門から、求核の森へ向かう', ['town', 10, 0], ['town', 11, 0]);
-    if (!f.boss) {
+    if (stage === 1 && !f.elder) return G('村の東、六角形の屋根の庵で、長老ベンゼンに会う', ['town', 16, 4]);
+    if (stage === 1 && !f.f_entry) return G('村の北の門から、求核の森へ向かう', ['town', 10, 0], ['town', 11, 0]);
+    if (stage === 1 && !f.boss) {
       if (!f.sisters) return G('森の西の花畑から聞こえる声の主を探す', ['forest', 5, 4], ['forest', 6, 4]);
       if (!f.duo) return G('霧の手前に立つ、メソ団員の 2 人組を倒す', ['forest', 14, 8], ['forest', 15, 8]);
       return G('晴れた霧の奥へ進み、森を荒らす幹部を探す', ['forest', 14, 3]);
     }
     // 第 2 章
-    if (!f.c2_boss) {
+    if (stage <= 2 && !f.c2_boss) {
       if (!f.c2_arrive) return G('村の東の街道から、カルボニル港へ向かう', ['town', 21, 5]);
       if (!f.c2_met) return G('港の広場、噴水のそばにいるケトー卿に会う', ['port', 14, 7]);
       if (!f.c2_lens) return atNight(f, '夜の倉庫街（港の東）を調べる', ['port', 23, 8]);
@@ -62,8 +64,8 @@ const Maps = (() => {
       return atNight(f, '夜、灯台の扉から頂上へ登る', ['port', 25, 20], ['top', 4, 2]);
     }
     // 第 3 章
-    if (!f.ch3) return G('港の船着き場にいるグリニャに話しかけ、芳香族の王国へ', ['port', 12, 15]);
-    if (!f.c3_boss) {
+    if (stage <= 3 && !f.ch3) return G('港の船着き場にいるグリニャに話しかけ、芳香族の王国へ', ['port', 12, 15]);
+    if (stage <= 3 && !f.c3_boss) {
       if (!f.c3_gate) return G('浜から北の坂を上り、城門へ', ['shore', 14, 1], ['shore', 15, 1]);
       if (!f.c3_radika1) return G('南の城門区へ行き、街で話を聞く', ['capital', 16, 21]);
       if (!f.c3_emblem) return G('城門区の東の広場で言い争う、2 つの家の者に話しかける', ['capital', 25, 26]);
@@ -74,7 +76,7 @@ const Maps = (() => {
       return G('光の塔を登り、頂上のラジカを止める', ['capital', 16, 3], ['ltower', 1, 1], ['ltop', 4, 3]);
     }
     // 第 4 章
-    if (!f.clear3) return null;
+    if (stage < 4) return null;
     if (!f.c4_boss) {
       if (!f.ch4) return G('研究所の鏡野教授に、話を聞く', ['town', 5, 11], ['lab', 5, 3]);
       if (!f.c4_mount) return G('村の北の門から求核の森へ。森の北の端を抜けて、山道へ', ['town', 10, 0], ['town', 11, 0], ['forest', 14, 0], ['forest', 15, 0]);
