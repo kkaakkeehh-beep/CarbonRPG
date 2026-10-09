@@ -51,6 +51,9 @@
 
   const maxHpFor = (lv, cfg) => BASE_HP + (lv - 1) * HP_PER_LV + (cfg === 'S' ? 10 : 0);
   const skillLv = id => S.skillLv[id] || 1;
+  const priceOf = c => c.price || COMP_PRICE;
+  // 付け替えでは R/S を変えない（物語で決まっている）。逆になる並びなら、くさびと破線の仲間を入れ替える
+  const keepCfg = () => { if (UI.swap && UI.pick.length === 4 && heroCfg(UI.pick) !== S.cfg) [UI.pick[2], UI.pick[3]] = [UI.pick[3], UI.pick[2]]; };
   const skillAt = (id, lv = skillLv(id)) => comp(id).skill.lv[lv - 1];
 
   // ---- カーボの立体（CIP） ----------------------------------------
@@ -255,14 +258,15 @@
     const cfg = heroCfg(UI.pick);
     const trait = cfg === 'R' ? '攻撃型: 続けて正解するほどダメージが上がる' : cfg === 'S' ? '防御型: 最大 HP +10、間違えたときのダメージ −25%' : '';
     // 付け替え（UI.swap）のときは、迎えた仲間だけを選べる。技はいまのレベルで見せる
-    const list = COMPANIONS.map(c => {
+    // 売店でしか迎えられない仲間（price つき）は、最初の仲間選びには出さない
+    const list = COMPANIONS.filter(c => UI.swap || !c.price).map(c => {
       const on = UI.pick.includes(c.id), locked = UI.swap && !S.owned.includes(c.id);
       const sk = UI.swap && !locked ? ` Lv${skillLv(c.id)}: ${skillAt(c.id).desc}` : `: ${c.skill.lv[0].desc}`;
       return `<button class="comp ${on ? 'on' : ''} ${locked ? 'locked' : ''}" style="--ac:${c.color}" data-act="toggleComp" data-arg="${c.id}" ${locked ? 'disabled' : ''}>
         <span class="comp-atom">${c.group}</span>
         <span class="comp-name">${c.name}<small>${c.role}</small></span>
         <span class="comp-cards">技「${c.skill.name}」${sk}</span>
-        <span class="comp-line">${locked ? `まだ仲間になっていない（売店で紹介料 ${yen(COMP_PRICE)} を払うと迎えられる）` : c.bond}</span>
+        <span class="comp-line">${locked ? `まだ仲間になっていない（売店で紹介料 ${yen(priceOf(c))} を払うと迎えられる）` : c.bond}</span>
       </button>`;
     }).join('');
     const done = UI.swap
@@ -273,7 +277,8 @@
       ${win(`<div class="hero-wrap">${heroSvg(UI.pick)}</div>
         <p class="center">${UI.pick.length}/4 結合</p>
         ${cfg ? `<p class="center big-cfg">(${cfg})-カーボ</p><p class="center small">${heroFormula(UI.pick)}</p><p class="center small accent">${trait}</p>
-          <div class="center"><button class="btn" data-act="swap">くさびと破線を入れ替える（R/S 反転）</button></div>`
+          ${UI.swap ? `<p class="center small dim">カーボの向き（${S.cfg}）は変わらない。逆の向きになる並びのときは、くさびと破線の仲間が自動で入れ替わる。</p>`
+            : '<div class="center"><button class="btn" data-act="swap">くさびと破線を入れ替える（R/S 反転）</button></div>'}`
         : '<p class="center small dim">4 人そろうと、置換基の CIP 順位からカーボの R/S が決まる。</p>'}`, 'hero-win')}
       <div>
         <div class="comp-list">${list}</div>
@@ -407,9 +412,9 @@
         <button class="btn small-btn" data-act="buy" data-arg="${id}" ${can ? '' : 'disabled'}>買う</button></li>`; }).join('');
     // まだ仲間になっていない人を、紹介料を払って迎える
     const cands = COMPANIONS.filter(c => !S.owned.includes(c.id));
-    const comps = cands.map(c => `<li class="shop-row"><span><b style="color:${c.color}">${c.name}</b>（${c.group}）　${yen(COMP_PRICE)}<br>
+    const comps = cands.map(c => `<li class="shop-row"><span><b style="color:${c.color}">${c.name}</b>（${c.group}）　${yen(priceOf(c))}<br>
         <span class="small dim">${c.role}。技「${c.skill.name}」: ${c.skill.lv[0].desc}</span></span>
-        <button class="btn small-btn" data-act="buyComp" data-arg="${c.id}" ${S.money >= COMP_PRICE ? '' : 'disabled'}>迎える</button></li>`).join('');
+        <button class="btn small-btn" data-act="buyComp" data-arg="${c.id}" ${S.money >= priceOf(c) ? '' : 'disabled'}>迎える</button></li>`).join('');
     return `<div class="menu win">
       <h3>${esc(UI.shopInfo.name)}</h3>
       <p class="small">${esc(UI.shopInfo.line)}</p>
@@ -729,6 +734,9 @@
     B.timeLeft = B.timeCap = B.timeMax;
     B.state = 'q';
     render();
+    runTimer(B);
+  }
+  function runTimer(B) {
     stopTimer();
     qTimer = setInterval(() => {
       B.timeLeft -= 0.25;
@@ -747,6 +755,16 @@
     if (B.state !== 'q') return;
     stopTimer();
     const ok = choice === q.a;
+    // シリルの保護基：間違えても 1 度だけ、ダメージなしで答え直せる（この 1 回は正答率に数えず、ノートには書く）
+    if (!ok && B.retry && !E.practice) {
+      B.retry = false; B.streak = 0; B.retried = q.id;
+      S.notebook[q.id] = (S.notebook[q.id] || 0) + 1;
+      if (choice >= 0) B.removed.add(choice);
+      else { B.timeLeft = 30; B.timeCap = Math.max(B.timeCap, 30); }
+      Sound.se('ng'); render();
+      flash(`シリルの保護基が外れて、身代わりになった！ ${choice < 0 ? '30 秒で' : 'もう一度'}答え直せる`);
+      return runTimer(B);
+    }
     const lines = [];
     if (!E.practice) {
       S.stats.total++;
@@ -761,7 +779,10 @@
       B.streak++;
       B.hp = Math.max(0, B.hp - dmg);
       lines.push(`正解！ ${B.name}に ${dmg} のダメージ！${S.cfg === 'R' && B.streak > 1 && !E.practice ? `（${B.streak} 連続正解）` : ''}`);
-      if (S.notebook[q.id]) { delete S.notebook[q.id]; lines.push('復習ノートの問題を克服した！'); }
+      // スズの連鎖：正解するたびに HP が戻る
+      if (B.drain && !E.practice && S.hp < S.maxHp) { const v = Math.min(B.drain, S.maxHp - S.hp); S.hp += v; lines.push(`スズの連鎖で、HP が ${v} 回復した。`); UI.fx.push({ t: 'heroHeal', v }); }
+      // 答え直しで正解した問題は、ノートに残す
+      if (S.notebook[q.id] && B.retried !== q.id) { delete S.notebook[q.id]; lines.push('復習ノートの問題を克服した！'); }
       if (B.hp > 0) lines.push(`${B.name}「${taunt(voiceOf(B, E).hit)}」`);
       UI.fx.push({ t: 'enemyHit', v: dmg }); Sound.se('ok'); setTimeout(() => Sound.se('hit'), 120);
       for (const [i, ph] of (E.phases || []).entries()) {
@@ -872,6 +893,8 @@
     if (sk === 'stink') B.stink = Math.max(B.stink, L.v);
     if (sk === 'guard') { B.guard++; B.dr = Math.max(B.dr, L.v); }
     if (sk === 'time') { B.timeLeft += L.v; B.timeCap = Math.max(B.timeCap, B.timeLeft); }
+    if (sk === 'retry') { B.retry = true; if (L.t) { B.timeLeft += L.t; B.timeCap = Math.max(B.timeCap, B.timeLeft); } }
+    if (sk === 'drain') B.drain = Math.max(B.drain || 0, L.v);
     if (sk === 'fifty') { removeWrong(L.v); if (L.t) { B.timeLeft += L.t; B.timeCap = Math.max(B.timeCap, B.timeLeft); } }
     render();
   }
@@ -991,7 +1014,7 @@
           return `<button class="skill item" data-act="item" data-arg="${id}" ${full ? 'disabled' : ''}>
             <span class="sk-name">${ITEMS[id].name} ×${S.items[id]}${full ? '<span class="sk-used">HP 満タン</span>' : ''}</span>
             <span class="sk-desc">${esc(ITEMS[id].desc)}</span></button>`; }).join('');
-        const flags = [B.power ? '背面攻撃 準備中' : '', B.guard ? '立体障害で守っている' : '', B.dr ? `被ダメージ −${B.dr}` : '', B.stink ? `悪臭で敵がひるんでいる（−${B.stink}）` : ''].filter(Boolean).map(t => `<span class="chip ok">${t}</span>`).join('');
+        const flags = [B.power ? '背面攻撃 準備中' : '', B.guard ? '立体障害で守っている' : '', B.dr ? `被ダメージ −${B.dr}` : '', B.stink ? `悪臭で敵がひるんでいる（−${B.stink}）` : '', B.retry ? '保護基で守っている（1 回答え直せる）' : '', B.drain ? `連鎖：正解するたびに HP +${B.drain}` : ''].filter(Boolean).map(t => `<span class="chip ok">${t}</span>`).join('');
         body = win(`${qbox}<div class="timer"><div class="bar time"><div id="qtime" style="width:${B.timeLeft / B.timeCap * 100}%"></div></div><span id="qtnum" class="small">${Math.ceil(B.timeLeft)}</span></div>`, 'qwin')
           + `<div class="${grid}">${choices}</div>`
           + (E.practice ? '' : `<div class="skills-head small dim">仲間の技・どうぐ</div><div class="skills">${skills}${items}</div>`)
@@ -1136,24 +1159,23 @@
       if (UI.swap && !S.owned.includes(id)) return;
       const i = UI.pick.indexOf(id);
       if (i >= 0) UI.pick.splice(i, 1); else if (UI.pick.length < 4) UI.pick.push(id);
+      keepCfg();
       Sound.se('blip');
       render();
     },
     unbond(i) { UI.pick.splice(+i, 1); render(); },
-    swap() { if (UI.pick.length === 4) { [UI.pick[2], UI.pick[3]] = [UI.pick[3], UI.pick[2]]; render(); } },
+    swap() { if (UI.pick.length === 4 && !UI.swap) { [UI.pick[2], UI.pick[3]] = [UI.pick[3], UI.pick[2]]; render(); } },
     bondDone() {
       if (UI.pick.length !== 4) return;
       if (UI.swap) {
-        // 付け替え：技のレベルは仲間ごとに残る。最大 HP はキラリティで変わる（いまの HP は増やさない）
-        const was = S.cfg;
+        // 付け替え：R/S はそのまま（keepCfg で並びを合わせる）。技のレベルは仲間ごとに残る
+        keepCfg();
+        if (heroCfg(UI.pick) !== S.cfg) return;
         S.party = [...UI.pick];
-        S.cfg = heroCfg(S.party);
-        S.maxHp = maxHpFor(S.lv, S.cfg);
-        S.hp = Math.min(S.hp, S.maxHp);
         S.party.forEach(id => { if (!S.skillLv[id]) S.skillLv[id] = 1; });
         UI.swap = false; UI.screen = 'world';
         save(); render(); Sound.se('heal');
-        flash(`結合しなおした！ ${heroName()}${was !== S.cfg ? `（${was} → ${S.cfg}）` : ''}`);
+        flash(`結合しなおした！ ${heroName()}　${heroFormula(S.party)}`);
         return;
       }
       S.party = [...UI.pick];
@@ -1171,8 +1193,8 @@
     cancelSwap() { UI.swap = false; UI.screen = 'world'; render(); },
     buyComp(id) {
       const c = comp(id);
-      if (!c || S.owned.includes(id) || S.money < COMP_PRICE) return;
-      S.money -= COMP_PRICE; S.owned.push(id);
+      if (!c || S.owned.includes(id) || S.money < priceOf(c)) return;
+      S.money -= priceOf(c); S.owned.push(id);
       if (!S.skillLv[id]) S.skillLv[id] = 1;
       Sound.se('level'); save(); refreshHud(); renderOverlay();
       flash(`${c.name}が仲間になった！ メニューの「仲間を付け替える」で結合できる`);

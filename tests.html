@@ -156,6 +156,18 @@
     }
     check('台本の参照先（敵・台詞）', !scBad.length, scBad.join('\n'));
 
+    // ---- 仲間：CIP 順位が重ならない（R/S が決まる）、技の種類がバトルで扱える、売店だけの仲間は高い ----
+    const compBad = [], SKILLS = ['heal', 'power', 'stink', 'fifty', 'time', 'guard', 'retry', 'drain'];
+    const ranks = GameData.COMPANIONS.map(c => c.rank.join(','));
+    if (new Set(ranks).size !== ranks.length) compBad.push(`CIP 順位が重なっている: ${ranks.join(' / ')}`);
+    for (const c of GameData.COMPANIONS) {
+      if (!SKILLS.includes(c.skill.id)) compBad.push(`${c.name}: 技 ${c.skill.id} をバトルで扱えない`);
+      if (c.skill.lv.length !== GameData.SKILL_MAX || c.skill.lv.some(l => !l.desc || !(l.uses > 0))) compBad.push(`${c.name}: 技のレベルの書き方`);
+      if (c.price && !(c.price > GameData.COMP_PRICE)) compBad.push(`${c.name}: 売店だけの仲間なのに、ふつうの紹介料より安い`);
+    }
+    if (GameData.COMPANIONS.filter(c => !c.price).length < 4) compBad.push('最初に選べる仲間が 4 人未満');
+    check(`仲間の順位・技・値段（${GameData.COMPANIONS.length} 人）`, !compBad.length, compBad.join('\n'));
+
     // ---- いまの目的：物語の順にフラグを立てても、クリアまで目的が途切れず、印の場所がマップの中にある ----
     const goalOrder = ['started', 'elder', 'f_entry', 'sisters', 'duo', 'boss', 'clear', 'c2_arrive', 'c2_met', 'c2_lens', 'c2_pier', 'c2_kidnap', 'c2_rescued',
       'c2_clue2', 'c2_clue3', 'c2_chase', 'c2_reveal', ...c3Order];
