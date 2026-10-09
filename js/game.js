@@ -947,11 +947,11 @@
   function questionPool(B) {
     const E = ENEMIES[B.key], d = S.diff, ch = E.ch || 1;
     const diffs = E.boss ? [d, Math.min(4, d + 1)] : B.key === 'duo' ? [d] : [d, Math.max(1, d - 1)];
-    // chs があれば、その章の問題から出す（物語の中の決まった問題 special は混ぜない）
+    // chs があれば、その章の問題から出す（物語の中の決まった問題 special は混ぜない）。'5:synth' は、その章のその tag だけ
     const chs = E.chs || [ch];
-    let pool = Questions.LIST.filter(q => !q.special && chs.includes(q.ch) && diffs.includes(q.diff));
-    // ボスの形態や中ボスの得意分野に合わせて絞る（足りなければ絞らない）
-    const tag = B.form ? E.forms[B.form].tag : E.tag;
+    let pool = Questions.LIST.filter(q => !q.special && (chs.includes(q.ch) || chs.includes(`${q.ch}:${q.tag}`)) && diffs.includes(q.diff));
+    // ボスの形態・段階や中ボスの得意分野に合わせて絞る（足りなければ絞らない）
+    const tag = B.form ? E.forms[B.form].tag : (stageOf(B, E).tag || E.tag);
     if (tag) { const t = pool.filter(q => q.tag === tag); if (t.length >= 4) pool = t; }
     return pool;
   }

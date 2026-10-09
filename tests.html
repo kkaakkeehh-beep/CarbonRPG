@@ -42,8 +42,8 @@
       if (!q.explain && !q.anyOk) bad.push(`${q.id}: 解説がない`);
     }
     check(`問題データの形式（${Questions.LIST.length} 問）`, !bad.length, bad.join('\n'));
-    for (const ch of [1, 2, 3, 4]) for (let d = 1; d <= 4; d++) {
-      const n = Questions.pickSet(ch, d).length;
+    for (const ch of [1, 2, 3, 4, 5]) for (let d = 1; d <= 4; d++) {
+      const n = Questions.pickSet(ch, d).filter(q => !q.special).length;
       check(`第${ch}章・${Questions.DIFFS[d].name}: 20 問以上（${n} 問）`, n >= 20, `${n} 問`);
     }
     // 第 2 章のボスが形態ごとに出せる問題があるか
@@ -83,6 +83,20 @@
       if (nSh < 6) c4Bad.push(`難易度 ${d} の影のカーボの分野: ${nSh} 問`);
     }
     check('第4章: 分野・段階ごとの問題数', !c4Bad.length, c4Bad.join('\n'));
+    // 第 5 章：合成戦略・不斉合成の両方が各難易度にあり、ボーカの第 1 段階（合成戦略）に出せる問題がある
+    check('第5章の問題すべてに tag（synth / asym）', Questions.LIST.filter(q => q.ch === 5 && !q.special).every(q => ['synth', 'asym'].includes(q.tag)), '');
+    const c5Bad = [];
+    for (let d = 1; d <= 4; d++) {
+      const band = Questions.LIST.filter(q => q.ch === 5 && !q.special && (q.diff === d || q.diff === Math.min(4, d + 1)));
+      for (const tag of ['synth', 'asym']) { const n = band.filter(q => q.tag === tag).length; if (n < 8) c5Bad.push(`難易度 ${d} の ${tag}: ${n} 問`); }
+      const n1 = band.filter(q => q.tag === 'synth' && GameData.ENEMIES.boka.stages[0].topics.includes(q.topic)).length;
+      if (n1 < 8) c5Bad.push(`難易度 ${d} のボーカ第 1 段階: ${n1} 問`);
+    }
+    // chs の '5:synth' のような書き方が、実際にある章と tag か
+    for (const [k, E] of Object.entries(GameData.ENEMIES)) for (const c of E.chs || []) {
+      if (typeof c === 'number' ? !Questions.LIST.some(q => q.ch === c) : !Questions.LIST.some(q => `${q.ch}:${q.tag}` === c && !q.special)) c5Bad.push(`${k} の chs ${c} の問題がない`);
+    }
+    check('第5章: 分野・段階ごとの問題数と、敵の出題範囲', !c5Bad.length, c5Bad.join('\n'));
     const smiBad = [];
     for (const q of Questions.LIST.filter(q => q.smiles)) {
       SmilesDrawer.parse(q.smiles, () => {}, () => smiBad.push(`${q.id}: ${q.smiles}`));

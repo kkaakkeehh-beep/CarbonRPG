@@ -320,15 +320,15 @@ const GameData = (() => {
       ],
     },
     // ---------------- 第 5 章 ----------------
-    // chs: 出題する章（第 5 章の問題はまだ物語の中の決まった問題だけなので、第 1〜4 章から出す）
+    // chs: 出題する章。'5:synth' のように書くと、その章の、その tag の問題だけ
     c5Racemi: {
-      name: 'ラセミ団員', sprite: 'racemi', hp: 44, atk: 10, exp: 17, money: 120, ch: 5, chs: [1, 2, 3, 4],
+      name: 'ラセミ団員', sprite: 'racemi', hp: 44, atk: 10, exp: 17, money: 120, ch: 5,
       start: '1:1！ 1:1！ 誰も選ばれない世界を！',
       hit: ['鏡の仮面が……曇る……！', 'くっ、旋光度が戻ってしまう！'], miss: ['ほら、半分は逆向きだ！', '1:1 に近づいたぞ！'],
       win: 'ボーカ様……どうか、1:1 を……',
     },
     c5RacemiDuo: {
-      name: 'ラセミ団員 2 人組', sprite: 'racemiDuo', hp: 50, atk: 10, exp: 20, money: 140, ch: 5, chs: [1, 2, 3, 4],
+      name: 'ラセミ団員 2 人組', sprite: 'racemiDuo', hp: 50, atk: 10, exp: 20, money: 140, ch: 5, tag: 'asym',
       start: '我らは R と S！ 2 人そろって、旋光度ゼロ！',
       hit: ['片方だけ倒すな！ 旋光してしまう！', 'くっ、ee が出てしまう！'], miss: ['打ち消し合って、ゼロ！'],
       win: '……2 人とも、倒れたら、やっぱりゼロだ……',
@@ -355,7 +355,7 @@ const GameData = (() => {
     },
     // 中ボス：カチオーネ（第 5 章）。HP 50% で 1,2-メチルシフト
     c5Cation: {
-      name: 'カチオーネ', sprite: 'cation', hp: 150, atk: 11, exp: 50, money: 350, ch: 5, chs: [1], mid: true,
+      name: 'カチオーネ', sprite: 'cation', hp: 150, atk: 11, exp: 50, money: 350, ch: 5, chs: [1, '5:synth'], mid: true,
       start: 'あの子のところへは、行かせない',
       hit: ['っ……また、電子を押しつけるのね', 'やるじゃない'], miss: ['ほら、迷った', '平らなほうが、楽なのに'],
       win: '……また、満たされちゃった',
@@ -366,14 +366,15 @@ const GameData = (() => {
     },
     // ラスボス：ボーカ。特性は〈逆〉。第 2 段階は弁が全開で、攻撃力が問題ごとに上がる。第 3 段階は「ボーカの問い」
     boka: {
-      name: 'ボーカ', sprite: 'boka', hp: 280, atk: 12, exp: 120, money: 0, ch: 5, chs: [1, 2, 3, 4], boss: true, oppTrait: true,
+      name: 'ボーカ', sprite: 'boka', hp: 280, atk: 12, exp: 120, money: 0, ch: 5, chs: [1, 2, 3, 4, '5:synth', '5:asym'], boss: true, oppTrait: true,
       winLines: ['（ボーカは、もう問題を出さない）'],
       start: '最後まで、僕と答え合わせをしよう',
       win: '……',
       hit: ['……正解だ'], miss: ['僕も、同じところで迷ったよ'],
       stages: [
-        { hit: ['……正解だ', '君は、よく覚えてるね'], miss: ['僕も、同じところで迷ったよ', '鏡ですから'] },
-        { atkRise: 1, atkRiseMax: 6,
+        { topics: ['逆合成', '保護基', '化学選択性', '合成の順序', '合成計画', '立体制御'],
+          hit: ['……正解だ', '君は、よく覚えてるね'], miss: ['僕も、同じところで迷ったよ', '鏡ですから'] },
+        { atkRise: 1, atkRiseMax: 6, tag: 'asym',
           hit: ['……どうして、まだ答えられるの', '上の旋光計は、もうゼロなのに'], miss: ['ほら、また 1 つ、平らになった', '時間がないんだ'] },
         { queue: ['c5-boka-1', 'c5-boka-2', 'c5-boka-3', 'c5-boka-q1', 'c5-boka-q2'], noLose: true,
           hit: ['……そうだね'], miss: ['……もう一度、考えて'] },
