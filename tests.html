@@ -25,6 +25,11 @@
   <script src="js/lang/en-q4.js"></script>
   <script src="js/lang/en-story5.js"></script>
   <script src="js/lang/en-q5.js"></script>
+  <script src="js/lang/zh-ui.js"></script>
+  <script src="js/lang/zh-story1.js"></script>
+  <script src="js/lang/zh-q1.js"></script>
+  <script src="js/lang/zh-story2.js"></script>
+  <script src="js/lang/zh-q2.js"></script>
   <script src="js/questions.js"></script>
   <script src="js/data.js"></script>
   <script src="js/sprites.js"></script>
@@ -600,10 +605,12 @@
     rsSvg.remove();
     check(`構造式の R/S が正しく描かれる（${rsSmiles.size} 個、立体中心 ${rsN} か所）`, !rsBad.length, rsBad.join('\n'));
 
-    // ---- 英語の訳 ----
-    {
-      const EN = I18N.packs.en, tx = EN.text, miss = [], JP = /[぀-ヿ一-鿿]/;
-      const need = (s, where) => { if (typeof s === 'string' && JP.test(s) && tx[s] === undefined) miss.push(`${where}: ${s}`); };
+    // ---- 訳（英語・中国語） ----
+    // JP: 訳に日本語が残っていないか（中国語は漢字を使うので、かなだけで見る）
+    // LONG: 正解だけが目立って長いとみなす字数の差（中国語は 1 字に詰まっているので小さく）
+    for (const [L, NAME, JP, LONG] of [['en', '英語', /[぀-ヿ一-鿿]/, 15], ['zh', '中国語', /[぀-ヿ]/, 6]]) {
+      const EN = I18N.packs[L], tx = EN.text, miss = [], JA = /[぀-ヿ一-鿿]/;
+      const need = (s, where) => { if (typeof s === 'string' && JA.test(s) && tx[s] === undefined) miss.push(`${where}: ${s}`); };
       // 「名前「台詞」」の行は、行ごとの訳がなければ、名前と台詞に分けて訳す（game.js の trLine）
       const line = (l, where) => {
         if (tx[l] !== undefined || l.trim() === '---') return;
@@ -636,23 +643,23 @@
         if (st.w && !st.w.startsWith('@')) need(st.w, id);
         for (const o of st.opts || []) { need(o.t, id); if (o.shop) { need(o.shop.name, id); need(o.shop.line, id); } }
       }
-      check(`英語：名前・敵のセリフ・マップの文字・分野の訳がそろっている`, !miss.length, [...new Set(miss)].join('\n'));
+      check(`${NAME}：名前・敵のセリフ・マップの文字・分野の訳がそろっている`, !miss.length, [...new Set(miss)].join('\n'));
 
-      // {0} {1} の数が、日本語と英語で同じ
+      // {0} {1} の数が、日本語と訳で同じ
       const ph = s => (s.match(/\{\d\}/g) || []).sort().join('');
       const phBad = Object.entries(tx).filter(([k, v]) => ph(k) !== ph(v)).map(([k, v]) => `${k} → ${v}`);
-      check('英語：{0} などの埋め込みの数が日本語と同じ', !phBad.length, phBad.join('\n'));
+      check(`${NAME}：{0} などの埋め込みの数が日本語と同じ`, !phBad.length, phBad.join('\n'));
 
       // 台本：t のある行の数が、日本語の台本と同じ
       const scBad = [];
       for (const [id, lines] of Object.entries(EN.scenes)) {
         if (!Story.SCENES[id]) { scBad.push(`${id}: 日本語の台本にない`); continue; }
         const n = Story.SCENES[id].filter(st => typeof st.t === 'string').length;
-        if (n !== lines.length) scBad.push(`${id}: 日本語 ${n} 行 / 英語 ${lines.length} 行`);
+        if (n !== lines.length) scBad.push(`${id}: 日本語 ${n} 行 / ${NAME} ${lines.length} 行`);
         lines.forEach((l, i) => { if (typeof l !== 'string' || !l.trim() || JP.test(l.replace(/〈(自分|逆|脱離)〉/g, ''))) scBad.push(`${id} の ${i + 1} 行目: ${l}`); });
       }
       const nSc = Object.keys(Story.SCENES).length, nEn = Object.keys(EN.scenes).length;
-      check(`英語：台本の行の数が日本語と同じ（${nEn}/${nSc} 場面を訳した）`, !scBad.length, scBad.join('\n'));
+      check(`${NAME}：台本の行の数が日本語と同じ（${nEn}/${nSc} 場面を訳した）`, !scBad.length, scBad.join('\n'));
 
       // 問題：選択肢・構造式の名前・返事の数が同じ
       const qBad = [];
@@ -665,10 +672,10 @@
         if (e.choices && new Set(e.choices).size !== e.choices.length) qBad.push(`${id}: 選択肢が重複`);
         for (const s of [e.q, e.explain, ...(e.choices || []), ...(e.mols || [])]) if (s && JP.test(s)) qBad.push(`${id}: 日本語が残っている: ${s}`);
         // 文字で答える問題で、正解だけが目立って長くない（長さで正解が分からないように）
-        if (e.choices && !q.cs && !q.anyOk) { const L = e.choices.map(c => c.length), mx = Math.max(...L.slice(1)); if (L[0] > mx * 1.3 && L[0] - mx > 15) qBad.push(`${id}: 正解だけが長い（${L[0]} 字 / ほか最長 ${mx} 字）`); }
+        if (e.choices && !q.cs && !q.anyOk) { const N = e.choices.map(c => c.length), mx = Math.max(...N.slice(1)); if (N[0] > mx * 1.3 && N[0] - mx > LONG) qBad.push(`${id}: 正解だけが長い（${N[0]} 字 / ほか最長 ${mx} 字）`); }
       }
       const nQ = Questions.LIST.length, nQe = Object.keys(EN.q).length;
-      check(`英語：問題の訳の形（${nQe}/${nQ} 問を訳した）`, !qBad.length, qBad.join('\n'));
+      check(`${NAME}：問題の訳の形（${nQe}/${nQ} 問を訳した）`, !qBad.length, qBad.join('\n'));
     }
 
     out.insertAdjacentHTML('afterbegin', `<h2 class="${fail ? 'ng' : 'ok'}" id="summary">${pass} 件成功 / ${fail} 件失敗</h2>`);

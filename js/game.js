@@ -499,7 +499,7 @@
     el.textContent = '';
     el.dataset.done = '0';
     typeTimer = setInterval(() => {
-      i += I18N.lang === 'ja' ? 2 : 4;
+      i += I18N.cjk ? 2 : 4;
       el.textContent = full.slice(0, i);
       if (i >= full.length) { el.dataset.done = '1'; stopTyping(); }
     }, 22);

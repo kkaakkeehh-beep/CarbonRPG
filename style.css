@@ -13,6 +13,10 @@
   --O: #ff7b72; --N: #79c0ff; --S: #f2cc60; --I: #d2a8ff; --P: #ffa657;
   --font: 'DotGothic16', 'Hiragino Kaku Gothic ProN', 'Meiryo', monospace;
 }
+/* DotGothic16 には簡体字がないので、中国語は字形がそろうように中国語のフォントだけで出す */
+:root:lang(zh) { --font: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Hiragino Sans GB', sans-serif; }
+/* ロゴの「CarbonRPG」は、どの言語でもドット文字のまま */
+:root:lang(zh) .logo { font-family: 'DotGothic16', monospace; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
