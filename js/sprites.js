@@ -1126,6 +1126,12 @@ const Sprites = (() => {
       c.fillStyle = '#2a3247'; c.font = `bold ${Math.round(s * 0.28)}px sans-serif`; c.textAlign = 'center'; c.fillText('Na', x + s * 0.5, y + s * 0.82);
     },
     // 界面のはしご（泡がたまると使えない）
+    // 宛名のない封筒（赤い封蝋）
+    letter(c, x, y, s) {
+      dot(c, x, y, s, 2, 6, 12, 7, '#f2efe4'); dot(c, x, y, s, 2, 6, 12, 1, '#c9c2ae'); dot(c, x, y, s, 2, 12, 12, 1, '#a9a28e');
+      poly(c, x, y, s, [[2, 6], [8, 10.5], [14, 6]], null, '#a9a28e');
+      circle(c, x, y, s, 8, 10, 1.6, '#c0392b', '#7a1f16');
+    },
     ladder(c, x, y, s) { ladderArt(c, x, y, s, false); },
     ladderFoam(c, x, y, s) { ladderArt(c, x, y, s, true); },
     // 分液区：有機層では下の水層へ下りる穴、水層では上の有機層へ伸びるはしご

@@ -306,8 +306,9 @@ const Maps = (() => {
         { x: 9, y: 3, sprite: 'grignard', on: 'bump', when: f => (f.clear4 || f.ch5) && !f.c5_boss, scene: 'c5_lab_grignard' },
         { x: 8, y: 4, sprite: 'ketohNoMono', when: f => f.clear4 && !f.ch5 },
         { x: 9, y: 6, sprite: 'achiralOpen', when: f => f.clear4 && !f.ch5 },
-        // 第 5 章のあと：窓辺のボーカ
+        // 第 5 章のあと：窓辺のボーカ。ベッドのそばの封筒（続編への伏線）
         { x: 7, y: 6, sprite: 'boka', on: 'bump', when: f => f.c5_boss, scene: 'c5_lab_boka' },
+        { x: 10, y: 2, sprite: 'letter', on: 'bump', when: f => f.c5_boss, scene: 'c5_epi_letter' },
       ],
     },
 
@@ -456,6 +457,7 @@ const Maps = (() => {
         { x: 8, y: 8, sprite: 'twins', on: 'bump', when: f => !f.night, scene: f => staged('c2_twins_day', f) },
         // 第 3 章が始まったあとも、グリニャの船で港と王国の浜を行き来できる
         { x: 12, y: 15, sprite: 'grignard', on: 'bump', when: f => (!f.night || f.ch3) && !((f.clear4 || f.ch5) && !f.c5_boss), scene: f => f.ch3 ? 'c3_ferry' : f.c2_boss ? 'c3_board' : 'c2_grignard' },
+        { x: 23, y: 20, sprite: 'keeper', on: 'bump', when: f => f.c5_boss, scene: 'c5_epi_keeper' },
         { x: 23, y: 20, sprite: 'keeper', on: 'bump', when: f => !f.night && !f.c2_boss, scene: f => (f.c2_clue2 && !f.c2_clue3) ? 'c2_lecture' : 'c2_keeper' },
         { x: 19, y: 4, sprite: 'innkeeper', on: 'bump', scene: f => (f.c2_met || f.c2_boss) ? 'c2_inn' : 'c2_inn_first' },
         // 夜

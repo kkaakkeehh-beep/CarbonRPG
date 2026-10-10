@@ -21,10 +21,17 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const unesc = s => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
   const opp = c => c === 'R' ? 'S' : 'R';
-  const fill = t => t.replace(/〈自分〉/g, S && S.cfg ? `(${S.cfg})` : '').replace(/〈逆〉/g, S && S.cfg ? `(${opp(S.cfg)})` : '');
+  // 〈脱離〉：パーティーの中で、いちばんよい脱離基の仲間（続編で最初に離れていく仲間）
+  const fill = t => t.replace(/〈自分〉/g, S && S.cfg ? `(${S.cfg})` : '').replace(/〈逆〉/g, S && S.cfg ? `(${opp(S.cfg)})` : '').replace(/〈脱離〉/g, () => leaverName());
   const resolve = (v, ...a) => typeof v === 'function' ? v(...a) : v;
   const map = () => MAPS[S.map];
   const heroName = () => S.cfg ? `(${S.cfg})-カーボ` : 'カーボ';
+  // 脱離能の順（共役酸の pKa の小さい順：HI < HN₃ < MeSH < H₂O < t-BuOH < Ph₂PH。ケイ素とスズは陰イオンとしてはほとんど離れない）
+  const LEAVE_ORDER = ['iodo', 'azy', 'thio', 'oxy', 'buto', 'phos', 'tin', 'tms'];
+  function leaverName() {
+    const id = S && LEAVE_ORDER.find(x => S.party.includes(x));
+    return id ? comp(id).name : '仲間';
+  }
   const yen = n => `${n} 円`;
 
   function freshState(diff) {
