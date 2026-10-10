@@ -31,16 +31,15 @@
   const unesc = s => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
   const opp = c => c === 'R' ? 'S' : 'R';
   // 〈脱離〉：パーティーの中で、いちばんよい脱離基の仲間（続編で最初に離れていく仲間）
-  const fill = t => t.replace(/〈自分〉/g, S && S.cfg ? `(${S.cfg})` : '').replace(/〈逆〉/g, S && S.cfg ? `(${opp(S.cfg)})` : '').replace(/〈脱離〉/g, () => leaverName());
+  // 〈自分〉〈逆〉〈脱離〉を埋める。f（[立体, 離れる仲間]）を渡すと、そのときの状態で埋める（会話ログ用）
+  const snap = () => S ? [S.cfg, LEAVE_ORDER.find(x => S.party.includes(x))] : [];
+  const fill = (t, f = snap()) => { const [cfg, lv] = f;
+    return t.replace(/〈自分〉/g, cfg ? `(${cfg})` : '').replace(/〈逆〉/g, cfg ? `(${opp(cfg)})` : '').replace(/〈脱離〉/g, () => tr(lv ? comp(lv).name : '仲間')); };
   const resolve = (v, ...a) => typeof v === 'function' ? v(...a) : v;
   const map = () => MAPS[S.map];
   const heroName = () => S.cfg ? `(${S.cfg})-${tr('カーボ')}` : tr('カーボ');
   // 脱離能の順（共役酸の pKa の小さい順：HI < HN₃ < MeSH < H₂O < t-BuOH < Ph₂PH。ケイ素とスズは陰イオンとしてはほとんど離れない）
   const LEAVE_ORDER = ['iodo', 'azy', 'thio', 'oxy', 'buto', 'phos', 'tin', 'tms'];
-  function leaverName() {
-    const id = S && LEAVE_ORDER.find(x => S.party.includes(x));
-    return id ? tr(comp(id).name) : tr('仲間');
-  }
   const yen = n => T('{0} 円', n);
 
   function freshState(diff) {
@@ -452,7 +451,7 @@
     if (!line) { ov.innerHTML = ''; return; }
     // 同じ行を描きなおすこと（ログを閉じたときなど）があるので、何番目の行かで見分ける
     const ref = UI.msg || UI.scene, n = UI.msg ? UI.msg.length : UI.scene.i;
-    if (!logMark || logMark.ref !== ref || logMark.n !== n) { logMark = { ref, n }; logPush(line.w, line.t); }
+    if (!logMark || logMark.ref !== ref || logMark.n !== n) { logMark = { ref, n }; logPush(line.raw); }
     ov.innerHTML = `<div class="dialog${line.face ? ' has-face' : ''}" data-act="advance">
       ${line.face ? '<canvas class="face" id="face" width="96" height="96" aria-hidden="true"></canvas>' : ''}
       ${line.w ? `<div class="speaker">${esc(line.w)}</div>` : ''}
@@ -518,7 +517,7 @@
   }
 
   function currentLine() {
-    if (UI.msg) return { t: UI.msg[0] };
+    if (UI.msg) return { t: fill(trLine(UI.msg[0])), raw: { m: UI.msg[0] } };
     const sc = UI.scene;
     if (!sc) return null;
     const st = sc.steps[sc.i];
@@ -532,7 +531,7 @@
       if (id) face = { comp: id };
     } else if (w) face = faceFor(w);
     // 顔は日本語の名前で決めて、出すときに訳す。台本の行は、その言語の台本（tt）があればそれを使う
-    return { w: w && tr(w), t: fill(st.tt || tr(st.t)), face };
+    return { w: w && tr(w), t: fill(st.tt || tr(st.t)), face, raw: { w, t: st.t, s: sc.id, k: st.k } };
   }
   // 話者の名前 → 顔（バトル中は、いま戦っている相手の名前なら、いまの姿の絵を使う）
   function faceFor(w, B) {
@@ -546,25 +545,33 @@
   }
 
   // ---- 会話ログ（読んだ台詞を、あとから見返せるように残す） ----
-  // 出したときの言語のまま残す。新しく始めたら消す
+  // 訳す前の日本語で残し、見るときにいまの言語へ訳す（途中で言語を変えても混ざらない）。新しく始めたら消す
+  // 1 行の形: { w, t, s, k } 台本の行（s は場面、k は場面の中の何行目か）, { m } メッセージ, { r } バトルの会話, { c } 選んだ選択肢
+  // f は、〈自分〉などを埋めるための、そのときの状態
   const LOG_KEY = 'carbonrpg-log', LOG_MAX = 300;
   let LOG = [], logMark = null;
   try { LOG = JSON.parse(localStorage.getItem(LOG_KEY)) || []; } catch (e) { /* 読めなければ空から */ }
-  function logPush(w, t, c) {
-    LOG.push(c ? { c: t } : w ? { w, t } : { t });
+  function logPush(e) {
+    LOG.push({ ...e, f: snap() });
     if (LOG.length > LOG_MAX) LOG.splice(0, LOG.length - LOG_MAX);
     try { localStorage.setItem(LOG_KEY, JSON.stringify(LOG)); } catch (e) { /* 保存できなくても、開いている間は見られる */ }
   }
-  // バトルの会話（日本語の「名前「台詞」」）を、話者と台詞に分けて残す
-  function logRaw(l) {
-    if (l.trim() === '---') return;
-    const v = tr(l);
-    const m = v === l && !l.startsWith('（') && l.match(/^([^「]+)「([\s\S]*)」$/);
-    if (m) logPush(tr(m[1]), fill(tr(m[2]))); else logPush(null, fill(v));
+  const logRaw = l => { if (l.trim() !== '---') logPush({ r: l }); };
+  function logView(e) {
+    const f = t => fill(t, e.f);
+    if (e.c) return { c: tr(e.c) };
+    if (e.m) return { t: f(trLine(e.m)) };
+    if (e.r) {
+      // バトルの会話（「名前「台詞」」）は、話者と台詞に分ける
+      const v = tr(e.r), m = v === e.r && !e.r.startsWith('（') && e.r.match(/^([^「]+)「([\s\S]*)」$/);
+      return m ? { w: tr(m[1]), t: f(tr(m[2])) } : { t: f(v) };
+    }
+    const tl = e.s && I18N.scene(e.s);
+    return { w: e.w && tr(e.w), t: f(tl && tl[e.k] != null ? tl[e.k] : tr(e.t)) };
   }
   function clearLog() { LOG = []; logMark = null; try { localStorage.removeItem(LOG_KEY); } catch (e) { /* 何もしない */ } }
   function vLog() {
-    const rows = LOG.map(e => e.c ? `<p class="log-choice">▶ ${esc(e.c)}</p>`
+    const rows = LOG.map(logView).map(e => e.c ? `<p class="log-choice">▶ ${esc(e.c)}</p>`
       : e.w ? `<p><span class="log-who">${esc(e.w)}</span><br>${esc(e.t)}</p>` : `<p class="log-narr">${esc(e.t)}</p>`).join('');
     return `<div class="menu win log-win">
       <h3>${T('会話ログ')}</h3>
@@ -622,8 +629,8 @@
     // その言語の台本は、t のある行を順に並べた配列。need / if で行を落とす前に、行ごとに割り当てる
     const tl = I18N.scene(id);
     let k = 0;
-    const steps = SCENES[id].map(x => { const y = { ...x }; if (typeof x.t === 'string') { if (tl && tl[k] != null) y.tt = tl[k]; k++; } return y; });
-    UI.scene = { steps: steps.filter(x => (!x.need || S.party.includes(x.need)) && (!x.if || x.if(S.flags))), i: 0, onDone };
+    const steps = SCENES[id].map(x => { const y = { ...x }; if (typeof x.t === 'string') { if (tl && tl[k] != null) y.tt = tl[k]; y.k = k++; } return y; });
+    UI.scene = { id, steps: steps.filter(x => (!x.need || S.party.includes(x.need)) && (!x.if || x.if(S.flags))), i: 0, onDone };
     UI.held = null;
     runCommands();
   }
@@ -673,7 +680,7 @@
     if (UI.msg) { UI.msg.shift(); if (!UI.msg.length) { const cb = UI.msgDone; UI.msg = null; UI.msgDone = null; if (cb) cb(); } renderOverlay(); return; }
     if (UI.scene) { UI.scene.i++; runCommands(); }
   }
-  function message(lines, done) { UI.msg = (Array.isArray(lines) ? [...lines] : [lines]).map(l => fill(trLine(l))); UI.msgDone = done || null; UI.held = null; renderOverlay(); }
+  function message(lines, done) { UI.msg = Array.isArray(lines) ? [...lines] : [lines]; UI.msgDone = done || null; UI.held = null; renderOverlay(); }
   const busy = () => !!(UI.scene || UI.msg || UI.menu || UI.shop || UI.choice || UI.log);
   const SHOP_DEFAULT = { name: '購買部', line: '「いらっしゃい！ 研究費はちゃんと残しておくんだよ」' };
   function openShop(info) {
@@ -685,7 +692,7 @@
     const o = UI.choice && UI.choice[+i];
     if (!o) return;
     UI.choice = null;
-    logPush(null, tr(o.t), true);
+    logPush({ c: o.t });
     if (o.fn) { renderOverlay(); return o.fn(); }
     if (o.shop) { UI.scene = null; return openShop(o.shop); }
     const sc = UI.scene; UI.scene = null;
@@ -1172,7 +1179,7 @@
     else if (E.queue) UI.battle.lines = [tr(E.start)];
     // エノラスとアキラルの戦い：カーボではなく 2 人の HP で受ける（0 にはならない）
     if (E.duo) Object.assign(UI.battle, { allyHp: E.ally.hp, allyMax: E.ally.hp });
-    if (!random && !fromNote) { if (E.queue) logRaw(E.start); else logPush(tr(E.name), fill(tr(E.start))); }
+    if (!random && !fromNote) { if (E.queue) logRaw(E.start); else logPush({ w: E.name, t: E.start }); }
     // ボーカ：特性はカーボの逆
     if (E.oppTrait) Object.assign(UI.battle, { shadowCfg: S.cfg ? opp(S.cfg) : null, missStreak: 0 });
     if (E.forms) { const F = E.forms.keto; Object.assign(UI.battle, { form: 'keto', name: F.name, sprite: F.sprite, answered: 0 }); }
@@ -1343,7 +1350,7 @@
     const B = UI.battle, E = ENEMIES[B.key];
     B.state = 'win';
     B.lines = E.winLines ? E.winLines.map(trLine) : [say(tr(B.name), tr(E.win))];
-    if (!B.random && !B.fromNote) { if (E.winLines) E.winLines.forEach(logRaw); else logPush(tr(B.name), fill(tr(E.win))); }
+    if (!B.random && !B.fromNote) { if (E.winLines) E.winLines.forEach(logRaw); else logPush({ w: B.name, t: E.win }); }
     if (!E.practice) {
       if (!E.winLines) B.lines.push(T('{0}をたおした！', tr(B.name)));
       if (E.exp || E.money) B.lines.push(E.money ? T('経験値 {0} と、研究費 {1} を手に入れた。', E.exp, yen(E.money)) : T('経験値 {0} を手に入れた。', E.exp));
@@ -1726,7 +1733,7 @@
     devStart(n) {
       n = +n;
       if (n === 1) return actions.pickDiff(UI.dev.diff);
-      S = devState(n, UI.dev.diff, UI.dev.cfg);
+      S = devState(n, UI.dev.diff, UI.dev.cfg); clearLog();
       UI.shadow = null; UI.scene = null; UI.msg = null; UI.menu = false; UI.shop = false; UI.clearCh = null;
       if (n <= 5) return actions[`toCh${n}`]();
       S.map = 'lab'; S.x = 5; S.y = 5; S.dir = 'up';
