@@ -83,3 +83,4 @@ py -m http.server 8765
 
 - 構造式の描画: [SmilesDrawer](https://github.com/reymond-group/smilesDrawer)（MIT License, © Reymond Research Group）
 - フォント: [DotGothic16](https://fonts.google.com/specimen/DotGothic16)（SIL Open Font License）
+- 中国語のフォント: [Fusion Pixel Font](https://github.com/TakWolf/fusion-pixel-font)（12px Proportional SC、SIL Open Font License 1.1、© TakWolf。Fontsource のパッケージを jsDelivr から読み込む）
