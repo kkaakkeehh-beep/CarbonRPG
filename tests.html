@@ -13,6 +13,8 @@
   <h1>CarbonRPG のテスト</h1>
   <div id="out"></div>
   <script src="lib/smiles-drawer.min.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/lang/en-ui.js"></script>
   <script src="js/questions.js"></script>
   <script src="js/data.js"></script>
   <script src="js/sprites.js"></script>
@@ -587,6 +589,75 @@
     }
     rsSvg.remove();
     check(`構造式の R/S が正しく描かれる（${rsSmiles.size} 個、立体中心 ${rsN} か所）`, !rsBad.length, rsBad.join('\n'));
+
+    // ---- 英語の訳 ----
+    {
+      const EN = I18N.packs.en, tx = EN.text, miss = [], JP = /[぀-ヿ一-鿿]/;
+      const need = (s, where) => { if (typeof s === 'string' && JP.test(s) && tx[s] === undefined) miss.push(`${where}: ${s}`); };
+      // 「名前「台詞」」の行は、行ごとの訳がなければ、名前と台詞に分けて訳す（game.js の trLine）
+      const line = (l, where) => {
+        if (tx[l] !== undefined || l.trim() === '---') return;
+        const m = !l.startsWith('（') && l.match(/^([^「]+)「([\s\S]*)」$/);
+        if (m) { need(m[1], where); need(m[2], where); } else need(l, where);
+      };
+      const texts = (v, where) => { if (typeof v === 'string') v.split('\n').forEach(l => line(l, where)); else if (Array.isArray(v)) v.forEach(x => texts(x, where)); };
+      for (const c of GameData.COMPANIONS) { need(c.name, c.id); need(c.role, c.id); need(c.skill.name, c.id); c.skill.lv.forEach(l => need(l.desc, c.id)); need(c.bond, c.id); }
+      for (const [id, it] of Object.entries(GameData.ITEMS)) { need(it.name, id); need(it.desc, id); }
+      for (const [k, E] of Object.entries(GameData.ENEMIES)) {
+        [E.name, E.start, E.win, ...(E.hit || []), ...(E.miss || []), ...(E.topics || [])].forEach(s => need(s, k));
+        (E.phases || []).forEach(p => { texts(p.text, k); need(p.name, k); });
+        (E.stages || []).forEach(s => [...(s.hit || []), ...(s.miss || []), ...(s.topics || [])].forEach(x => need(x, k)));
+        Object.values(E.forms || {}).forEach(f => [f.name, f.into, ...f.hit, ...f.miss].forEach(x => need(x, k)));
+        texts(E.winLines || [], k); if (E.ally) need(E.ally.name, k);
+      }
+      for (const [id, m] of Object.entries(Maps.MAPS)) {
+        need(m.name, id);
+        for (const e of m.events || []) if (typeof e.text !== 'function') texts(e.text || [], id);
+        for (const o of [m.inspect, m.blockedText]) for (const v of Object.values(o || {})) if (typeof v !== 'function') texts(v, id);
+      }
+      const X = Maps.EXTRACT;
+      Object.values(X.residents).forEach(r => { need(r.name, 'EXTRACT'); need(r.stay, 'EXTRACT'); });
+      [...Object.values(X.PH), ...Object.values(X.TYPE)].forEach(s => need(s, 'EXTRACT'));
+      Object.keys(Story.FACES).forEach(k => need(k, 'FACES'));
+      Questions.LIST.forEach(q => need(q.topic, q.id));
+      Questions.DIFFS.slice(1).forEach(d => { need(d.name, 'DIFFS'); need(d.desc, 'DIFFS'); });
+      // 台本の話者・選択肢
+      for (const [id, sc] of Object.entries(Story.SCENES)) for (const st of sc) {
+        if (st.w && !st.w.startsWith('@')) need(st.w, id);
+        for (const o of st.opts || []) { need(o.t, id); if (o.shop) { need(o.shop.name, id); need(o.shop.line, id); } }
+      }
+      check(`英語：名前・敵のセリフ・マップの文字・分野の訳がそろっている`, !miss.length, [...new Set(miss)].join('\n'));
+
+      // {0} {1} の数が、日本語と英語で同じ
+      const ph = s => (s.match(/\{\d\}/g) || []).sort().join('');
+      const phBad = Object.entries(tx).filter(([k, v]) => ph(k) !== ph(v)).map(([k, v]) => `${k} → ${v}`);
+      check('英語：{0} などの埋め込みの数が日本語と同じ', !phBad.length, phBad.join('\n'));
+
+      // 台本：t のある行の数が、日本語の台本と同じ
+      const scBad = [];
+      for (const [id, lines] of Object.entries(EN.scenes)) {
+        if (!Story.SCENES[id]) { scBad.push(`${id}: 日本語の台本にない`); continue; }
+        const n = Story.SCENES[id].filter(st => typeof st.t === 'string').length;
+        if (n !== lines.length) scBad.push(`${id}: 日本語 ${n} 行 / 英語 ${lines.length} 行`);
+        lines.forEach((l, i) => { if (typeof l !== 'string' || !l.trim() || JP.test(l.replace(/〈(自分|逆|脱離)〉/g, ''))) scBad.push(`${id} の ${i + 1} 行目: ${l}`); });
+      }
+      const nSc = Object.keys(Story.SCENES).length, nEn = Object.keys(EN.scenes).length;
+      check(`英語：台本の行の数が日本語と同じ（${nEn}/${nSc} 場面を訳した）`, !scBad.length, scBad.join('\n'));
+
+      // 問題：選択肢・構造式の名前・返事の数が同じ
+      const qBad = [];
+      for (const [id, e] of Object.entries(EN.q)) {
+        const q = Questions.LIST.find(x => x.id === id);
+        if (!q) { qBad.push(`${id}: 日本語の問題にない`); continue; }
+        if (e.skip) continue;
+        if (!e.q || !e.choices || (!e.explain && !q.anyOk)) qBad.push(`${id}: q / choices / explain が足りない`);
+        for (const k of ['choices', 'mols', 'replies', 'cl']) if (e[k] && (!q[k] || e[k].length !== q[k].length)) qBad.push(`${id}: ${k} の数が違う`);
+        if (e.choices && new Set(e.choices).size !== e.choices.length) qBad.push(`${id}: 選択肢が重複`);
+        for (const s of [e.q, e.explain, ...(e.choices || []), ...(e.mols || [])]) if (s && JP.test(s)) qBad.push(`${id}: 日本語が残っている: ${s}`);
+      }
+      const nQ = Questions.LIST.length, nQe = Object.keys(EN.q).length;
+      check(`英語：問題の訳の形（${nQe}/${nQ} 問を訳した）`, !qBad.length, qBad.join('\n'));
+    }
 
     out.insertAdjacentHTML('afterbegin', `<h2 class="${fail ? 'ng' : 'ok'}" id="summary">${pass} 件成功 / ${fail} 件失敗</h2>`);
   </script>

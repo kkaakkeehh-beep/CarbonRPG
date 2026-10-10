@@ -6,6 +6,15 @@
   const { COMPANIONS, SKILL_MAX, ITEMS, SHOP, COMP_PRICE, ENEMIES, RANDOM_ENEMIES, expToNext, HP_PER_LV } = GameData;
   const { MAPS } = Maps;
   const { SCENES } = Story;
+  // 画面に出す文字は、ここを通して選んだ言語にする（中身は日本語のまま）
+  const { tr, T, say } = I18N;
+  // 1 行を訳す。行ごとの訳がなければ、「名前「台詞」」は名前と台詞に分けて訳す
+  const trLine = l => {
+    const v = tr(l);
+    if (v !== l || typeof l !== 'string') return v;
+    const m = !l.startsWith('（') && l.match(/^([^「]+)「([\s\S]*)」$/);
+    return m ? say(tr(m[1]), tr(m[2])) : l;
+  };
   const TILE = 32, VW = 15, VH = 11, STEP_MS = 140;
   const SAVE_KEY = 'carbonrpg-save-v2';
   const BASE_HP = 30;
@@ -25,14 +34,14 @@
   const fill = t => t.replace(/〈自分〉/g, S && S.cfg ? `(${S.cfg})` : '').replace(/〈逆〉/g, S && S.cfg ? `(${opp(S.cfg)})` : '').replace(/〈脱離〉/g, () => leaverName());
   const resolve = (v, ...a) => typeof v === 'function' ? v(...a) : v;
   const map = () => MAPS[S.map];
-  const heroName = () => S.cfg ? `(${S.cfg})-カーボ` : 'カーボ';
+  const heroName = () => S.cfg ? `(${S.cfg})-${tr('カーボ')}` : tr('カーボ');
   // 脱離能の順（共役酸の pKa の小さい順：HI < HN₃ < MeSH < H₂O < t-BuOH < Ph₂PH。ケイ素とスズは陰イオンとしてはほとんど離れない）
   const LEAVE_ORDER = ['iodo', 'azy', 'thio', 'oxy', 'buto', 'phos', 'tin', 'tms'];
   function leaverName() {
     const id = S && LEAVE_ORDER.find(x => S.party.includes(x));
-    return id ? comp(id).name : '仲間';
+    return id ? tr(comp(id).name) : tr('仲間');
   }
-  const yen = n => `${n} 円`;
+  const yen = n => T('{0} 円', n);
 
   function freshState(diff) {
     return {
@@ -121,10 +130,10 @@
     };
     const node = i => {
       const c = party[i] ? comp(party[i]) : null, [x, y] = P[i];
-      if (!c) return `<g><circle cx="${x}" cy="${y}" r="20" fill="#000" stroke="#666" stroke-dasharray="4 3" stroke-width="2"/><text x="${x}" y="${y + 5}" text-anchor="middle" fill="#666" font-size="14">空</text></g>`;
+      if (!c) return `<g><circle cx="${x}" cy="${y}" r="20" fill="#000" stroke="#666" stroke-dasharray="4 3" stroke-width="2"/><text x="${x}" y="${y + 5}" text-anchor="middle" fill="#666" font-size="14">${tr('空')}</text></g>`;
       return `<g data-act="unbond" data-arg="${i}" style="cursor:pointer;color:${c.color}"><circle cx="${x}" cy="${y}" r="21" fill="#000" stroke="currentColor" stroke-width="2.5"/><text x="${x}" y="${y + 4}" text-anchor="middle" fill="currentColor" font-size="${c.group.length > 3 ? 10 : 13}">${c.group}</text></g>`;
     };
-    return `<svg class="hero" viewBox="0 0 220 220" width="${size}" height="${size}" role="img" aria-label="カーボと4つの結合">
+    return `<svg class="hero" viewBox="0 0 220 220" width="${size}" height="${size}" role="img" aria-label="${T('カーボと4つの結合')}">
       ${[0, 1, 2, 3].map(bond).join('')}
       <circle cx="${C[0]}" cy="${C[1]}" r="22" fill="#111" stroke="#fff" stroke-width="3"/>
       <text x="${C[0]}" y="${C[1] + 7}" text-anchor="middle" fill="#fff" font-size="22">C</text>
@@ -160,29 +169,32 @@
     return 'town';
   }
   const win = (inner, cls = '') => `<section class="win ${cls}">${inner}</section>`;
-  const muteBtn = () => `<button class="btn small-btn" data-act="mute">${Sound.isMuted() ? '♪ 音: OFF' : '♪ 音: ON'}</button>`;
+  const muteLabel = () => (Sound.isMuted() ? T('♪ 音: OFF') : T('♪ 音: ON'));
+  const muteBtn = () => `<button class="btn small-btn" data-act="mute">${muteLabel()}</button>`;
 
   function vTitle() {
     const sv = loadSave();
-    const where = sv && MAPS[sv.map] ? `${sv.flags && sv.flags.clear5 ? '★ 全章クリア　' : ''}${MAPS[sv.map].name}　Lv${sv.lv || 1}` : '';
+    const where = sv && MAPS[sv.map] ? `${sv.flags && sv.flags.clear5 ? T('★ 全章クリア　') : ''}${tr(MAPS[sv.map].name)}　Lv${sv.lv || 1}` : '';
     return `<div class="title-screen">
+      <div class="lang-btns" role="group" aria-label="Language">${Object.entries(I18N.LANGS).map(([k, n]) =>
+        `<button class="btn small-btn${I18N.lang === k ? ' dev-on' : ''}" data-act="lang" data-arg="${k}" lang="${k}" aria-pressed="${I18N.lang === k}">${n}</button>`).join('')}</div>
       <div class="title-hero">
         <canvas id="tcv" width="320" height="168" aria-hidden="true"></canvas>
         <div class="title-logo" data-act="devTap">
           <h1 class="logo" data-text="CarbonRPG">CarbonRPG</h1>
-          <p class="logo-sub">炭 素 の 勇 者</p>
+          <p class="logo-sub">${T('炭 素 の 勇 者')}</p>
         </div>
       </div>
-      <p class="title-chapter">全 5 章<br>${['求核の森', 'カルボニル港', '芳香族の王国', '鏡の回廊', '廃液街'].map(n => `<span class="nowrap">${n}</span>`).join('・')}</p>
+      <p class="title-chapter">${T('全 5 章')}<br>${['求核の森', 'カルボニル港', '芳香族の王国', '鏡の回廊', '廃液街'].map(n => `<span class="nowrap">${tr(n)}</span>`).join(T('・'))}</p>
       <div class="title-menu">
-        <button class="tbtn" data-act="newGame">はじめから</button>
-        ${sv ? `<button class="tbtn" data-act="continue">つづきから<small>${esc(where)}</small></button>` : ''}
+        <button class="tbtn" data-act="newGame">${T('はじめから')}</button>
+        ${sv ? `<button class="tbtn" data-act="continue">${T('つづきから')}<small>${esc(where)}</small></button>` : ''}
       </div>
-      ${win(`<p class="story">炭素の国カルボニア。原子たちは手を取り合い、分子となって穏やかに暮らしていた。</p>
-        <p class="story">ところがある日、森の分子たちが次々と「平ら」にされ、利き手を失いはじめた。</p>
-        <p class="story">闇の組織「メソ教団」。その名が、ささやかれている。</p>`, 'msg title-story')}
+      ${win(['炭素の国カルボニア。原子たちは手を取り合い、分子となって穏やかに暮らしていた。',
+        'ところがある日、森の分子たちが次々と「平ら」にされ、利き手を失いはじめた。',
+        '闇の組織「メソ教団」。その名が、ささやかれている。'].map(l => `<p class="story">${tr(l)}</p>`).join(''), 'msg title-story')}
       <div class="center">${muteBtn()}</div>
-      <p class="small dim center">化学がわかる人向けの有機化学 RPG。問題に正解すると敵にダメージ、間違えると自分がダメージを受けます。</p>
+      <p class="small dim center">${T('化学がわかる人向けの有機化学 RPG。問題に正解すると敵にダメージ、間違えると自分がダメージを受けます。')}</p>
     </div>`;
   }
 
@@ -322,23 +334,23 @@
   }
 
   function vDiff() {
-    return `<h2 class="screen-title">難易度を選ぶ</h2>
-      <p class="center dim small">バトルで出る問題の難しさが変わります。あとから変えることはできません。</p>
+    return `<h2 class="screen-title">${T('難易度を選ぶ')}</h2>
+      <p class="center dim small">${T('バトルで出る問題の難しさが変わります。あとから変えることはできません。')}</p>
       <div class="diff-list">${[1, 2, 3, 4].map(d => `<button class="diff-btn" data-act="pickDiff" data-arg="${d}">
-        <span class="diff-name">${Questions.DIFFS[d].name}</span><span class="small dim">${Questions.DIFFS[d].desc}</span></button>`).join('')}</div>`;
+        <span class="diff-name">${tr(Questions.DIFFS[d].name)}</span><span class="small dim">${tr(Questions.DIFFS[d].desc)}</span></button>`).join('')}</div>`;
   }
 
   // ---- 開発者用：章を選んで始める（タイトルのロゴを 2 秒以内に 5 回タップ） ----
   const DEV_CH = { 1: '第1章「求核の森」', 2: '第2章「カルボニル港」', 3: '第3章「芳香族の王国」', 4: '第4章「鏡の回廊」', 5: '第5章「廃液街」', 6: '全章クリアのあと' };
   function vDev() {
     const D = UI.dev, pick = (act, v, on, label) => `<button class="btn${on ? ' dev-on' : ''}" data-act="${act}" data-arg="${v}">${label}</button>`;
-    return `<h2 class="screen-title">開発者メニュー</h2>
-      <p class="center dim small">選んだ章のはじめから遊べます。前の章までは、クリアしたことになります（レベル・研究費・仲間も、ふつうに遊んだときに合わせる）。<br>いまのセーブは上書きされます。</p>
-      <div class="dev-row">難易度　${[1, 2, 3, 4].map(d => pick('devDiff', d, D.diff === d, Questions.DIFFS[d].name)).join('')}</div>
-      <div class="dev-row">立体　${['R', 'S'].map(c => pick('devCfg', c, D.cfg === c, `(${c})`)).join('')}<span class="small dim">（第1章は仲間選びで決まる）</span></div>
+    return `<h2 class="screen-title">${T('開発者メニュー')}</h2>
+      <p class="center dim small">${T('選んだ章のはじめから遊べます。前の章までは、クリアしたことになります（レベル・研究費・仲間も、ふつうに遊んだときに合わせる）。')}<br>${T('いまのセーブは上書きされます。')}</p>
+      <div class="dev-row">${T('難易度')}　${[1, 2, 3, 4].map(d => pick('devDiff', d, D.diff === d, tr(Questions.DIFFS[d].name))).join('')}</div>
+      <div class="dev-row">${T('立体')}　${['R', 'S'].map(c => pick('devCfg', c, D.cfg === c, `(${c})`)).join('')}<span class="small dim">${T('（第1章は仲間選びで決まる）')}</span></div>
       <div class="diff-list">${Object.entries(DEV_CH).map(([n, t]) => `<button class="diff-btn" data-act="devStart" data-arg="${n}">
-        <span class="diff-name">${t}</span><span class="small dim">${n === '1' ? 'はじめから' : n === '6' ? `研究所から。Lv${DevStart.lv[5]}` : `Lv${DevStart.lv[n - 1]}　研究費 ${DevStart.money[n - 1]} 円`}</span></button>`).join('')}</div>
-      <div class="center"><button class="btn" data-act="toTitle">もどる</button></div>`;
+        <span class="diff-name">${tr(t)}</span><span class="small dim">${n === '1' ? T('はじめから') : n === '6' ? T('研究所から。Lv{0}', DevStart.lv[5]) : `Lv${DevStart.lv[n - 1]}　${T('研究費 {0}', yen(DevStart.money[n - 1]))}`}</span></button>`).join('')}</div>
+      <div class="center"><button class="btn" data-act="toTitle">${T('もどる')}</button></div>`;
   }
   // 第 n 章のはじめ（n = 6 は全章クリアのあと）の状態をつくる
   function devState(n, diff, cfg) {
@@ -358,33 +370,33 @@
 
   function vParty() {
     const cfg = heroCfg(UI.pick);
-    const trait = cfg === 'R' ? '攻撃型: 続けて正解するほどダメージが上がる' : cfg === 'S' ? '防御型: 最大 HP +10、間違えたときのダメージ −25%' : '';
+    const trait = cfg === 'R' ? T('攻撃型: 続けて正解するほどダメージが上がる') : cfg === 'S' ? T('防御型: 最大 HP +10、間違えたときのダメージ −25%') : '';
     // 付け替え（UI.swap）のときは、迎えた仲間だけを選べる。技はいまのレベルで見せる
     // 売店でしか迎えられない仲間（price つき）は、最初の仲間選びには出さない
     const list = COMPANIONS.filter(c => UI.swap || !c.price).map(c => {
       const on = UI.pick.includes(c.id), locked = UI.swap && !S.owned.includes(c.id);
-      const sk = UI.swap && !locked ? ` Lv${skillLv(c.id)}: ${skillAt(c.id).desc}` : `: ${c.skill.lv[0].desc}`;
+      const sk = UI.swap && !locked ? ` Lv${skillLv(c.id)}: ${tr(skillAt(c.id).desc)}` : `: ${tr(c.skill.lv[0].desc)}`;
       return `<button class="comp ${on ? 'on' : ''} ${locked ? 'locked' : ''}" style="--ac:${c.color}" data-act="toggleComp" data-arg="${c.id}" ${locked ? 'disabled' : ''}>
         <span class="comp-atom">${c.group}</span>
-        <span class="comp-name">${c.name}<small>${c.role}</small></span>
-        <span class="comp-cards">技「${c.skill.name}」${sk}</span>
-        <span class="comp-line">${locked ? `まだ仲間になっていない（売店で紹介料 ${yen(priceOf(c))} を払うと迎えられる）` : c.bond}</span>
+        <span class="comp-name">${tr(c.name)}<small>${tr(c.role)}</small></span>
+        <span class="comp-cards">${T('技「{0}」', tr(c.skill.name))}${sk}</span>
+        <span class="comp-line">${locked ? T('まだ仲間になっていない（売店で紹介料 {0} を払うと迎えられる）', yen(priceOf(c))) : tr(c.bond)}</span>
       </button>`;
     }).join('');
     const done = UI.swap
-      ? `<button class="btn big" data-act="bondDone" ${UI.pick.length === 4 ? '' : 'disabled'}>▶ この 4 人と結合しなおす</button><button class="btn" data-act="cancelSwap">やめる</button>`
-      : `<button class="btn big" data-act="bondDone" ${UI.pick.length === 4 ? '' : 'disabled'}>▶ この 4 人と結合する</button>`;
-    return `<h2 class="screen-title">${UI.swap ? '結合する仲間を付け替える' : '4 本の手に、仲間を結ぶ'}</h2>
+      ? `<button class="btn big" data-act="bondDone" ${UI.pick.length === 4 ? '' : 'disabled'}>${T('▶ この 4 人と結合しなおす')}</button><button class="btn" data-act="cancelSwap">${T('やめる')}</button>`
+      : `<button class="btn big" data-act="bondDone" ${UI.pick.length === 4 ? '' : 'disabled'}>${T('▶ この 4 人と結合する')}</button>`;
+    return `<h2 class="screen-title">${UI.swap ? T('結合する仲間を付け替える') : T('4 本の手に、仲間を結ぶ')}</h2>
     <div class="party-grid">
       ${win(`<div class="hero-wrap">${heroSvg(UI.pick)}</div>
-        <p class="center">${UI.pick.length}/4 結合</p>
-        ${cfg ? `<p class="center big-cfg">(${cfg})-カーボ</p><p class="center small">${heroFormula(UI.pick)}</p><p class="center small accent">${trait}</p>
-          ${UI.swap ? `<p class="center small dim">カーボの向き（${S.cfg}）は変わらない。逆の向きになる並びのときは、くさびと破線の仲間が自動で入れ替わる。</p>`
-            : '<div class="center"><button class="btn" data-act="swap">くさびと破線を入れ替える（R/S 反転）</button></div>'}`
-        : '<p class="center small dim">4 人そろうと、置換基の CIP 順位からカーボの R/S が決まる。</p>'}`, 'hero-win')}
+        <p class="center">${T('{0}/4 結合', UI.pick.length)}</p>
+        ${cfg ? `<p class="center big-cfg">(${cfg})-${tr('カーボ')}</p><p class="center small">${heroFormula(UI.pick)}</p><p class="center small accent">${trait}</p>
+          ${UI.swap ? `<p class="center small dim">${T('カーボの向き（{0}）は変わらない。逆の向きになる並びのときは、くさびと破線の仲間が自動で入れ替わる。', S.cfg)}</p>`
+            : `<div class="center"><button class="btn" data-act="swap">${T('くさびと破線を入れ替える（R/S 反転）')}</button></div>`}`
+        : `<p class="center small dim">${T('4 人そろうと、置換基の CIP 順位からカーボの R/S が決まる。')}</p>`}`, 'hero-win')}
       <div>
         <div class="comp-list">${list}</div>
-        <p class="small dim">仲間の技は、バトルごとに使える。レベルが上がるたびに、強化する技を 1 つ選べる。${UI.swap ? '外した仲間の技のレベルは、そのまま残る。' : ''}</p>
+        <p class="small dim">${T('仲間の技は、バトルごとに使える。レベルが上がるたびに、強化する技を 1 つ選べる。')}${UI.swap ? T('外した仲間の技のレベルは、そのまま残る。') : ''}</p>
         <div class="center">${done}</div>
       </div>
     </div>`;
@@ -394,33 +406,33 @@
   const hudStatus = () => `${heroName()} Lv${S.lv}　HP ${Math.max(0, S.hp)}/${S.maxHp} ${hpBar(S.hp, S.maxHp, 'hp')}`;
 
   // 第 2 章は昼と夜、第 3 章は残っている柱の数をマップ名に添える
-  const mapTitle = () => map().name + (map().ch === 2 ? (S.flags.night ? '（夜）' : '（昼）')
-    : map().ch === 3 && !S.flags.c3_boss ? `　柱 ${Maps.pillarsLit(S.flags)}/6` : '');
+  const mapTitle = () => tr(map().name) + (map().ch === 2 ? (S.flags.night ? T('（夜）') : T('（昼）'))
+    : map().ch === 3 && !S.flags.c3_boss ? T('　柱 {0}/6', Maps.pillarsLit(S.flags)) : '');
   // いまの目的（どこへ行けばよいかを HUD に出す）
-  const goalText = () => { const g = Maps.goalOf(S.flags, S.map); return g ? g.t : ''; };
+  const goalText = () => { const g = Maps.goalOf(S.flags, S.map); return g ? tr(g.t) : ''; };
   function vWorld() {
     const gt = goalText();
     return `<div class="world">
       <div class="hud">
         <span><b class="mapname">${mapTitle()}</b></span>
         <span class="hp-box">${hudStatus()}</span>
-        <span class="hud-btns"><span class="money">研究費 ${yen(S.money)}</span>${muteBtn()}<button class="btn small-btn" data-act="menu">メニュー</button></span>
-        <span class="goal"${gt ? '' : ' hidden'}><b>目的</b><span class="goal-t">${esc(gt)}</span></span>
+        <span class="hud-btns"><span class="money">${T('研究費 {0}', yen(S.money))}</span>${muteBtn()}<button class="btn small-btn" data-act="menu">${T('メニュー')}</button></span>
+        <span class="goal"${gt ? '' : ' hidden'}><b>${T('目的')}</b><span class="goal-t">${esc(gt)}</span></span>
       </div>
       <div class="stage">
         <canvas id="cv" width="${VW * TILE}" height="${VH * TILE}"></canvas>
         <div id="overlay"></div>
       </div>
-      <div class="pad" aria-label="操作パッド">
+      <div class="pad" aria-label="${T('操作パッド')}">
         <div class="dpad">
-          <button class="pd up" data-dir="up" aria-label="上">▲</button>
-          <button class="pd left" data-dir="left" aria-label="左">◀</button>
-          <button class="pd right" data-dir="right" aria-label="右">▶</button>
-          <button class="pd down" data-dir="down" aria-label="下">▼</button>
+          <button class="pd up" data-dir="up" aria-label="${T('上')}">▲</button>
+          <button class="pd left" data-dir="left" aria-label="${T('左')}">◀</button>
+          <button class="pd right" data-dir="right" aria-label="${T('右')}">▶</button>
+          <button class="pd down" data-dir="down" aria-label="${T('下')}">▼</button>
         </div>
-        <button class="pd abtn" data-key="a">話す<br>調べる</button>
+        <button class="pd abtn" data-key="a">${T('話す<br>調べる')}</button>
       </div>
-      <p class="keys small dim">矢印キー / WASD: 移動　Z・Enter・Space: 話す・調べる・送る　X・Esc: メニュー</p>
+      <p class="keys small dim">${T('矢印キー / WASD: 移動　Z・Enter・Space: 話す・調べる・送る　X・Esc: メニュー')}</p>
     </div>`;
   }
 
@@ -432,7 +444,7 @@
     if (UI.menu) { ov.innerHTML = vMenu(); return; }
     if (UI.shop) { ov.innerHTML = vShop(); return; }
     if (UI.choice) {
-      ov.innerHTML = `<div class="dialog choice-box">${UI.choice.map((o, i) => `<button class="btn" data-act="choose" data-arg="${i}">${i + 1}. ${esc(o.t)}</button>`).join('')}</div>`;
+      ov.innerHTML = `<div class="dialog choice-box">${UI.choice.map((o, i) => `<button class="btn" data-act="choose" data-arg="${i}">${i + 1}. ${esc(tr(o.t))}</button>`).join('')}</div>`;
       return;
     }
     const line = currentLine();
@@ -484,7 +496,7 @@
     el.textContent = '';
     el.dataset.done = '0';
     typeTimer = setInterval(() => {
-      i += 2;
+      i += I18N.lang === 'ja' ? 2 : 4;
       el.textContent = full.slice(0, i);
       if (i >= full.length) { el.dataset.done = '1'; stopTyping(); }
     }, 22);
@@ -515,7 +527,8 @@
       w = id ? comp(id).name : '仲間';
       if (id) face = { comp: id };
     } else if (w) face = faceFor(w);
-    return { w, t: fill(st.t), face };
+    // 顔は日本語の名前で決めて、出すときに訳す。台本の行は、その言語の台本（tt）があればそれを使う
+    return { w: w && tr(w), t: fill(st.tt || tr(st.t)), face };
   }
   // 話者の名前 → 顔（バトル中は、いま戦っている相手の名前なら、いまの姿の絵を使う）
   function faceFor(w, B) {
@@ -530,43 +543,43 @@
 
   function vMenu() {
     const party = S.party.map(id => { const c = comp(id), lv = skillLv(id);
-      return `<li><b style="color:${c.color}">${c.name}</b>（${c.group}）技「${c.skill.name}」Lv${lv}: ${skillAt(id).desc}</li>`; }).join('');
+      return `<li><b style="color:${c.color}">${tr(c.name)}</b>（${c.group}）${T('技「{0}」', tr(c.skill.name))}Lv${lv}: ${tr(skillAt(id).desc)}</li>`; }).join('');
     const items = Object.entries(S.items).filter(([, n]) => n > 0).map(([id, n]) =>
-      `<li>${ITEMS[id].name} ×${n} <span class="dim small">${ITEMS[id].desc}</span>${ITEMS[id].heal ? ` <button class="btn small-btn" data-act="drink" data-arg="${id}" ${S.hp >= S.maxHp ? 'disabled' : ''}>飲む</button>` : ''}</li>`).join('') || '<li class="dim">なし</li>';
-    const st = S.stats.total ? `${S.stats.correct}/${S.stats.total} 問正解（${Math.round(S.stats.correct / S.stats.total * 100)}%）` : 'まだ問題に答えていない';
+      `<li>${tr(ITEMS[id].name)} ×${n} <span class="dim small">${tr(ITEMS[id].desc)}</span>${ITEMS[id].heal ? ` <button class="btn small-btn" data-act="drink" data-arg="${id}" ${S.hp >= S.maxHp ? 'disabled' : ''}>${T('飲む')}</button>` : ''}</li>`).join('') || `<li class="dim">${T('なし')}</li>`;
+    const st = S.stats.total ? T('{0}/{1} 問正解（{2}%）', S.stats.correct, S.stats.total, Math.round(S.stats.correct / S.stats.total * 100)) : T('まだ問題に答えていない');
     const nb = Object.keys(S.notebook).length;
     return `<div class="menu win">
       <h3>${heroName()}　Lv${S.lv}　HP ${S.hp}/${S.maxHp}</h3>
-      <p class="small">次のレベルまで 経験値 ${expToNext(S.lv) - S.exp}　｜　研究費 ${yen(S.money)}</p>
-      <p class="small">難易度: ${Questions.DIFFS[S.diff].name}　｜　${st}</p>
-      ${goalText() ? `<p class="small accent">目的: ${esc(goalText())}</p>` : ''}
+      <p class="small">${T('次のレベルまで 経験値 {0}', expToNext(S.lv) - S.exp)}　｜　${T('研究費 {0}', yen(S.money))}</p>
+      <p class="small">${T('難易度: {0}', tr(Questions.DIFFS[S.diff].name))}　｜　${st}</p>
+      ${goalText() ? `<p class="small accent">${T('目的: {0}', esc(goalText()))}</p>` : ''}
       ${S.party.length ? `<p class="small">${heroFormula(S.party)}</p><ul class="mlist">${party}</ul>` : ''}
-      <h3>どうぐ</h3><ul class="mlist">${items}</ul>
+      <h3>${T('どうぐ')}</h3><ul class="mlist">${items}</ul>
       <div class="center">
-        <button class="btn" data-act="openSwap">仲間を付け替える（${S.owned.length} 人）</button>
-        <button class="btn" data-act="openNote">復習ノート（${nb}）</button>
-        <button class="btn" data-act="saveNow">セーブ</button>
-        <button class="btn" data-act="menu">とじる</button>
+        <button class="btn" data-act="openSwap">${T('仲間を付け替える（{0} 人）', S.owned.length)}</button>
+        <button class="btn" data-act="openNote">${T('復習ノート（{0}）', nb)}</button>
+        <button class="btn" data-act="saveNow">${T('セーブ')}</button>
+        <button class="btn" data-act="menu">${T('とじる')}</button>
       </div>
     </div>`;
   }
 
   function vShop() {
     const rows = SHOP.map(id => { const it = ITEMS[id], can = S.money >= it.price;
-      return `<li class="shop-row"><span><b>${it.name}</b>　${yen(it.price)}<br><span class="small dim">${it.desc}（持っている数: ${S.items[id] || 0}）</span></span>
-        <button class="btn small-btn" data-act="buy" data-arg="${id}" ${can ? '' : 'disabled'}>買う</button></li>`; }).join('');
+      return `<li class="shop-row"><span><b>${tr(it.name)}</b>　${yen(it.price)}<br><span class="small dim">${tr(it.desc)}${T('（持っている数: {0}）', S.items[id] || 0)}</span></span>
+        <button class="btn small-btn" data-act="buy" data-arg="${id}" ${can ? '' : 'disabled'}>${T('買う')}</button></li>`; }).join('');
     // まだ仲間になっていない人を、紹介料を払って迎える
     const cands = COMPANIONS.filter(c => !S.owned.includes(c.id));
-    const comps = cands.map(c => `<li class="shop-row"><span><b style="color:${c.color}">${c.name}</b>（${c.group}）　${yen(priceOf(c))}<br>
-        <span class="small dim">${c.role}。技「${c.skill.name}」: ${c.skill.lv[0].desc}</span></span>
-        <button class="btn small-btn" data-act="buyComp" data-arg="${c.id}" ${S.money >= priceOf(c) ? '' : 'disabled'}>迎える</button></li>`).join('');
+    const comps = cands.map(c => `<li class="shop-row"><span><b style="color:${c.color}">${tr(c.name)}</b>（${c.group}）　${yen(priceOf(c))}<br>
+        <span class="small dim">${T('{0}。技「{1}」: {2}', tr(c.role), tr(c.skill.name), tr(c.skill.lv[0].desc))}</span></span>
+        <button class="btn small-btn" data-act="buyComp" data-arg="${c.id}" ${S.money >= priceOf(c) ? '' : 'disabled'}>${T('迎える')}</button></li>`).join('');
     return `<div class="menu win">
-      <h3>${esc(UI.shopInfo.name)}</h3>
-      <p class="small">${esc(UI.shopInfo.line)}</p>
-      <p>研究費 <b class="accent">${yen(S.money)}</b></p>
+      <h3>${esc(tr(UI.shopInfo.name))}</h3>
+      <p class="small">${esc(tr(UI.shopInfo.line))}</p>
+      <p>${T('研究費 {0}', `<b class="accent">${yen(S.money)}</b>`)}</p>
       <ul class="shop-list">${rows}</ul>
-      ${cands.length ? `<h3>仲間を迎える（紹介料）</h3><p class="small dim">迎えた仲間は、メニューの「仲間を付け替える」で結合できる。</p><ul class="shop-list">${comps}</ul>` : ''}
-      <div class="center"><button class="btn" data-act="closeShop">とじる</button></div>
+      ${cands.length ? `<h3>${T('仲間を迎える（紹介料）')}</h3><p class="small dim">${T('迎えた仲間は、メニューの「仲間を付け替える」で結合できる。')}</p><ul class="shop-list">${comps}</ul>` : ''}
+      <div class="center"><button class="btn" data-act="closeShop">${T('とじる')}</button></div>
     </div>`;
   }
 
@@ -574,7 +587,11 @@
   function playScene(id, onDone) {
     // need: その仲間がパーティにいるときだけの台詞
     // if: そのフラグのときだけの台詞
-    UI.scene = { steps: SCENES[id].filter(x => (!x.need || S.party.includes(x.need)) && (!x.if || x.if(S.flags))).map(x => ({ ...x })), i: 0, onDone };
+    // その言語の台本は、t のある行を順に並べた配列。need / if で行を落とす前に、行ごとに割り当てる
+    const tl = I18N.scene(id);
+    let k = 0;
+    const steps = SCENES[id].map(x => { const y = { ...x }; if (typeof x.t === 'string') { if (tl && tl[k] != null) y.tt = tl[k]; k++; } return y; });
+    UI.scene = { steps: steps.filter(x => (!x.need || S.party.includes(x.need)) && (!x.if || x.if(S.flags))), i: 0, onDone };
     UI.held = null;
     runCommands();
   }
@@ -624,7 +641,7 @@
     if (UI.msg) { UI.msg.shift(); if (!UI.msg.length) { const cb = UI.msgDone; UI.msg = null; UI.msgDone = null; if (cb) cb(); } renderOverlay(); return; }
     if (UI.scene) { UI.scene.i++; runCommands(); }
   }
-  function message(lines, done) { UI.msg = Array.isArray(lines) ? [...lines] : [lines]; UI.msgDone = done || null; UI.held = null; renderOverlay(); }
+  function message(lines, done) { UI.msg = (Array.isArray(lines) ? [...lines] : [lines]).map(l => fill(trLine(l))); UI.msgDone = done || null; UI.held = null; renderOverlay(); }
   const busy = () => !!(UI.scene || UI.msg || UI.menu || UI.shop || UI.choice);
   const SHOP_DEFAULT = { name: '購買部', line: '「いらっしゃい！ 研究費はちゃんと残しておくんだよ」' };
   function openShop(info) {
@@ -647,7 +664,7 @@
     const hp = document.querySelector('.hud .hp-box');
     if (hp) hp.innerHTML = hudStatus();
     const m = document.querySelector('.hud .money');
-    if (m) m.textContent = `研究費 ${yen(S.money)}`;
+    if (m) m.textContent = T('研究費 {0}', yen(S.money));
     const nm = document.querySelector('.hud .mapname');
     if (nm) nm.textContent = mapTitle();
     const gl = document.querySelector('.hud .goal');
@@ -686,13 +703,13 @@
   function talkResident(id) {
     const r = Maps.EXTRACT.residents[id];
     if (!S.flags['c5t_' + id] && r.talk) return playScene(r.talk, () => { S.flags['c5t_' + id] = true; save(); if (!r.fixed) followToggle(id); });
-    if (r.fixed) return message(`${r.name}「${r.stay}」`);
+    if (r.fixed) return message(say(tr(r.name), tr(r.stay)));
     followToggle(id);
   }
   function followToggle(id) {
     const st = ex();
-    if (st.follow === id) { st.follow = null; message(`${resName(id)}「ここで待ってるね」`); }
-    else { st.follow = id; message(`${resName(id)}「ついていくね」`); }
+    if (st.follow === id) { st.follow = null; message(say(tr(resName(id)), tr('ここで待ってるね'))); }
+    else { st.follow = id; message(say(tr(resName(id)), tr('ついていくね'))); }
     save();
   }
   // 扉や出口の上（ついてくる住人は、ここから先へは来ない）
@@ -705,7 +722,7 @@
     if (!id) return;
     const p = st.res[id];
     if (p.layer !== m.layer || Math.abs(p.x - ox) + Math.abs(p.y - oy) > 1) { st.follow = null; return; }
-    if (onThreshold(S.x, S.y)) { st.follow = null; flash(`${resName(id)}は、ここで待っている`); return; }
+    if (onThreshold(S.x, S.y)) { st.follow = null; flash(T('{0}は、ここで待っている', tr(resName(id)))); return; }
     Object.assign(p, { fx: p.x, fy: p.y, mt: UI.move ? UI.move.t0 : 0, x: ox, y: oy });
     checkLocks();
   }
@@ -747,8 +764,8 @@
   function askPump(ev) {
     const E = Maps.EXTRACT, room = ex().ph[ev.room];
     UI.held = null;
-    message([`${PUMP[ev.pump]}のポンプだ。（この部屋はいま ${E.PH[room]}）`], () => {
-      UI.choice = [{ t: `${PUMP[ev.pump]}を入れる`, fn: () => usePump(ev) }, { t: 'やめておく' }];
+    message([T('{0}のポンプだ。（この部屋はいま {1}）', tr(PUMP[ev.pump]), tr(E.PH[room]))], () => {
+      UI.choice = [{ t: T('{0}を入れる', tr(PUMP[ev.pump])), fn: () => usePump(ev) }, { t: 'やめておく' }];
       renderOverlay();
     });
   }
@@ -757,10 +774,10 @@
     const moved = E.applyPh(st, ev.room, ev.pump, freeIn);
     if (moved.includes(st.follow)) st.follow = null;
     st.pumps++;
-    const lines = [`${PUMP[ev.pump]}を入れた。この部屋は ${E.PH[ev.pump]} になった。`];
+    const lines = [T('{0}を入れた。この部屋は {1} になった。', tr(PUMP[ev.pump]), tr(E.PH[ev.pump]))];
     for (const id of moved) {
       const r = E.residents[id], down = st.res[id].layer === 'aq';
-      lines.push(`${r.name}が、${down ? `${INTO[r.type]}、水層へ下りた` : 'もとの形に戻って、有機層へ上がった'}。`);
+      lines.push(down ? T('{0}が、{1}、水層へ下りた。', tr(r.name), tr(INTO[r.type])) : T('{0}が、もとの形に戻って、有機層へ上がった。', tr(r.name)));
     }
     if (!moved.length) lines.push('……誰も、層を移らなかった。');
     if (st.pumps >= 4 && !S.flags.c5foam) {
@@ -771,12 +788,11 @@
     message(lines, () => checkLocks());
   }
   // はしご：上る（有機層へ）か下りる（水層へ）かを聞いてから。押しっぱなしで行ったり来たりしないように
-  const LAYER = { org: '上の有機層', aq: '下の水層' };
   function askLadder() {
     const m = map(), down = m.layer === 'org';
     UI.held = null;
     if (S.flags.c5foam) return useLadder();
-    message([`はしごだ。${down ? '▼ 下の水層へ続いている。' : '▲ 上の有機層へ続いている。'}`], () => {
+    message([down ? 'はしごだ。▼ 下の水層へ続いている。' : 'はしごだ。▲ 上の有機層へ続いている。'], () => {
       UI.choice = [{ t: down ? '▼ 下の水層へ下りる' : '▲ 上の有機層へ上る', fn: useLadder }, { t: 'やめておく' }];
       renderOverlay();
     });
@@ -790,7 +806,7 @@
     st.follow = null; st.pumps = 0;
     Sound.se('blip'); UI.held = null;
     warp({ map: m.twin, x: S.x, y: S.y, dir: S.dir });
-    flash(other === 'aq' ? '▼ はしごを下りて、下の水層に来た' : '▲ はしごを上って、上の有機層に来た');
+    flash(other === 'aq' ? T('▼ はしごを下りて、下の水層に来た') : T('▲ はしごを上って、上の有機層に来た'));
   }
   // 外から分液区に入ったら、まだ扉の開いていない部屋は、はじめに戻す（詰まないように）
   function enterDistrict() {
@@ -929,7 +945,7 @@
     drawGoalMarks(camX, camY);
     // 分液区：いまどちらの層にいるかを、左上に出す
     if (m.layer) {
-      const label = m.layer === 'org' ? '▲ 上の層（有機層）' : '▼ 下の層（水層）';
+      const label = m.layer === 'org' ? T('▲ 上の層（有機層）') : T('▼ 下の層（水層）');
       ctx.save(); ctx.font = 'bold 15px sans-serif'; const tw = ctx.measureText(label).width;
       const bx = Math.round((cv.width - tw) / 2) - 7;   // 画面の端は狭い画面で切れるので、上の真ん中に出す
       ctx.fillStyle = 'rgba(0, 0, 0, .65)'; ctx.fillRect(bx, 4, tw + 14, 24);
@@ -1036,7 +1052,7 @@
       S.items[ev.chest.item] = (S.items[ev.chest.item] || 0) + 1;
       save();
       Sound.se('chest');
-      return message(`宝箱を開けた！ ${ITEMS[ev.chest.item].name}を手に入れた。`);
+      return message(T('宝箱を開けた！ {0}を手に入れた。', tr(ITEMS[ev.chest.item].name)));
     }
     if (ev.gate) {
       if (S.flags.elder) return warp({ map: 'forest', x: 15, y: 22, dir: 'up' });
@@ -1073,7 +1089,7 @@
     const diffs = E.boss ? [d, Math.min(4, d + 1)] : B.key === 'duo' ? [d] : [d, Math.max(1, d - 1)];
     // chs があれば、その章の問題から出す（物語の中の決まった問題 special は混ぜない）。'5:synth' は、その章のその tag だけ
     const chs = E.chs || [ch];
-    let pool = Questions.LIST.filter(q => !q.special && (chs.includes(q.ch) || chs.includes(`${q.ch}:${q.tag}`)) && diffs.includes(q.diff));
+    let pool = Questions.LIST.filter(q => !q.special && !I18N.skipQ(q.id) && (chs.includes(q.ch) || chs.includes(`${q.ch}:${q.tag}`)) && diffs.includes(q.diff));
     // ボスの形態・段階や中ボスの得意分野に合わせて絞る（足りなければ絞らない）
     const tag = B.form ? E.forms[B.form].tag : (stageOf(B, E).tag || E.tag);
     if (tag) { const t = pool.filter(q => q.tag === tag); if (t.length >= 4) pool = t; }
@@ -1113,13 +1129,13 @@
     const hp = queue ? queue.length * 10 : E.hp;
     UI.battle = {
       key, random, name: E.name, sprite: E.sprite, hp, maxHp: hp, atk: E.atk, phase: 0,
-      state: 'intro', lines: [`${E.name}があらわれた！`, `${E.name}「${E.start}」`],
+      state: 'intro', lines: [T('{0}があらわれた！', tr(E.name)), say(tr(E.name), tr(E.start))],
       q: null, order: [], removed: new Set(), asked: new Set(), streak: 0, power: 0, guard: 0, stink: 0, dr: 0,
       uses: Object.fromEntries(S.party.map(id => [id, skillAt(id).uses])),
       timeMax: S.diff >= 4 ? 120 : 90, timeLeft: 0, queue: queue ? [...queue] : null, fromNote, levels: 0,
     };
-    if (fromNote) UI.battle.lines = [`${E.name}「${E.start}」`, `ノートの問題 ${queue.length} 問に挑戦する。`];
-    else if (E.queue) UI.battle.lines = [E.start];
+    if (fromNote) UI.battle.lines = [say(tr(E.name), tr(E.start)), T('ノートの問題 {0} 問に挑戦する。', queue.length)];
+    else if (E.queue) UI.battle.lines = [tr(E.start)];
     // エノラスとアキラルの戦い：カーボではなく 2 人の HP で受ける（0 にはならない）
     if (E.duo) Object.assign(UI.battle, { allyHp: E.ally.hp, allyMax: E.ally.hp });
     // ボーカ：特性はカーボの逆
@@ -1174,7 +1190,7 @@
       if (choice >= 0) B.removed.add(choice);
       else { B.timeLeft = 30; B.timeCap = Math.max(B.timeCap, 30); }
       Sound.se('ng'); render();
-      flash(`シリルの保護基が外れて、身代わりになった！ ${choice < 0 ? '30 秒で' : 'もう一度'}答え直せる`);
+      flash(choice < 0 ? T('シリルの保護基が外れて、身代わりになった！ 30 秒で答え直せる') : T('シリルの保護基が外れて、身代わりになった！ もう一度答え直せる'));
       return runTimer(B);
     }
     const lines = [], talk = [], pending = [];
@@ -1189,7 +1205,7 @@
     if (ok) {
       if (counts) S.stats.correct++;
       let dmg = E.practice ? 10 : 10 + (S.lv - 1) + (S.cfg === 'R' && trait ? Math.min(B.streak, 3) * 4 : 0);
-      if (B.power && !E.practice) { dmg = Math.round(dmg * B.power); B.power = 0; lines.push('アジーの背面攻撃が決まった！'); }
+      if (B.power && !E.practice) { dmg = Math.round(dmg * B.power); B.power = 0; lines.push(T('アジーの背面攻撃が決まった！')); }
       if (B.shadowCfg === 'S') dmg = Math.round(dmg * 0.75);    // (S) の影は守りが固い
       if (E.fixedDmg) dmg = E.fixedDmg;
       // 決まった順の段階は、残りの問題で HP をちょうど使いきる（最後の問いで 0 になる）
@@ -1198,13 +1214,13 @@
       // 最後に決まった順の段階があるボスは、その段階に入るまで HP が 0 にならない
       const lastQ = E.stages && E.stages[E.stages.length - 1].queue;
       B.hp = lastQ && B.phase < E.stages.length - 1 ? Math.max(1, B.hp - dmg) : Math.max(0, B.hp - dmg);
-      if (q.anyOk) lines.push(`${B.name}「${q.replies[choice]}」`);
-      else lines.push(`正解！ ${B.name}に ${dmg} のダメージ！${S.cfg === 'R' && trait && B.streak > 1 && !E.practice ? `（${B.streak} 連続正解）` : ''}`);
+      if (q.anyOk) lines.push(say(tr(B.name), I18N.qv(q).replies[choice]));
+      else lines.push(T('正解！ {0}に {1} のダメージ！', tr(B.name), dmg) + (S.cfg === 'R' && trait && B.streak > 1 && !E.practice ? T('（{0} 連続正解）', B.streak) : ''));
       // スズの連鎖：正解するたびに HP が戻る
-      if (B.drain && !E.practice && S.hp < S.maxHp) { const v = Math.min(B.drain, S.maxHp - S.hp); S.hp += v; lines.push(`スズの連鎖で、HP が ${v} 回復した。`); UI.fx.push({ t: 'heroHeal', v }); }
+      if (B.drain && !E.practice && S.hp < S.maxHp) { const v = Math.min(B.drain, S.maxHp - S.hp); S.hp += v; lines.push(T('スズの連鎖で、HP が {0} 回復した。', v)); UI.fx.push({ t: 'heroHeal', v }); }
       // 答え直しで正解した問題は、ノートに残す
-      if (S.notebook[q.id] && B.retried !== q.id) { delete S.notebook[q.id]; lines.push('復習ノートの問題を克服した！'); }
-      if (B.hp > 0 && !q.anyOk) lines.push(`${B.name}「${taunt(voiceOf(B, E).hit)}」`);
+      if (S.notebook[q.id] && B.retried !== q.id) { delete S.notebook[q.id]; lines.push(T('復習ノートの問題を克服した！')); }
+      if (B.hp > 0 && !q.anyOk) lines.push(say(tr(B.name), tr(taunt(voiceOf(B, E).hit))));
       // ボーカの問いは攻撃ではないので、ダメージの数字も効果音も出さない
       if (!q.anyOk) { UI.fx.push({ t: 'enemyHit', v: dmg }); Sound.se('ok'); setTimeout(() => Sound.se('hit'), 120); } else Sound.se('blip');
       for (const [i, ph] of (E.phases || []).entries()) {
@@ -1224,25 +1240,25 @@
         if (i < 0) B.squeue.push(q.id); else B.squeue.splice(i, 0, q.id);
       }
       if (E.practice) {
-        lines.push(`${choice < 0 ? '時間切れ。' : '不正解。'}${B.fromNote ? '（練習なのでダメージはない）' : '（ダメージはない。あとで、もう一度）'}`);
+        lines.push((choice < 0 ? T('時間切れ。') : T('不正解。')) + (B.fromNote ? T('（練習なのでダメージはない）') : T('（ダメージはない。あとで、もう一度）')));
       } else {
         let dmg = Math.max(1, B.atk - B.stink - B.dr);
         if (B.shadowCfg === 'R') dmg += Math.min(B.missStreak || 0, 3) * 4;    // (R) の影は、続けて間違えるほど強くなる
         if (B.shadowCfg) B.missStreak = (B.missStreak || 0) + 1;
         if (S.cfg === 'S' && trait) dmg = Math.max(1, Math.round(dmg * 0.75));
-        if (B.guard) { dmg = 0; B.guard--; lines.push('ブトキが立ちはだかった！'); }
+        if (B.guard) { dmg = 0; B.guard--; lines.push(T('ブトキが立ちはだかった！')); }
         if (E.duo) {
           B.allyHp = Math.max(1, B.allyHp - dmg);
-          lines.push(`${choice < 0 ? '時間切れ！ ' : '不正解……。'}${E.ally.name}は ${dmg} のダメージを受けた。`);
+          lines.push((choice < 0 ? T('時間切れ！ ') : T('不正解……。')) + T('{0}は {1} のダメージを受けた。', tr(E.ally.name), dmg));
         } else {
           // 負けない段階（ボーカの最後の出題）では、HP は 1 より下がらない
           S.hp = sg.noLose ? Math.max(1, S.hp - dmg) : Math.max(0, S.hp - dmg);
-          lines.push(`${choice < 0 ? '時間切れ！ ' : '不正解……。'}カーボは ${dmg} のダメージを受けた。`);
+          lines.push((choice < 0 ? T('時間切れ！ ') : T('不正解……。')) + T('カーボは {0} のダメージを受けた。', dmg));
         }
-        if (counts) lines.push('この問題を復習ノートに書きとめた。');
+        if (counts) lines.push(T('この問題を復習ノートに書きとめた。'));
         if (dmg > 0) UI.fx.push({ t: 'heroHit', v: dmg });
       }
-      lines.push(`${B.name}「${taunt(voiceOf(B, E).miss)}」`);
+      lines.push(say(tr(B.name), tr(taunt(voiceOf(B, E).miss))));
       Sound.se('ng'); if (!E.practice) setTimeout(() => Sound.se('hurt'), 150);
     }
     // ケト形とエノール形の入れ替わり（数問ごと）
@@ -1290,16 +1306,16 @@
   function winBattle() {
     const B = UI.battle, E = ENEMIES[B.key];
     B.state = 'win';
-    B.lines = E.winLines ? [...E.winLines] : [`${B.name}「${E.win}」`];
+    B.lines = E.winLines ? E.winLines.map(trLine) : [say(tr(B.name), tr(E.win))];
     if (!E.practice) {
-      if (!E.winLines) B.lines.push(`${B.name}をたおした！`);
-      if (E.exp || E.money) B.lines.push(E.money ? `経験値 ${E.exp} と、研究費 ${yen(E.money)} を手に入れた。` : `経験値 ${E.exp} を手に入れた。`);
+      if (!E.winLines) B.lines.push(T('{0}をたおした！', tr(B.name)));
+      if (E.exp || E.money) B.lines.push(E.money ? T('経験値 {0} と、研究費 {1} を手に入れた。', E.exp, yen(E.money)) : T('経験値 {0} を手に入れた。', E.exp));
       S.exp += E.exp; S.money += E.money;
       while (S.exp >= expToNext(S.lv)) {
         S.exp -= expToNext(S.lv); S.lv++;
         S.maxHp += HP_PER_LV; S.hp = Math.min(S.maxHp, S.hp + HP_PER_LV);
         B.levels++;
-        B.lines.push(`レベルが上がった！ カーボは Lv${S.lv} になった。最大 HP +${HP_PER_LV}`);
+        B.lines.push(T('レベルが上がった！ カーボは Lv{0} になった。最大 HP +{1}', S.lv, HP_PER_LV));
       }
       Sound.se(B.levels ? 'level' : 'win');
     }
@@ -1311,7 +1327,7 @@
     if (!B || B.state !== 'levelup') return;
     if (id && skillLv(id) < SKILL_MAX) {
       S.skillLv[id] = skillLv(id) + 1;
-      flash(`${comp(id).name}の「${comp(id).skill.name}」が Lv${S.skillLv[id]} になった！`);
+      flash(T('{0}の「{1}」が Lv{2} になった！', tr(comp(id).name), tr(comp(id).skill.name), S.skillLv[id]));
       Sound.se('heal');
     }
     B.levels--;
@@ -1335,9 +1351,9 @@
     const B = UI.battle;
     if (B.state !== 'q' || !(B.uses[id] > 0)) return;
     const c = comp(id), sk = c.skill.id, L = skillAt(id);
-    if (sk === 'heal' && S.hp >= S.maxHp) return flash('HP は満タンだ');
+    if (sk === 'heal' && S.hp >= S.maxHp) return flash(T('HP は満タンだ'));
     B.uses[id]--;
-    flash(`${c.name}の「${c.skill.name}」！ ${L.desc.replace(/（1 バトル \d 回）/, '')}`);
+    flash(T('{0}の「{1}」！ {2}', tr(c.name), tr(c.skill.name), tr(L.desc)));
     if (sk === 'heal') { S.hp = Math.min(S.maxHp, S.hp + L.v); Sound.se('heal'); UI.fx.push({ t: 'heroHeal', v: L.v }); }
     else Sound.se('blip');
     if (sk === 'power') B.power = L.v;
@@ -1359,7 +1375,7 @@
     if (B.state !== 'q' || !S.items[id]) return;
     if (it.heal) { if (S.hp >= S.maxHp) return; S.hp = Math.min(S.maxHp, S.hp + it.heal); Sound.se('heal'); UI.fx.push({ t: 'heroHeal', v: it.heal }); }
     if (id === 'book') { removeWrong(1); Sound.se('blip'); }
-    flash(`${it.name}を使った！ ${it.desc}`);
+    flash(T('{0}を使った！ {1}', tr(it.name), tr(it.desc)));
     S.items[id]--;
     render();
   }
@@ -1367,7 +1383,7 @@
   function flash(text, cls = 'good') {
     document.querySelectorAll('.toast').forEach(t => t.remove());
     const el = document.createElement('div');
-    el.className = `toast ${cls}`; el.textContent = text;
+    el.className = `toast ${cls}`; el.textContent = tr(text);
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 2200);
   }
@@ -1419,6 +1435,8 @@
   const narrow = () => window.matchMedia && window.matchMedia('(max-width: 560px)').matches;
   const molsRow = (q, maxW = 300) => q.mols ? `<div class="q-mols">${q.mols.map(([label, smi]) =>
     `<figure>${narrow() ? Mol.autoTag(smi, '', 96, Math.min(maxW, 170)) : Mol.autoTag(smi, '', 120, maxW)}<figcaption>${esc(label)}</figcaption></figure>`).join('')}</div>` : '';
+  // 問題を出すときは、いまの言語の形にする（正解の判定や記録には、元の問題を使う）
+  const qShow = q => I18N.qv(q);
   function choiceInner(q, i, reveal) {
     const smi = q.cs && q.cs[i];
     // cm: 名前はそのまま見せて、構造式を添える
@@ -1435,51 +1453,51 @@
       // 「名前「台詞」」は話者と台詞に分け、（　）はト書きとして出す
       const rows = B.talk.map((l, i) => {
         const m = !l.startsWith('（') && l.match(/^([^「]+)「([\s\S]*)」$/);
-        if (!m) return `<p class="t-narr">${esc(l)}</p>`;
-        return `<div class="t-line">${faceFor(m[1], B) ? `<canvas class="t-face" data-i="${i}" width="96" height="96"></canvas>` : ''}<div><div class="speaker">${esc(m[1])}</div><div class="t-text">${esc(m[2])}</div></div></div>`;
+        if (!m) return `<p class="t-narr">${esc(fill(tr(l)))}</p>`;
+        return `<div class="t-line">${faceFor(m[1], B) ? `<canvas class="t-face" data-i="${i}" width="96" height="96"></canvas>` : ''}<div><div class="speaker">${esc(tr(m[1]))}</div><div class="t-text">${esc(fill(tr(m[2])))}</div></div></div>`;
       }).join('');
-      body = win(`<div class="talk">${rows}</div><div class="center"><button class="btn big" data-act="bNext">つぎへ</button></div>`, 'qwin talkwin');
+      body = win(`<div class="talk">${rows}</div><div class="center"><button class="btn big" data-act="bNext">${T('つぎへ')}</button></div>`, 'qwin talkwin');
     } else if (B.state === 'intro' || B.state === 'win' || B.state === 'lose') {
-      const lines = B.state === 'lose' ? ['カーボは力尽きた……'] : B.lines;
-      body = win(`${lines.map(l => `<p>${esc(l)}</p>`).join('')}<div class="center"><button class="btn big" data-act="bNext">${B.state === 'intro' ? (E.practice ? 'はじめる' : 'たたかう') : 'つぎへ'}</button>
-        ${B.state === 'intro' && B.random ? '<button class="btn" data-act="run">にげる</button>' : ''}</div>`, 'msg');
+      const lines = B.state === 'lose' ? [T('カーボは力尽きた……')] : B.lines;
+      body = win(`${lines.map(l => `<p>${esc(l)}</p>`).join('')}<div class="center"><button class="btn big" data-act="bNext">${B.state === 'intro' ? (E.practice ? T('はじめる') : T('たたかう')) : T('つぎへ')}</button>
+        ${B.state === 'intro' && B.random ? `<button class="btn" data-act="run">${T('にげる')}</button>` : ''}</div>`, 'msg');
     } else if (B.state === 'levelup') {
       const opts = S.party.map((id, k) => {
         const c = comp(id), lv = skillLv(id), max = lv >= SKILL_MAX;
         return `<button class="skill up" style="--ac:${c.color}" data-act="upgrade" data-arg="${id}" ${max ? 'disabled' : ''}>
-          <span class="sk-name"><span class="sk-key">${k + 1}</span>${c.name}「${c.skill.name}」 Lv${lv}${max ? '（最大）' : ` → Lv${lv + 1}`}</span>
-          <span class="sk-desc">いま: ${esc(skillAt(id).desc)}</span>
-          ${max ? '' : `<span class="sk-desc accent">強化後: ${esc(skillAt(id, lv + 1).desc)}</span>`}</button>`;
+          <span class="sk-name"><span class="sk-key">${k + 1}</span>${T('{0}「{1}」', tr(c.name), tr(c.skill.name))} Lv${lv}${max ? T('（最大）') : ` → Lv${lv + 1}`}</span>
+          <span class="sk-desc">${T('いま: {0}', esc(tr(skillAt(id).desc)))}</span>
+          ${max ? '' : `<span class="sk-desc accent">${T('強化後: {0}', esc(tr(skillAt(id, lv + 1).desc)))}</span>`}</button>`;
       }).join('');
       const allMax = S.party.every(id => skillLv(id) >= SKILL_MAX);
-      body = win(`<h3>レベルアップ！ 強化する技を 1 つ選ぶ</h3>
-        <p class="small dim">Lv${S.lv}　最大 HP ${S.maxHp}${B.levels > 1 ? `　（あと ${B.levels} 回選べる）` : ''}</p>
+      body = win(`<h3>${T('レベルアップ！ 強化する技を 1 つ選ぶ')}</h3>
+        <p class="small dim">Lv${S.lv}　${T('最大 HP {0}', S.maxHp)}${B.levels > 1 ? T('　（あと {0} 回選べる）', B.levels) : ''}</p>
         <div class="skills">${opts}</div>
-        ${allMax ? '<div class="center"><button class="btn" data-act="upgrade" data-arg="">技はすべて最大。つぎへ</button></div>' : ''}`, 'msg');
+        ${allMax ? `<div class="center"><button class="btn" data-act="upgrade" data-arg="">${T('技はすべて最大。つぎへ')}</button></div>` : ''}`, 'msg');
     } else {
-      const q = B.q;
+      const q = qShow(B.q);
       // 分野の名前がそのまま正解になる問題があるので、分野は答えたあとに見せる
-      const head = `<div class="q-head">${q.special ? '' : `<span class="chip dim">${esc(Questions.DIFFS[q.diff].name)}</span>`}${B.state === 'q' && !q.special ? '' : `<span class="chip ${q.anyOk ? 'ok' : 'dim'}">${esc(q.topic)}</span>`}${q.cs ? '<span class="chip ok">構造式で答える</span>' : ''}${S.notebook[q.id] ? '<span class="chip bad">復習ノートの問題</span>' : ''}</div>`;
+      const head = `<div class="q-head">${q.special ? '' : `<span class="chip dim">${esc(tr(Questions.DIFFS[q.diff].name))}</span>`}${B.state === 'q' && !q.special ? '' : `<span class="chip ${q.anyOk ? 'ok' : 'dim'}">${esc(q.topic)}</span>`}${q.cs ? `<span class="chip ok">${T('構造式で答える')}</span>` : ''}${S.notebook[q.id] ? `<span class="chip bad">${T('復習ノートの問題')}</span>` : ''}</div>`;
       const qbox = `${head}<p class="q-text">${esc(q.q)}</p>${q.smiles ? `<div class="q-mol">${Mol.svgTag(q.smiles, 220, 130, 'big')}</div>` : ''}${molsRow(q)}`;
       const grid = q.cs ? 'choices struct' : q.cm ? 'choices withmol' : 'choices';
       if (B.state === 'q') {
         const choices = B.order.map((i, k) => `<button class="choice" data-act="answer" data-arg="${i}" ${B.removed.has(i) ? 'disabled' : ''}><span class="c-key">${k + 1}</span>${choiceInner(q, i, false)}</button>`).join('');
         const skills = S.party.map(id => { const c = comp(id), L = skillAt(id), left = B.uses[id];
           return `<button class="skill" style="--ac:${c.color}" data-act="skill" data-arg="${id}" ${left > 0 ? '' : 'disabled'}>
-            <span class="sk-name">${c.name}「${c.skill.name}」 Lv${skillLv(id)}${left > 0 ? (L.uses > 1 ? `<span class="sk-used">あと ${left} 回</span>` : '') : '<span class="sk-used">使用済み</span>'}</span>
-            <span class="sk-desc">${esc(L.desc)}</span></button>`; }).join('');
+            <span class="sk-name">${T('{0}「{1}」', tr(c.name), tr(c.skill.name))} Lv${skillLv(id)}${left > 0 ? (L.uses > 1 ? `<span class="sk-used">${T('あと {0} 回', left)}</span>` : '') : `<span class="sk-used">${T('使用済み')}</span>`}</span>
+            <span class="sk-desc">${esc(tr(L.desc))}</span></button>`; }).join('');
         const items = Object.keys(ITEMS).filter(id => S.items[id]).map(id => {
           const full = ITEMS[id].heal && S.hp >= S.maxHp;
           return `<button class="skill item" data-act="item" data-arg="${id}" ${full ? 'disabled' : ''}>
-            <span class="sk-name">${ITEMS[id].name} ×${S.items[id]}${full ? '<span class="sk-used">HP 満タン</span>' : ''}</span>
-            <span class="sk-desc">${esc(ITEMS[id].desc)}</span></button>`; }).join('');
-        const flags = [B.power ? '背面攻撃 準備中' : '', B.guard ? '立体障害で守っている' : '', B.dr ? `被ダメージ −${B.dr}` : '', B.stink ? `悪臭で敵がひるんでいる（−${B.stink}）` : '', B.retry ? '保護基で守っている（1 回答え直せる）' : '', B.drain ? `連鎖：正解するたびに HP +${B.drain}` : '',
-          E.barrier && B.phase < 1 ? '鏡面の結界：R/S の特性が効かない' : '', B.shadowCfg ? `${E.mirror ? '影' : B.name}は (${B.shadowCfg})：${B.shadowCfg === 'S' ? 'こちらの与えるダメージ −25%' : '続けて間違えるほど、攻撃が上がる'}` : '',
-          stageOf(B, E).atkRise ? '弁が全開：問題ごとに攻撃が強くなる' : ''].filter(Boolean).map(t => `<span class="chip ok">${t}</span>`).join('');
+            <span class="sk-name">${tr(ITEMS[id].name)} ×${S.items[id]}${full ? `<span class="sk-used">${T('HP 満タン')}</span>` : ''}</span>
+            <span class="sk-desc">${esc(tr(ITEMS[id].desc))}</span></button>`; }).join('');
+        const flags = [B.power ? T('背面攻撃 準備中') : '', B.guard ? T('立体障害で守っている') : '', B.dr ? T('被ダメージ −{0}', B.dr) : '', B.stink ? T('悪臭で敵がひるんでいる（−{0}）', B.stink) : '', B.retry ? T('保護基で守っている（1 回答え直せる）') : '', B.drain ? T('連鎖：正解するたびに HP +{0}', B.drain) : '',
+          E.barrier && B.phase < 1 ? T('鏡面の結界：R/S の特性が効かない') : '', B.shadowCfg ? T('{0}は ({1})：{2}', E.mirror ? T('影') : tr(B.name), B.shadowCfg, B.shadowCfg === 'S' ? T('こちらの与えるダメージ −25%') : T('続けて間違えるほど、攻撃が上がる')) : '',
+          stageOf(B, E).atkRise ? T('弁が全開：問題ごとに攻撃が強くなる') : ''].filter(Boolean).map(t => `<span class="chip ok">${t}</span>`).join('');
         const timer = q.anyOk ? '' : `<div class="timer"><div class="bar time"><div id="qtime" style="width:${B.timeLeft / B.timeCap * 100}%"></div></div><span id="qtnum" class="small">${Math.ceil(B.timeLeft)}</span></div>`;
         body = win(`${qbox}${timer}`, 'qwin')
           + `<div class="${grid}">${choices}</div>`
-          + (E.practice || E.noSkills || q.anyOk ? '' : `<div class="skills-head small dim">仲間の技・どうぐ</div><div class="skills">${skills}${items}</div>`)
+          + (E.practice || E.noSkills || q.anyOk ? '' : `<div class="skills-head small dim">${T('仲間の技・どうぐ')}</div><div class="skills">${skills}${items}</div>`)
           + (flags && !q.anyOk ? `<div class="status">${flags}</div>` : '');
       } else {
         const r = B.result;
@@ -1487,19 +1505,19 @@
         const right = q.anyOk ? r.choice : q.a;
         const choices = B.order.map(i => `<div class="choice shown ${i === right ? 'right' : i === r.choice ? 'wrong' : ''}"><span class="c-key">${i === right ? '○' : i === r.choice ? '×' : '　'}</span>${choiceInner(q, i, true)}</div>`).join('');
         body = win(qbox, 'qwin') + `<div class="${grid}">${choices}</div>`
-          + win(`${q.anyOk ? '' : `<p class="${r.ok ? 'accent' : 'bad-text'}"><b>${r.ok ? '正解！' : r.choice < 0 ? '時間切れ' : '不正解'}</b></p><p class="explain">${esc(q.explain)}</p>`}
+          + win(`${q.anyOk ? '' : `<p class="${r.ok ? 'accent' : 'bad-text'}"><b>${r.ok ? T('正解！') : r.choice < 0 ? T('時間切れ') : T('不正解')}</b></p><p class="explain">${esc(q.explain)}</p>`}
               <div class="dlog" id="dtext" data-full="${esc(r.lines.join('\n'))}"></div>
-              <div class="center"><button class="btn big" data-act="bNext">つぎへ</button></div>`, 'msg');
+              <div class="center"><button class="btn big" data-act="bNext">${T('つぎへ')}</button></div>`, 'msg');
       }
     }
     return `<div class="battle">
       <div class="enemy-box win">
         <canvas id="ecv" width="128" height="128"></canvas>
-        <div class="enemy-info"><h3>${esc(B.name)}</h3>${hpBar(B.hp, B.maxHp, 'enemy')}<div class="small dim">${E.practice ? `残り ${B.queue ? B.queue.length + (B.state === 'q' ? 1 : 0) : 0} 問` : E.duo ? `仮面のひび ${Math.round((1 - B.hp / B.maxHp) * 100)}%` : `攻撃力 ${Math.max(1, B.atk - B.stink)}`}</div></div>
+        <div class="enemy-info"><h3>${esc(tr(B.name))}</h3>${hpBar(B.hp, B.maxHp, 'enemy')}<div class="small dim">${E.practice ? T('残り {0} 問', B.queue ? B.queue.length + (B.state === 'q' ? 1 : 0) : 0) : E.duo ? T('仮面のひび {0}%', Math.round((1 - B.hp / B.maxHp) * 100)) : T('攻撃力 {0}', Math.max(1, B.atk - B.stink))}</div></div>
         <div class="b-mute">${muteBtn()}</div>
       </div>
       ${body}
-      <div class="hero-bar win small">${E.duo ? `${E.ally.name}　HP ${B.allyHp}/${B.allyMax} ${hpBar(B.allyHp, B.allyMax, 'hp')}` : `${heroName()} Lv${S.lv}　HP ${Math.max(0, S.hp)}/${S.maxHp} ${hpBar(S.hp, S.maxHp, 'hp')}${S.cfg === 'R' && B.streak ? `<span class="chip ok">${B.streak} 連続正解</span>` : ''}`}</div>
+      <div class="hero-bar win small">${E.duo ? `${tr(E.ally.name)}　HP ${B.allyHp}/${B.allyMax} ${hpBar(B.allyHp, B.allyMax, 'hp')}` : `${heroName()} Lv${S.lv}　HP ${Math.max(0, S.hp)}/${S.maxHp} ${hpBar(S.hp, S.maxHp, 'hp')}${S.cfg === 'R' && B.streak ? `<span class="chip ok">${T('{0} 連続正解', B.streak)}</span>` : ''}`}</div>
     </div>`;
   }
 
@@ -1525,24 +1543,24 @@
   // ---- 復習ノート --------------------------------------------------
   function vNote() {
     const ids = Object.keys(S.notebook);
-    const qs = ids.map(id => Questions.LIST.find(q => q.id === id)).filter(Boolean);
+    const qs = ids.map(id => Questions.LIST.find(q => q.id === id)).filter(Boolean).map(qShow);
     const topics = Object.entries(S.topics).sort((a, b) => (a[1].c / a[1].t) - (b[1].c / b[1].t));
     const trows = topics.map(([t, v]) => { const r = Math.round(v.c / v.t * 100);
-      return `<tr><td>${esc(t)}</td><td class="num">${v.c}/${v.t}</td><td class="rate"><div class="bar ${r >= 70 ? 'hp' : r >= 40 ? 'yield' : 'enemy'}"><div style="width:${r}%"></div></div></td><td class="num">${r}%</td></tr>`; }).join('');
+      return `<tr><td>${esc(tr(t))}</td><td class="num">${v.c}/${v.t}</td><td class="rate"><div class="bar ${r >= 70 ? 'hp' : r >= 40 ? 'yield' : 'enemy'}"><div style="width:${r}%"></div></div></td><td class="num">${r}%</td></tr>`; }).join('');
     const cards = qs.map(q => `<details class="note-q">
-        <summary><span class="chip dim">${esc(q.topic)}</span><span class="chip dim">${esc(Questions.DIFFS[q.diff].name)}</span> ${esc(q.q)} <span class="small bad-text">×${S.notebook[q.id]}</span></summary>
+        <summary><span class="chip dim">${esc(q.topic)}</span><span class="chip dim">${esc(tr(Questions.DIFFS[q.diff].name))}</span> ${esc(q.q)} <span class="small bad-text">×${S.notebook[q.id]}</span></summary>
         ${q.smiles ? `<div class="q-mol">${Mol.svgTag(q.smiles, 200, 120)}</div>` : ''}${molsRow(q, 240)}
-        <p>正解: <b class="accent">${esc(q.choices[q.a])}</b></p>
+        <p>${T('正解: {0}', `<b class="accent">${esc(q.choices[q.a])}</b>`)}</p>
         ${(q.cs && q.cs[q.a]) || (q.cm && q.cm[q.a]) ? `<div class="q-mol">${Mol.svgTag((q.cs && q.cs[q.a]) || q.cm[q.a], 180, 100)}</div>` : ''}
         <p class="explain">${esc(q.explain)}</p>
       </details>`).join('');
-    return `<h2 class="screen-title">復習ノート</h2>
-      ${win(`<h3>分野ごとの正答率</h3>${topics.length ? `<table class="results"><tbody>${trows}</tbody></table>` : '<p class="dim">まだ問題に答えていない。</p>'}`)}
-      ${win(`<h3>間違えた問題（${qs.length} 問）</h3>
-        <p class="small dim">バトルや練習で正解すると、ノートから消える。タップで解説を開く。</p>
-        ${qs.length ? cards : '<p class="dim">いまは間違えた問題がない。</p>'}
-        <div class="center">${qs.length ? `<button class="btn big" data-act="practice">分子模型くんと練習する（${Math.min(10, qs.length)} 問）</button>` : ''}
-        <button class="btn" data-act="closeNote">もどる</button></div>`)}`;
+    return `<h2 class="screen-title">${T('復習ノート')}</h2>
+      ${win(`<h3>${T('分野ごとの正答率')}</h3>${topics.length ? `<table class="results"><tbody>${trows}</tbody></table>` : `<p class="dim">${T('まだ問題に答えていない。')}</p>`}`)}
+      ${win(`<h3>${T('間違えた問題（{0} 問）', qs.length)}</h3>
+        <p class="small dim">${T('バトルや練習で正解すると、ノートから消える。タップで解説を開く。')}</p>
+        ${qs.length ? cards : `<p class="dim">${T('いまは間違えた問題がない。')}</p>`}
+        <div class="center">${qs.length ? `<button class="btn big" data-act="practice">${T('分子模型くんと練習する（{0} 問）', Math.min(10, qs.length))}</button>` : ''}
+        <button class="btn" data-act="closeNote">${T('もどる')}</button></div>`)}`;
   }
 
   // ---- 最後の一枚絵：棚に並んだ 2 本の瓶。文字はアルファベットと数字だけ ----
@@ -1594,9 +1612,9 @@
 
   // ---- ゲームオーバー・クリア・シェア --------------------------------
   function vOver() {
-    return `<h2 class="screen-title">カーボは倒れた……</h2>
-      ${win(`<p class="story">……気を失っていたらしい。仲間たちが手を引いて、最後に休んだ場所まで連れ戻してくれた。</p>`, 'msg')}
-      <div class="center"><button class="btn big" data-act="continue">最後のセーブから再開</button><button class="btn" data-act="toTitle">タイトルへ</button></div>`;
+    return `<h2 class="screen-title">${T('カーボは倒れた……')}</h2>
+      ${win(`<p class="story">${T('……気を失っていたらしい。仲間たちが手を引いて、最後に休んだ場所まで連れ戻してくれた。')}</p>`, 'msg')}
+      <div class="center"><button class="btn big" data-act="continue">${T('最後のセーブから再開')}</button><button class="btn" data-act="toTitle">${T('タイトルへ')}</button></div>`;
   }
 
   const TITLES = [[90, '不斉の勇者'], [75, '求核の剣士'], [60, '見習い化学者'], [0, 'ラセミの迷い子']];
@@ -1608,15 +1626,15 @@
     const ch = clearCh();
     const cs = S.chStats[ch], st = cs ? { correct: cs.c, total: cs.t } : S.stats;
     const rate = st.total ? Math.round(st.correct / st.total * 100) : 0;
-    const title = TITLES.find(([th]) => rate >= th)[1];
+    const title = tr(TITLES.find(([th]) => rate >= th)[1]);
     return { st, rate, title };
   }
   // ネタバレを含まない共有用の文面
   function shareText() {
     const { st, rate, title } = clearResult();
-    return `CarbonRPG ${CHAPTERS[clearCh()]}をクリア！\n`
-      + `難易度：${Questions.DIFFS[S.diff].name}／正答率 ${rate}%（${st.correct}/${st.total} 問）\n`
-      + `称号：${title}${S.cfg ? `　(${S.cfg})-カーボ Lv${S.lv}` : ''}\n#CarbonRPG #有機化学`;
+    return T('CarbonRPG {0}をクリア！', tr(CHAPTERS[clearCh()])) + '\n'
+      + T('難易度：{0}／正答率 {1}%（{2}/{3} 問）', tr(Questions.DIFFS[S.diff].name), rate, st.correct, st.total) + '\n'
+      + T('称号：{0}', title) + (S.cfg ? `　${heroName()} Lv${S.lv}` : '') + '\n' + T('#CarbonRPG #有機化学');
   }
   function vClear() {
     const { st, rate, title } = clearResult();
@@ -1624,23 +1642,23 @@
     const xUrl = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(GAME_URL)}`;
     const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(GAME_URL)}&text=${encodeURIComponent(text)}`;
     const ch = clearCh();
-    return `<h2 class="screen-title">${CHAPTERS[ch]}クリア！</h2>
-      ${win(`<p class="center">難易度: ${Questions.DIFFS[S.diff].name}</p>
-        <p class="center big-cfg">正答率 ${rate}%</p><p class="center small">${st.correct} / ${st.total} 問正解</p>
-        <p class="center">称号「<span class="accent">${title}</span>」</p>
+    return `<h2 class="screen-title">${T('{0}クリア！', tr(CHAPTERS[ch]))}</h2>
+      ${win(`<p class="center">${T('難易度: {0}', tr(Questions.DIFFS[S.diff].name))}</p>
+        <p class="center big-cfg">${T('正答率 {0}%', rate)}</p><p class="center small">${T('{0} / {1} 問正解', st.correct, st.total)}</p>
+        <p class="center">${T('称号「{0}」', `<span class="accent">${title}</span>`)}</p>
         <p class="center small dim">${S.cfg ? `${heroName()} Lv${S.lv}　${heroFormula(S.party)}` : ''}</p>`, 'msg')}
-      ${win(`<h3>結果をシェアする</h3>
+      ${win(`<h3>${T('結果をシェアする')}</h3>
         <pre class="share-text">${esc(text)}\n${GAME_URL}</pre>
         <div class="share-btns">
-          ${navigator.share ? '<button class="btn" data-act="shareNative">共有…</button>' : ''}
-          <a class="btn" href="${xUrl}" target="_blank" rel="noopener noreferrer">X でポスト</a>
-          <a class="btn" href="${lineUrl}" target="_blank" rel="noopener noreferrer">LINE で送る</a>
-          <button class="btn" data-act="shareCopy">文面をコピー</button>
+          ${navigator.share ? `<button class="btn" data-act="shareNative">${T('共有…')}</button>` : ''}
+          <a class="btn" href="${xUrl}" target="_blank" rel="noopener noreferrer">${T('X でポスト')}</a>
+          <a class="btn" href="${lineUrl}" target="_blank" rel="noopener noreferrer">${T('LINE で送る')}</a>
+          <button class="btn" data-act="shareCopy">${T('文面をコピー')}</button>
         </div>
-        <p class="small dim">ストーリーのネタバレは含まれません。</p>`)}
-      ${NEXT_ACT[ch] ? `<div class="center"><button class="btn big" data-act="${NEXT_ACT[ch]}">▶ ${NEXT[ch]}へ進む</button></div>`
-        : `<p class="center accent">全 5 章クリア！ 最後まで遊んでくれて、ありがとう。</p><div class="center"><button class="btn big" data-act="afterClear">▶ その後の世界を歩く</button></div>`}
-      <div class="center"><button class="btn" data-act="clearNote">復習ノートを見る</button><button class="btn" data-act="toTitle">タイトルへ</button></div>`;
+        <p class="small dim">${T('ストーリーのネタバレは含まれません。')}</p>`)}
+      ${NEXT_ACT[ch] ? `<div class="center"><button class="btn big" data-act="${NEXT_ACT[ch]}">${T('▶ {0}へ進む', tr(NEXT[ch]))}</button></div>`
+        : `<p class="center accent">${T('全 5 章クリア！ 最後まで遊んでくれて、ありがとう。')}</p><div class="center"><button class="btn big" data-act="afterClear">${T('▶ その後の世界を歩く')}</button></div>`}
+      <div class="center"><button class="btn" data-act="clearNote">${T('復習ノートを見る')}</button><button class="btn" data-act="toTitle">${T('タイトルへ')}</button></div>`;
   }
   function fallbackCopy(t) {
     const ta = document.createElement('textarea');
@@ -1649,7 +1667,7 @@
     let ok = false;
     try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
     ta.remove();
-    if (!ok) flash('コピーできませんでした。上の文面を長押しでコピーしてください', 'bad');
+    if (!ok) flash(T('コピーできませんでした。上の文面を長押しでコピーしてください'), 'bad');
     return ok;
   }
 
@@ -1658,6 +1676,7 @@
   // =================================================================
   const actions = {
     newGame() { UI.screen = 'diff'; render(); },
+    lang(l) { I18N.setLang(l); Sound.se('blip'); render(); },
     devTap() {
       const now = Date.now();
       UI.devTaps = [...(UI.devTaps || []).filter(t => now - t < 2000), now];
@@ -1715,7 +1734,7 @@
         S.party.forEach(id => { if (!S.skillLv[id]) S.skillLv[id] = 1; });
         UI.swap = false; UI.screen = 'world';
         save(); render(); Sound.se('heal');
-        flash(`結合しなおした！ ${heroName()}　${heroFormula(S.party)}`);
+        flash(T('結合しなおした！ {0}　{1}', heroName(), heroFormula(S.party)));
         return;
       }
       S.party = [...UI.pick];
@@ -1737,7 +1756,7 @@
       S.money -= priceOf(c); S.owned.push(id);
       if (!S.skillLv[id]) S.skillLv[id] = 1;
       Sound.se('level'); save(); refreshHud(); renderOverlay();
-      flash(`${c.name}が仲間になった！ メニューの「仲間を付け替える」で結合できる`);
+      flash(T('{0}が仲間になった！ メニューの「仲間を付け替える」で結合できる', tr(c.name)));
     },
     advance() { advance(); },
     menu() { if (UI.scene || UI.msg || UI.shop) return; UI.menu = !UI.menu; Sound.se('blip'); renderOverlay(); },
@@ -1750,7 +1769,7 @@
       if (S.money < it.price) return;
       S.money -= it.price; S.items[id] = (S.items[id] || 0) + 1;
       Sound.se('coin'); save(); refreshHud(); renderOverlay();
-      flash(`${it.name}を買った！`);
+      flash(T('{0}を買った！', tr(it.name)));
     },
     closeShop() { UI.shop = false; renderOverlay(); },
     saveNow() { save(); UI.menu = false; message('セーブしました。'); },
@@ -1796,12 +1815,12 @@
     item(id) { useItem(id); },
     upgrade(id) { upgradeSkill(id); },
     run() { const B = UI.battle; if (B && B.random) { UI.battle = null; UI.screen = 'world'; render(); message('うまく にげきれた。'); } },
-    mute() { Sound.setMuted(!Sound.isMuted()); document.querySelectorAll('[data-act=mute]').forEach(b => { b.textContent = Sound.isMuted() ? '♪ 音: OFF' : '♪ 音: ON'; }); },
+    mute() { Sound.setMuted(!Sound.isMuted()); document.querySelectorAll('[data-act=mute]').forEach(b => { b.textContent = muteLabel(); }); },
     toTitle() { stopTimer(); UI.screen = 'title'; UI.scene = null; UI.msg = null; render(); },
     shareNative() { navigator.share({ title: 'CarbonRPG', text: shareText(), url: GAME_URL }).catch(() => { /* 閉じられたときは何もしない */ }); },
     shareCopy() {
       const t = `${shareText()}\n${GAME_URL}`;
-      const done = () => flash('文面をコピーしました');
+      const done = () => flash(T('文面をコピーしました'));
       if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(done, () => fallbackCopy(t) && done());
       else if (fallbackCopy(t)) done();
     },
