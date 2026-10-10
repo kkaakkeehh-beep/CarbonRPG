@@ -189,6 +189,22 @@
   // ---- タイトルの絵（夜空に回る sp³ の正四面体と、これまでの章の景色） ----
   const TITLE_COLORS = ['#ff7b72', '#79c0ff', '#f2cc60', '#d2a8ff'];
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // 幹部の絵は、一度だけ描いて取っておく（色を夜空になじませ、下へ行くほど消える）
+  let villainCv = null;
+  function titleVillains(W, H) {
+    if (villainCv) return villainCv;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+    for (const [id, x, y, sz] of [['cation', 2, 14, 64], ['thief', 56, 44, 48], ['radika', 214, 44, 48], ['achiral', 250, 4, 72]])
+      Sprites.drawChar(g, id, x, y, sz, { colors: TITLE_COLORS, dir: 'down' });
+    g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(70, 40, 130, .55)'; g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'destination-in';
+    const fade = g.createLinearGradient(0, 0, 0, H);
+    fade.addColorStop(0, 'rgba(0,0,0,.5)'); fade.addColorStop(0.55, 'rgba(0,0,0,.42)'); fade.addColorStop(0.8, 'rgba(0,0,0,0)');
+    g.fillStyle = fade; g.fillRect(0, 0, W, H);
+    villainCv = c;
+    return c;
+  }
   function drawTitle(now) {
     const c = document.getElementById('tcv');
     if (!c) return;
@@ -204,6 +220,8 @@
       g.fillStyle = `rgba(255,255,255,${a * (rnd(i + 7) < 0.15 ? 1 : 0.6)})`;
       g.fillRect(Math.floor(rnd(i) * W), Math.floor(rnd(i + 50) * H * 0.7), rnd(i + 7) < 0.15 ? 2 : 1, 1);
     }
+    // メソ教団の幹部（第 4 章の総帥まで。ラセマイザーと、怪盗の正体は伏せる）：夜空に大きく、紫がかって薄く浮かぶ
+    g.drawImage(titleVillains(W, H), 0, 0);
     // 漂う小さな六角形（芳香族のかけら）
     for (let i = 0; i < 9; i++) {
       const x = (rnd(i + 300) * W + t * 4 * (0.5 + rnd(i + 310))) % W, y = H - ((t * 6 * (0.4 + rnd(i + 320)) + rnd(i + 330) * H) % H);
@@ -297,11 +315,6 @@
       const pg = g.createRadialGradient(px + 1.5, 150 - ph, 0, px + 1.5, 150 - ph, 7);
       pg.addColorStop(0, `rgba(120,255,200,${a})`); pg.addColorStop(1, 'rgba(120,255,200,0)');
       g.fillStyle = pg; g.fillRect(px - 6, 143 - ph, 15, 15);
-    }
-    // メソ教団の幹部（第 4 章の総帥まで。ラセマイザーと、怪盗の正体は伏せる）：カーボの左右に 2 人ずつ
-    for (const [id, x] of [['cation', 62], ['thief', 92], ['radika', 200], ['achiral', 250]]) {
-      g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(x + 4, 145, 16, 2);
-      Sprites.drawChar(g, id, x, 122, 24, { colors: TITLE_COLORS, dir: 'down' });
     }
     const bob = reduceMotion ? 0 : Math.round(Math.sin(t * 2.2));
     g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(cx - 9, 145, 18, 2);
