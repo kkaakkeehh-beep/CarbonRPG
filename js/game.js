@@ -298,6 +298,11 @@
       pg.addColorStop(0, `rgba(120,255,200,${a})`); pg.addColorStop(1, 'rgba(120,255,200,0)');
       g.fillStyle = pg; g.fillRect(px - 6, 143 - ph, 15, 15);
     }
+    // メソ教団の幹部（第 4 章の総帥まで。ラセマイザーと、怪盗の正体は伏せる）：カーボの左右に 2 人ずつ
+    for (const [id, x] of [['cation', 62], ['thief', 92], ['radika', 200], ['achiral', 250]]) {
+      g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(x + 4, 145, 16, 2);
+      Sprites.drawChar(g, id, x, 122, 24, { colors: TITLE_COLORS, dir: 'down' });
+    }
     const bob = reduceMotion ? 0 : Math.round(Math.sin(t * 2.2));
     g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(cx - 9, 145, 18, 2);
     Sprites.drawChar(g, 'hero', cx - 16, 112 + bob, 32, { colors: TITLE_COLORS, dir: 'down' });
