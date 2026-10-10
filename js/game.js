@@ -130,7 +130,7 @@
     };
     const node = i => {
       const c = party[i] ? comp(party[i]) : null, [x, y] = P[i];
-      if (!c) return `<g><circle cx="${x}" cy="${y}" r="20" fill="#000" stroke="#666" stroke-dasharray="4 3" stroke-width="2"/><text x="${x}" y="${y + 5}" text-anchor="middle" fill="#666" font-size="14">${tr('空')}</text></g>`;
+      if (!c) return `<g><circle cx="${x}" cy="${y}" r="20" fill="#000" stroke="#666" stroke-dasharray="4 3" stroke-width="2"/><text x="${x}" y="${y + 5}" text-anchor="middle" fill="#666" font-size="${tr('空').length > 2 ? 10 : 14}">${tr('空')}</text></g>`;
       return `<g data-act="unbond" data-arg="${i}" style="cursor:pointer;color:${c.color}"><circle cx="${x}" cy="${y}" r="21" fill="#000" stroke="currentColor" stroke-width="2.5"/><text x="${x}" y="${y + 4}" text-anchor="middle" fill="currentColor" font-size="${c.group.length > 3 ? 10 : 13}">${c.group}</text></g>`;
     };
     return `<svg class="hero" viewBox="0 0 220 220" width="${size}" height="${size}" role="img" aria-label="${T('カーボと4つの結合')}">
