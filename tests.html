@@ -34,6 +34,8 @@
   <script src="js/lang/zh-q3.js"></script>
   <script src="js/lang/zh-story4.js"></script>
   <script src="js/lang/zh-q4.js"></script>
+  <script src="js/lang/zh-story5.js"></script>
+  <script src="js/lang/zh-q5.js"></script>
   <script src="js/questions.js"></script>
   <script src="js/data.js"></script>
   <script src="js/sprites.js"></script>
@@ -663,7 +665,8 @@
         lines.forEach((l, i) => { if (typeof l !== 'string' || !l.trim() || JP.test(l.replace(/〈(自分|逆|脱離)〉/g, ''))) scBad.push(`${id} の ${i + 1} 行目: ${l}`); });
       }
       const nSc = Object.keys(Story.SCENES).length, nEn = Object.keys(EN.scenes).length;
-      check(`${NAME}：台本の行の数が日本語と同じ（${nEn}/${nSc} 場面を訳した）`, !scBad.length, scBad.join('\n'));
+      // 訳のファイルが読めなかった（書き間違いで止まった）ときも気づけるように、全場面がそろっていることも確かめる
+      check(`${NAME}：台本の行の数が日本語と同じ（${nEn}/${nSc} 場面を訳した）`, !scBad.length && nEn === nSc, scBad.join('\n'));
 
       // 問題：選択肢・構造式の名前・返事の数が同じ
       const qBad = [];
@@ -679,7 +682,7 @@
         if (e.choices && !q.cs && !q.anyOk) { const N = e.choices.map(c => c.length), mx = Math.max(...N.slice(1)); if (N[0] > mx * 1.3 && N[0] - mx > LONG) qBad.push(`${id}: 正解だけが長い（${N[0]} 字 / ほか最長 ${mx} 字）`); }
       }
       const nQ = Questions.LIST.length, nQe = Object.keys(EN.q).length;
-      check(`${NAME}：問題の訳の形（${nQe}/${nQ} 問を訳した）`, !qBad.length, qBad.join('\n'));
+      check(`${NAME}：問題の訳の形（${nQe}/${nQ} 問を訳した）`, !qBad.length && nQe === nQ, qBad.join('\n'));
     }
 
     out.insertAdjacentHTML('afterbegin', `<h2 class="${fail ? 'ng' : 'ok'}" id="summary">${pass} 件成功 / ${fail} 件失敗</h2>`);
