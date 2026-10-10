@@ -1,8 +1,10 @@
 # CarbonRPG — 炭素の勇者 / Hero of Carbon
 
-> **English:** An organic chemistry RPG for people who know their chemistry. Carbo, an sp³ carbon with four hands, bonds with friends to become a stereocenter and takes on the Meso Order with chemistry questions: answer right to damage the enemy, answer wrong and you take the hit. All 5 chapters, 443 questions and the full story are available in English and Simplified Chinese. Switch languages with the buttons at the top right of the title screen (if your browser isn't set to Japanese, the game starts in Chinese for Chinese browsers and in English otherwise).
+> **English:** An organic chemistry RPG for people who know their chemistry. Carbo, an sp³ carbon with four hands, bonds with friends to become a stereocenter and takes on the Meso Order with chemistry questions: answer right to damage the enemy, answer wrong and you take the hit. All 5 chapters, 443 questions and the full story are available in English, Simplified Chinese and Korean. Switch languages with the buttons at the top right of the title screen (if your browser isn't set to Japanese, the game starts in Chinese or Korean for those browsers and in English otherwise).
 >
 > **简体中文：** 面向懂化学的人的有机化学 RPG。全 5 章、443 道题和全部剧情都有简体中文版。可以在标题画面右上角切换语言。
+>
+> **한국어:** 화학을 아는 사람을 위한 유기화학 RPG. 전 5장, 443문제와 모든 스토리를 한국어로 즐길 수 있습니다. 타이틀 화면 오른쪽 위에서 언어를 바꿀 수 있습니다.
 
 有機化学 RPG です。主人公は 4 本の手を持つ sp³ 炭素「カーボ」。
 仲間と結合して不斉炭素になり、世界から「利き手」を消そうとする闇の組織 **メソ教団** に、有機化学の問題で挑みます。
@@ -11,7 +13,7 @@
 
 - 遊ぶ: https://kkaakkeehh-beep.github.io/CarbonRPG/
 - 手元で遊ぶ: `index.html` をブラウザで開くだけ（ビルド不要）
-- 言語：日本語 / English / 简体中文。タイトル画面の右上で切り替える（ブラウザの言語が日本語でなければ、中国語のブラウザでは中国語、それ以外では英語ではじまる）。物語・問題・画面のすべてに英語版と中国語版がある
+- 言語：日本語 / English / 简体中文 / 한국어。タイトル画面の右上で切り替える（ブラウザの言語が日本語でなければ、中国語・韓国語のブラウザではその言語、それ以外では英語ではじまる）。物語・問題・画面のすべてに英語版・中国語版・韓国語版がある
 
 ## 遊び方
 
@@ -65,7 +67,7 @@ js/sound.js       BGM と効果音（Web Audio）
 js/questions.js   問題（443 問。第1章 83 問、第2〜4章 88 問ずつ、第5章 88 問＋物語の中の決まった問題 8 問。各章・各難易度 20 問以上。構造式で答える問題を含む）
 js/mol.js         構造式の描画（SmilesDrawer）
 js/i18n.js        言語の切り替え（中身は日本語のまま持ち、画面に出す直前に訳す）
-js/lang/          訳（en-*：英語、zh-*：中国語。…-ui：画面・名前・敵・マップ、…-storyN：第N章の台本、…-qN：第N章の問題）
+js/lang/          訳（en-*：英語、zh-*：中国語、ko-*：韓国語。…-ui：画面・名前・敵・マップ、…-storyN：第N章の台本、…-qN：第N章の問題）
 lib/              SmilesDrawer 2.1.7（MIT License）
 tests.html        問題データ・マップ・台本のテスト
 ```
@@ -76,7 +78,7 @@ tests.html        問題データ・マップ・台本のテスト
 py -m http.server 8765
 ```
 
-で起動して `http://localhost:8765/tests.html` を開くと、56 件のテストが走ります。英語と中国語の訳がそろっていること（名前・セリフ・マップの文字・分野、台本の行の数、問題の選択肢の数、正解だけが長い選択肢がないこと）も、言語ごとに検査します。
+で起動して `http://localhost:8765/tests.html` を開くと、60 件のテストが走ります。英語・中国語・韓国語の訳がそろっていること（名前・セリフ・マップの文字・分野、台本の行の数、問題の選択肢の数、正解だけが長い選択肢がないこと）も、言語ごとに検査します。
 問題データの形式と構造式、章・分野ごとの問題数、マップの形とイベントの参照先、キャラクターの絵、台本の参照先、BGM のデータ、「目的」の案内が最後まで途切れないこと、仲間の順位と技、話者の顔、鏡の広間の部屋と分液区の部屋がどれも解けることを検査します。
 
 ## クレジット
@@ -84,3 +86,4 @@ py -m http.server 8765
 - 構造式の描画: [SmilesDrawer](https://github.com/reymond-group/smilesDrawer)（MIT License, © Reymond Research Group）
 - フォント: [DotGothic16](https://fonts.google.com/specimen/DotGothic16)（SIL Open Font License）
 - 中国語のフォント: [Fusion Pixel Font](https://github.com/TakWolf/fusion-pixel-font)（12px Proportional SC、SIL Open Font License 1.1、© TakWolf。Fontsource のパッケージを jsDelivr から読み込む）
+- 韓国語のフォント: [Galmuri11](https://github.com/quiple/galmuri)（SIL Open Font License 1.1、© Minseo Lee。npm のパッケージを jsDelivr から読み込む）
