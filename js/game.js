@@ -416,7 +416,7 @@
       <div class="hud">
         <span><b class="mapname">${mapTitle()}</b></span>
         <span class="hp-box">${hudStatus()}</span>
-        <span class="hud-btns"><span class="money">${T('研究費 {0}', yen(S.money))}</span>${muteBtn()}<button class="btn small-btn" data-act="menu">${T('メニュー')}</button></span>
+        <span class="hud-btns"><span class="money">${T('研究費 {0}', yen(S.money))}</span>${muteBtn()}<button class="btn small-btn" data-act="log">${T('ログ')}</button><button class="btn small-btn" data-act="menu">${T('メニュー')}</button></span>
         <span class="goal"${gt ? '' : ' hidden'}><b>${T('目的')}</b><span class="goal-t">${esc(gt)}</span></span>
       </div>
       <div class="stage">
@@ -432,7 +432,7 @@
         </div>
         <button class="pd abtn" data-key="a">${T('話す<br>調べる')}</button>
       </div>
-      <p class="keys small dim">${T('矢印キー / WASD: 移動　Z・Enter・Space: 話す・調べる・送る　X・Esc: メニュー')}</p>
+      <p class="keys small dim">${T('矢印キー / WASD: 移動　Z・Enter・Space: 話す・調べる・送る　X・Esc: メニュー　L: 会話ログ')}</p>
     </div>`;
   }
 
@@ -441,6 +441,7 @@
     const ov = document.getElementById('overlay');
     if (!ov) return;
     stopTyping();
+    if (UI.log) { ov.innerHTML = vLog(); const el = document.getElementById('log'); if (el) el.scrollTop = el.scrollHeight; return; }
     if (UI.menu) { ov.innerHTML = vMenu(); return; }
     if (UI.shop) { ov.innerHTML = vShop(); return; }
     if (UI.choice) {
@@ -449,6 +450,9 @@
     }
     const line = currentLine();
     if (!line) { ov.innerHTML = ''; return; }
+    // 同じ行を描きなおすこと（ログを閉じたときなど）があるので、何番目の行かで見分ける
+    const ref = UI.msg || UI.scene, n = UI.msg ? UI.msg.length : UI.scene.i;
+    if (!logMark || logMark.ref !== ref || logMark.n !== n) { logMark = { ref, n }; logPush(line.w, line.t); }
     ov.innerHTML = `<div class="dialog${line.face ? ' has-face' : ''}" data-act="advance">
       ${line.face ? '<canvas class="face" id="face" width="96" height="96" aria-hidden="true"></canvas>' : ''}
       ${line.w ? `<div class="speaker">${esc(line.w)}</div>` : ''}
@@ -539,6 +543,34 @@
     if (c) return { comp: c.id };
     const f = Story.FACES[w] || Story.FACES[base(w)];
     return f ? { id: resolve(f, S.flags) } : null;
+  }
+
+  // ---- 会話ログ（読んだ台詞を、あとから見返せるように残す） ----
+  // 出したときの言語のまま残す。新しく始めたら消す
+  const LOG_KEY = 'carbonrpg-log', LOG_MAX = 300;
+  let LOG = [], logMark = null;
+  try { LOG = JSON.parse(localStorage.getItem(LOG_KEY)) || []; } catch (e) { /* 読めなければ空から */ }
+  function logPush(w, t, c) {
+    LOG.push(c ? { c: t } : w ? { w, t } : { t });
+    if (LOG.length > LOG_MAX) LOG.splice(0, LOG.length - LOG_MAX);
+    try { localStorage.setItem(LOG_KEY, JSON.stringify(LOG)); } catch (e) { /* 保存できなくても、開いている間は見られる */ }
+  }
+  // バトルの会話（日本語の「名前「台詞」」）を、話者と台詞に分けて残す
+  function logRaw(l) {
+    if (l.trim() === '---') return;
+    const v = tr(l);
+    const m = v === l && !l.startsWith('（') && l.match(/^([^「]+)「([\s\S]*)」$/);
+    if (m) logPush(tr(m[1]), fill(tr(m[2]))); else logPush(null, fill(v));
+  }
+  function clearLog() { LOG = []; logMark = null; try { localStorage.removeItem(LOG_KEY); } catch (e) { /* 何もしない */ } }
+  function vLog() {
+    const rows = LOG.map(e => e.c ? `<p class="log-choice">▶ ${esc(e.c)}</p>`
+      : e.w ? `<p><span class="log-who">${esc(e.w)}</span><br>${esc(e.t)}</p>` : `<p class="log-narr">${esc(e.t)}</p>`).join('');
+    return `<div class="menu win log-win">
+      <h3>${T('会話ログ')}</h3>
+      <div class="log" id="log">${rows || `<p class="dim">${T('まだ会話はない')}</p>`}</div>
+      <div class="center"><button class="btn" data-act="log">${T('とじる')}</button></div>
+    </div>`;
   }
 
   function vMenu() {
@@ -642,7 +674,7 @@
     if (UI.scene) { UI.scene.i++; runCommands(); }
   }
   function message(lines, done) { UI.msg = (Array.isArray(lines) ? [...lines] : [lines]).map(l => fill(trLine(l))); UI.msgDone = done || null; UI.held = null; renderOverlay(); }
-  const busy = () => !!(UI.scene || UI.msg || UI.menu || UI.shop || UI.choice);
+  const busy = () => !!(UI.scene || UI.msg || UI.menu || UI.shop || UI.choice || UI.log);
   const SHOP_DEFAULT = { name: '購買部', line: '「いらっしゃい！ 研究費はちゃんと残しておくんだよ」' };
   function openShop(info) {
     UI.shopInfo = typeof info === 'object' ? info : SHOP_DEFAULT;
@@ -653,6 +685,7 @@
     const o = UI.choice && UI.choice[+i];
     if (!o) return;
     UI.choice = null;
+    logPush(null, tr(o.t), true);
     if (o.fn) { renderOverlay(); return o.fn(); }
     if (o.shop) { UI.scene = null; return openShop(o.shop); }
     const sc = UI.scene; UI.scene = null;
@@ -1025,6 +1058,7 @@
   }
 
   function action() {
+    if (UI.log) return actions.log();
     if (UI.menu || UI.shop) return;
     if (UI.scene || UI.msg) return advance();
     const [dx, dy] = DIRS[S.dir], fx = S.x + dx, fy = S.y + dy;
@@ -1138,6 +1172,7 @@
     else if (E.queue) UI.battle.lines = [tr(E.start)];
     // エノラスとアキラルの戦い：カーボではなく 2 人の HP で受ける（0 にはならない）
     if (E.duo) Object.assign(UI.battle, { allyHp: E.ally.hp, allyMax: E.ally.hp });
+    if (!random && !fromNote) { if (E.queue) logRaw(E.start); else logPush(tr(E.name), fill(tr(E.start))); }
     // ボーカ：特性はカーボの逆
     if (E.oppTrait) Object.assign(UI.battle, { shadowCfg: S.cfg ? opp(S.cfg) : null, missStreak: 0 });
     if (E.forms) { const F = E.forms.keto; Object.assign(UI.battle, { form: 'keto', name: F.name, sprite: F.sprite, answered: 0 }); }
@@ -1288,6 +1323,7 @@
         // 長い会話は「---」の行でページに分けて、1 ページずつ出す
         const pages = [[]];
         for (const l of B.talk) { if (l.trim() === '---') pages.push([]); else pages[pages.length - 1].push(l); }
+        B.talk.forEach(logRaw);
         B.talk = pages.shift(); B.talkPages = pages.filter(p => p.length);
         B.state = 'talk'; B.pending.forEach(fn => fn()); B.pending = []; return render();
       }
@@ -1307,6 +1343,7 @@
     const B = UI.battle, E = ENEMIES[B.key];
     B.state = 'win';
     B.lines = E.winLines ? E.winLines.map(trLine) : [say(tr(B.name), tr(E.win))];
+    if (!B.random && !B.fromNote) { if (E.winLines) E.winLines.forEach(logRaw); else logPush(tr(B.name), fill(tr(E.win))); }
     if (!E.practice) {
       if (!E.winLines) B.lines.push(T('{0}をたおした！', tr(B.name)));
       if (E.exp || E.money) B.lines.push(E.money ? T('経験値 {0} と、研究費 {1} を手に入れた。', E.exp, yen(E.money)) : T('経験値 {0} を手に入れた。', E.exp));
@@ -1708,7 +1745,7 @@
       enterScene();
     },
     pickDiff(d) {
-      S = freshState(+d);
+      S = freshState(+d); clearLog();
       try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* 何もしない */ }
       UI.screen = 'world';
       render();
@@ -1759,6 +1796,7 @@
       flash(T('{0}が仲間になった！ メニューの「仲間を付け替える」で結合できる', tr(c.name)));
     },
     advance() { advance(); },
+    log() { if (UI.shop) return; UI.log = !UI.log; UI.menu = false; UI.held = null; Sound.se('blip'); renderOverlay(); },
     menu() { if (UI.scene || UI.msg || UI.shop) return; UI.menu = !UI.menu; Sound.se('blip'); renderOverlay(); },
     drink(id) {
       const it = ITEMS[id];
@@ -1880,6 +1918,14 @@
     }
     if (UI.screen === 'ending' && ['Enter', ' ', 'z', 'Z'].includes(e.key)) { e.preventDefault(); actions.endingNext(); return; }
     if (UI.screen !== 'world') return;
+    // ログを開いているあいだ：上下キーで読み進め、ほかのキーで閉じる
+    if (UI.log) {
+      const el = document.getElementById('log');
+      if (['ArrowUp', 'ArrowDown', 'w', 's'].includes(e.key)) { e.preventDefault(); if (el) el.scrollTop += ['ArrowUp', 'w'].includes(e.key) ? -60 : 60; }
+      else if (['Enter', ' ', 'z', 'Z', 'x', 'X', 'Escape', 'l', 'L'].includes(e.key)) { e.preventDefault(); if (!e.repeat) actions.log(); }
+      return;
+    }
+    if (['l', 'L'].includes(e.key) && !UI.shop) { e.preventDefault(); if (!e.repeat) actions.log(); return; }
     if (UI.choice && ['1', '2', '3', '4'].includes(e.key)) { choose(+e.key - 1); return; }
     if (KEYDIR[e.key]) { e.preventDefault(); if (!busy()) UI.held = KEYDIR[e.key]; return; }
     if (['Enter', ' ', 'z', 'Z'].includes(e.key)) { e.preventDefault(); if (!e.repeat) action(); return; }

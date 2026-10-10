@@ -280,6 +280,13 @@ p { margin: .4em 0; }
 .menu { margin: 8px; max-height: calc(100% - 16px); overflow-y: auto; background: rgba(0, 0, 0, .95); }
 .mlist { margin: 4px 0 10px; padding-left: 18px; font-size: 14px; }
 .mlist li { margin: 3px 0; }
+/* 会話ログは、マップの枠ではなく画面いっぱいに出す（スマホでも読みやすいように） */
+.log-win { position: fixed; inset: 8px; z-index: 50; background: #000; max-width: 704px; max-height: none; margin: 0 auto; display: flex; flex-direction: column; box-sizing: border-box; }
+.log { flex: 1; min-height: 0; overflow-y: auto; font-size: 14px; line-height: 1.6; padding-right: 4px; }
+.log p { margin: 0 0 8px; }
+.log-who { color: var(--accent); font-size: 13px; }
+.log-narr { color: #d6d9e6; }
+.log-choice { color: #8fd3ff; }
 
 .pad { display: none; justify-content: space-between; align-items: center; margin: 12px 3px 0; user-select: none; -webkit-user-select: none; touch-action: none; }
 .dpad { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 56px); gap: 4px; }
