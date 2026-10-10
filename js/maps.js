@@ -911,7 +911,7 @@ const Maps = (() => {
         { x: 13, y: 21, sprite: () => 'bull' + (Math.floor(Date.now() / 1500) % 3), on: 'bump', when: f => !f.c4_in || f.c4_boss, scene: f => f.c4_boss ? 'c4_bull_end' : f.c4_bull ? 'c4_bull_again' : 'c4_bull' },
         { x: 12, y: 14, on: 'step', when: f => f.c4_bull && !f.c4_in, scene: 'c4_enter' },
         { x: 12, y: 14, on: 'step', when: f => f.c4_in && !f.c4_boss, warp: { map: 'kairo', x: 6, y: 27, dir: 'up' } },
-        { x: 10, y: 21, sprite: 'achiralOpen', on: 'bump', when: f => f.c4_boss && (!f.clear4 || f.c5_boss), scene: f => f.c5_boss ? 'c5_epi_akiral' : 'c4_akiral_end' },
+        { x: 9, y: 10, sprite: 'achiralOpen', on: 'bump', when: f => f.c4_boss && (!f.clear4 || f.c5_boss), scene: f => f.c5_boss ? 'c5_epi_akiral' : 'c4_akiral_end' },
       ],
     },
 

@@ -341,6 +341,30 @@
     }
     check('マップの端から出ると、次のマップの反対側に着く', !edgeBad.length, edgeBad.join('\n'));
 
+    // ---- 人が、細い道をふさがない（各章のはじめとその後の世界で、入り口から行ける場所が、人のせいで減らない） ----
+    // 婚礼の広間は、式の参列者が道をふさぐ場面なので除く。宝箱・扉・看板などの物は数えない
+    const blockBad = [], OBJ = /^(chest|rotDoor|sign|pillar|lamp|pump|ladder|lock|boat|ship|mol|brineTap)/;
+    for (let n = 2; n <= 6; n++) {
+      const f = Object.fromEntries(Object.entries(DevStart.flags).filter(([c]) => +c < n).flatMap(([, fs]) => fs.map(k => [k, true])));
+      for (const [id, m] of Object.entries(Maps.MAPS)) {
+        if (m.layer || m.mirror || id === 'chapel') continue;
+        const pass = (x, y) => { const ch = m.grid[y] && m.grid[y][x]; if (!ch) return false; return m.passable && m.passable[ch] ? m.passable[ch](f) : !Sprites.SOLID.has(ch); };
+        const act = (m.events || []).filter(e => !e.when || e.when(f)), spr = e => (typeof e.sprite === 'function' ? e.sprite(f) : e.sprite);
+        const people = act.filter(e => e.on === 'bump' && e.sprite && !OBJ.test(spr(e) || ''));
+        const npc = new Set(people.map(e => e.x + ',' + e.y)), obj = new Set(act.filter(e => e.on === 'bump' && !npc.has(e.x + ',' + e.y)).map(e => e.x + ',' + e.y));
+        for (const [sid, m2] of Object.entries(Maps.MAPS)) for (const w of m2.events || []) {
+          if (!w.warp || w.warp.map !== id || (w.when && !w.when(f))) continue;
+          const s = [w.warp.x, w.warp.y];
+          const bfs = withNpc => { const seen = new Set([s.join()]), q = [s];
+            while (q.length) { const [x, y] = q.shift(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, k = nx + ',' + ny; if (seen.has(k) || !pass(nx, ny) || obj.has(k) || (withNpc && npc.has(k))) continue; seen.add(k); q.push([nx, ny]); } }
+            return seen; };
+          const a = bfs(true), b = bfs(false), lost = [...b].filter(k => !a.has(k) && !npc.has(k));
+          if (lost.length > 2) blockBad.push(`${n === 6 ? 'その後の世界' : `第 ${n} 章のはじめ`}：${id}（${sid} から）で ${lost.length} マス行けない（${people.filter(e => b.has(e.x + ',' + e.y)).map(e => `${spr(e)} (${e.x},${e.y})`).join('・')}）`);
+        }
+      }
+    }
+    check('人が、細い道をふさがない', !blockBad.length, [...new Set(blockBad)].join('\n'));
+
     // ---- 村・森・港の住人は、章が進むと台詞が変わる（第 1 章の台詞のまま、第 4 章まで残らない） ----
     const later = { boss: true, elder: true, clear: true, ch2: true, c2_met: true, c2_reveal: true, c2_kidnap: true, c2_rescued: true, c2_boss: true };
     const stageFlags = [later, { ...later, ch3: true, c3_boss: true, clear3: true, ch4: true }, { ...later, ch3: true, c3_boss: true, clear3: true, ch4: true, c4_boss: true }];
