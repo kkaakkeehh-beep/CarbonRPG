@@ -1,0 +1,507 @@
+// =============================================================
+// en-q3.js — 英語の問題：第 3 章（ラジカル・芳香族）
+// =============================================================
+I18N.add('en', { q: {
+  // ---------------- Undergrad I ----------------
+  'c3-1-01': {
+    q: "In the photochlorination of methane, which is the initiation step of the chain?",
+    choices: ["Light splits Cl₂ into two Cl•", "Cl• abstracts a hydrogen from CH₄", "•CH₃ abstracts a Cl from Cl₂", "Two •CH₃ combine to give ethane"],
+    explain: "Initiation is the step where radicals are born. The second and third are propagation (a radical makes the next radical); the fourth is termination (two radicals combine and disappear).",
+  },
+  'c3-1-02': {
+    q: "What do you call a bond breaking down the middle, leaving one electron on each atom?",
+    choices: ["Homolysis (homolytic cleavage)", "Heterolysis (heterolytic cleavage)", "Deprotonation", "Oxidative addition"],
+    explain: "Homolysis gives two radicals. In heterolysis the electron pair goes to one side, giving a cation and an anion.",
+  },
+  'c3-1-03': {
+    q: "Which carbon radical is the most stable?",
+    choices: ["(CH₃)₃C•", "(CH₃)₂CH•", "CH₃CH₂•", "•CH₃"],
+    explain: "Just like carbocations: tertiary > secondary > primary > methyl. Hyperconjugation with neighboring C–H bonds stabilizes the electron-poor carbon.",
+  },
+  'c3-1-04': {
+    q: "Why is the benzyl radical (PhCH₂•) stable?",
+    choices: ["The unpaired electron is delocalized into the ring", "The radical carbon is sp-hybridized", "The ring gains an electron and becomes an aromatic ion", "Induction cancels out the unpaired electron"],
+    explain: "You can draw resonance structures putting the unpaired electron at the ortho and para positions of the ring. That's why benzylic C–H bonds break easily (low bond dissociation energy).",
+  },
+  'c3-1-05': {
+    q: "Propane was reacted with Br₂ under irradiation. What is the major product?",
+    choices: ["2-Bromopropane", "1-Bromopropane", "1,3-Dibromopropane", "Propene"],
+    mols: ["Propane"],
+    explain: "Bromination is highly selective: nearly all of it (about 97%) is 2-bromopropane, via the more stable secondary radical. Chlorination gives plenty of 1-chloro product too.",
+  },
+  'c3-1-06': {
+    q: "In the photochlorination of methane, what happens if Cl₂ is used in excess?",
+    choices: ["Polychlorination up to CCl₄", "Only CH₃Cl is formed", "Only ethane is formed", "The chain stops at once"],
+    explain: "CH₃Cl still has C–H bonds, so Cl• keeps abstracting. To aim for the monochloride, use a large excess of methane.",
+  },
+  'c3-1-07': {
+    q: "Cyclohexene was treated with NBS and a little peroxide. What is the major product?",
+    choices: ["3-Bromocyclohexene", "1,2-Dibromocyclohexane", "1-Bromocyclohexene", "2-Bromocyclohexanol"],
+    mols: ["Cyclohexene", "NBS"],
+    explain: "NBS keeps Br₂ at a very low concentration, so instead of adding across the double bond, the allylic hydrogen is abstracted and replaced by bromine (allylic bromination).",
+  },
+  'c3-1-08': {
+    q: "HBr was added to propene in the presence of peroxides. What is the major product?",
+    choices: ["1-Bromopropane", "2-Bromopropane", "1,2-Dibromopropane", "2-Propanol"],
+    mols: ["Propene"],
+    explain: "Br• adds first to the terminal carbon, giving the more stable secondary radical, which then takes H from HBr. The result is anti-Markovnikov 1-bromopropane.",
+  },
+  'c3-1-09': {
+    q: "Which is the termination step of a radical chain reaction?",
+    choices: ["Two radicals combine", "A radical abstracts a hydrogen", "A radical adds to a double bond", "Light breaks a bond"],
+    explain: "When two radicals meet and bond, the unpaired electrons are gone and the chain ends. Radical concentrations are usually low, so termination is rare and chains run long.",
+  },
+  'c3-1-10': {
+    q: "What is the role of BHT (2,6-di-tert-butyl-4-methylphenol) added to foods and resins?",
+    choices: ["An antioxidant: gives H to radicals", "A colorant that tints the food", "A buffer that neutralizes acids", "A desiccant that soaks up water"],
+    mols: ["BHT"],
+    explain: "It hands the phenol O–H hydrogen to a radical and becomes a stable phenoxyl radical itself. Shielded by the bulky t-butyl groups, it doesn't restart the chain.",
+  },
+  'c3-1-11': {
+    q: "Which is commonly used as a radical initiator?",
+    choices: ["AIBN", "LDA", "NaBH₄", "DMAP"],
+    explain: "At 60–80 °C, AIBN releases N₂ and splits into two radicals. LDA is a strong base, NaBH₄ a hydride reductant, and DMAP an acylation catalyst.",
+  },
+  'c3-1-12': {
+    q: "By Hückel's rule, how many π electrons make a planar cyclic conjugated system aromatic?",
+    choices: ["4n+2", "4n", "2n", "Only 6"],
+    explain: "2, 6, 10, 14… Benzene has 6 (n = 1). A planar cyclic conjugated system with 4n π electrons is antiaromatic and is actually destabilized.",
+  },
+  'c3-1-13': {
+    q: "Which of these is aromatic?",
+    choices: ["Benzene", "Cyclooctatetraene", "Cyclobutadiene", "1,3-Cyclohexadiene"],
+    explain: "Cyclooctatetraene has 8 π electrons (4n) and adopts a nonplanar tub shape (nonaromatic). Cyclobutadiene has 4 and is antiaromatic. 1,3-Cyclohexadiene isn't conjugated all the way around the ring.",
+  },
+  'c3-1-14': {
+    q: "Why does benzene undergo substitution rather than alkene-style addition?",
+    choices: ["Losing H⁺ restores the aromatic ring", "Benzene has no real double bonds", "Addition is too fast to control", "Benzene can't act as a nucleophile"],
+    explain: "If the σ complex formed by adding the electrophile loses H⁺ instead of adding a nucleophile, aromaticity (about 150 kJ/mol of stabilization) is restored.",
+  },
+  'c3-1-15': {
+    q: "In the nitration of benzene (conc. HNO₃ + conc. H₂SO₄), which electrophile actually attacks the ring?",
+    choices: ["NO₂⁺", "HNO₃", "NO₃⁻", "NO₂⁻"],
+    explain: "Sulfuric acid protonates nitric acid, which loses water to give NO₂⁺, an electrophile strong enough to attack the aromatic π electrons.",
+  },
+  'c3-1-16': {
+    q: "What is needed to brominate benzene to bromobenzene?",
+    choices: ["Br₂ and FeBr₃", "Br₂ alone (in the dark)", "HBr", "NaBr"],
+    explain: "The Lewis acid FeBr₃ polarizes Br₂ into a strong electrophile. Because of its aromaticity benzene is unreactive and barely reacts with Br₂ alone.",
+  },
+  'c3-1-17': {
+    q: "Toluene was nitrated. What mainly forms?",
+    choices: ["o- and p-Nitrotoluene", "m-Nitrotoluene", "Nitrobenzene and methane", "Only 2,4,6-trinitrotoluene"],
+    mols: ["Toluene"],
+    explain: "The methyl group is an electron-donating activator and directs ortho/para. Only a few percent of meta forms.",
+  },
+  'c3-1-18': {
+    q: "Nitrobenzene was brominated with Br₂/FeBr₃. What is the major product?",
+    choices: ["m-Bromonitrobenzene", "o-Bromonitrobenzene", "p-Bromonitrobenzene", "Bromobenzene"],
+    mols: ["Nitrobenzene"],
+    explain: "The nitro group is a strong electron-withdrawing, deactivating meta director. Ortho/para attack gives an unfavorable resonance structure with positive charge right at the carbon bearing the nitro group.",
+  },
+  'c3-1-19': {
+    q: "Which substituent activates a benzene ring most strongly?",
+    choices: ["–NH₂", "–CH₃", "–Cl", "–NO₂"],
+    explain: "NH₂ pushes its nitrogen lone pair into the ring by resonance: a strong activator. CH₃ is a weak activator, Cl a weak deactivator, and NO₂ a strong deactivator.",
+  },
+  'c3-1-20': {
+    q: "What forms immediately, without a catalyst, when bromine water is added to aniline?",
+    choices: ["2,4,6-Tribromoaniline", "m-Bromoaniline", "Bromobenzene", "Nothing happens"],
+    mols: ["Aniline"],
+    explain: "NH₂ activates the ring so strongly that both ortho positions and the para position are all brominated, giving a white precipitate. For a single bromination, acetylate first to tone down the activation.",
+  },
+  'c3-1-21': {
+    q: "Benzene was treated with acetyl chloride and AlCl₃. What is the product?",
+    choices: ["Acetophenone", "Ethylbenzene", "Chlorobenzene", "Phenyl acetate"],
+    explain: "Friedel–Crafts acylation. AlCl₃ generates the acylium ion (CH₃C≡O⁺) from acetyl chloride, which attacks the ring.",
+  },
+  'c3-1-22': {
+    q: "What forms when aniline is treated with NaNO₂ and HCl at 0 °C?",
+    choices: ["Benzenediazonium chloride", "Nitrobenzene", "Phenol", "Azobenzene"],
+    mols: ["Aniline"],
+    explain: "Diazotization. ArN₂⁺ has N₂, a superb leaving group, so it can be turned into Cl, Br, CN, OH and more (for example by the Sandmeyer reaction). It decomposes to phenol when warmed, so it is kept cold.",
+  },
+
+  // ---------------- Undergrad II ----------------
+  'c3-2-01': {
+    q: "When AIBN is heated, what is released along with two radicals?",
+    choices: ["N₂", "CO₂", "O₂", "HCN"],
+    mols: ["AIBN"],
+    explain: "The azo group –N=N– leaves as N₂, giving two nitrile-stabilized 2-cyano-2-propyl radicals. The entropy gained by releasing N₂ helps drive the decomposition.",
+  },
+  'c3-2-02': {
+    q: "Why do peroxides (RO–OR) make good radical initiators?",
+    choices: ["The O–O bond is weak and splits easily", "The O–O bond is unusually strong", "Oxygen readily accepts extra electrons", "Peroxides dissolve easily in water"],
+    explain: "The O–O bond is much weaker than C–H (about 410 kJ/mol) or C–C (about 350 kJ/mol). Repulsion between the lone pairs on the neighboring oxygens also plays a part.",
+  },
+  'c3-2-03': {
+    q: "2-Methylpropane (isobutane) was reacted with Br₂ under irradiation. What is the major product?",
+    choices: ["Almost only 2-bromo-2-methylpropane", "Almost only 1-bromo-2-methylpropane", "1:9, in proportion to the H count", "No reaction"],
+    mols: ["2-Methylpropane"],
+    explain: "In bromination, a tertiary C–H is about 1600 times more reactive than a primary one. Even with nine primary H's, the single tertiary one wins overwhelmingly.",
+  },
+  'c3-2-04': {
+    q: "Using Hammond's postulate, why is bromination more regioselective than chlorination?",
+    choices: ["Br• abstraction is uphill, so its late TS feels radical stability", "The large Br atom selects sites by steric hindrance", "Bromination is far more exothermic than chlorination", "Br₂ cannot absorb light, so it reacts more slowly"],
+    explain: "H–Br is weaker than H–Cl, so abstraction by Br• is endothermic. The transition state comes late (product-like), so the stability of the radical formed is fully reflected in the rate. Abstraction by Cl• is exothermic, with an early transition state and less discrimination.",
+  },
+  'c3-2-05': {
+    q: "Why use NBS rather than Br₂ for allylic bromination?",
+    choices: ["To keep [Br₂] low and suppress addition to the C=C", "NBS is a stronger oxidant than Br₂", "NBS adds to the double bond even without light", "To supply a large amount of Br⁻"],
+    mols: ["NBS"],
+    explain: "The HBr formed reacts with NBS to replenish Br₂ a little at a time. At low [Br₂], ionic addition (which involves a second Br₂) slows, and the radical-chain substitution wins.",
+  },
+  'c3-2-06': {
+    q: "Brominating 1-butene with NBS and light gives 1-bromo-2-butene as well as 3-bromo-1-butene. Why?",
+    choices: ["The allyl radical is delocalized over both ends", "The intermediate carbocation rearranges", "An E2 elimination then re-addition occurs", "NBS adds directly across the double bond"],
+    mols: ["1-Butene", "3-Bromo-1-butene", "1-Bromo-2-butene"],
+    explain: "The allyl radical formed by losing an H from C3 has its unpaired electron on C1 and C3. Depending on which end reacts with Br₂, two products form (allylic transposition).",
+  },
+  'c3-2-07': {
+    q: "The peroxide effect (anti-Markovnikov addition) works for HBr but hardly for HCl or HI. What is the main reason?",
+    choices: ["H–Cl donates H too slowly; I• adding to C=C is uphill", "Neither HCl nor HI can form radicals at all", "HCl and HI destroy the peroxide initiator", "Only HBr is a strong enough acid to add"],
+    explain: "Only for HBr are both propagation steps (X• adding, and the carbon radical abstracting H from H–X) exothermic.",
+  },
+  'c3-2-08': {
+    q: "Bromocyclohexane was treated with Bu₃SnH and a little AIBN. What is the product?",
+    choices: ["Cyclohexane", "Cyclohexene", "Cyclohexanol", "No reaction"],
+    mols: ["Bromocyclohexane"],
+    explain: "Bu₃Sn• abstracts Br to give the cyclohexyl radical, which takes H from Bu₃SnH. The new Bu₃Sn• carries the chain on (a reduction replacing halogen with H).",
+  },
+  'c3-2-09': {
+    q: "6-Bromo-1-hexene was treated with a low concentration of Bu₃SnH and AIBN. What is the major product?",
+    choices: ["Methylcyclopentane", "Cyclohexane", "1-Hexene", "2-Hexene"],
+    mols: ["6-Bromo-1-hexene"],
+    explain: "Before it can abstract H, the 5-hexenyl radical cyclizes 5-exo to the cyclopentylmethyl radical. At high [Bu₃SnH] it grabs H before cyclizing, and more 1-hexene forms.",
+  },
+  'c3-2-10': {
+    q: "Why is it dangerous to leave diethyl ether or THF exposed to air for a long time?",
+    choices: ["The C–H next to O autoxidizes to explosive peroxides", "They absorb water and their boiling point rises", "They slowly polymerize and solidify in the bottle", "They react with oxygen and turn into CO₂"],
+    mols: ["Diethyl ether", "THF"],
+    explain: "The C–H next to oxygen breaks easily, and a radical chain with O₂ forms hydroperoxides. Concentrated by distillation, they can explode. That's why stabilizers like BHT are added.",
+  },
+  'c3-2-11': {
+    q: "Adding TEMPO to a reaction stopped it. What can you conclude?",
+    choices: ["The reaction likely involves a radical intermediate", "The reaction goes through a carbocation", "TEMPO acted as a catalyst", "The reaction is SN2"],
+    mols: ["TEMPO"],
+    explain: "TEMPO is a stable nitroxide radical that quickly combines with carbon radicals and stops chains. But TEMPO can also act otherwise, for example as an oxidant, so it isn't conclusive proof.",
+  },
+  'c3-2-12': {
+    q: "Which of these ions is aromatic?",
+    choices: ["Cyclopentadienyl anion", "Cyclopentadienyl cation", "Cycloheptatrienyl anion", "Cyclopropenyl anion"],
+    explain: "The cyclopentadienyl anion has 6π and is aromatic. The cation (4π), the cycloheptatrienyl anion (8π) and the cyclopropenyl anion (4π) are antiaromatic.",
+  },
+  'c3-2-13': {
+    q: "Why is cyclopentadiene (pKa about 16) far more acidic than ordinary hydrocarbons (pKa about 50)?",
+    choices: ["Its conjugate base is a 6π aromatic anion", "Its C–H is sp-hybridized", "Its ring is highly strained", "Its conjugate base is a radical"],
+    mols: ["Cyclopentadiene"],
+    explain: "Removing an H from the CH₂ gives an aromatic anion with the negative charge spread over all five carbons. Aromatic stabilization raises the acidity by more than 30 orders of magnitude.",
+  },
+  'c3-2-14': {
+    q: "Which is true of the lone pair on pyrrole's nitrogen?",
+    choices: ["It is part of the aromatic 6π system, so pyrrole is barely basic", "It is in an sp² orbital outside the π system, so it beats pyridine", "It is in an sp³ orbital, as basic as an ordinary amine", "Pyrrole's nitrogen has no lone pair"],
+    mols: ["Pyrrole", "Pyridine"],
+    explain: "In pyrrole the nitrogen lone pair is part of the 6π system. Protonation would destroy aromaticity, so the conjugate acid's pKa is very low, about −4. Pyridine's lone pair sits in an sp² orbital outside the π system, so it acts as a base (conjugate acid pKa about 5).",
+  },
+  'c3-2-15': {
+    q: "How does the sulfonation of benzene differ from other electrophilic substitutions?",
+    choices: ["It is reversible: heating with dilute acid removes SO₃H", "The electrophile is an anion", "It runs at room temperature with no catalyst", "Addition products are mainly obtained"],
+    explain: "Sulfonation is an equilibrium. You can put on SO₃H to block a position, do another substitution, then take it off: a protecting (blocking) group.",
+  },
+  'c3-2-16': {
+    q: "Benzene with 1-chloropropane and AlCl₃ gives mainly isopropylbenzene. Why?",
+    choices: ["The primary cation (or complex) rearranges to secondary", "AlCl₃ acts as a reducing agent on the chain", "The propyl group migrates around the ring", "A backside SN2 attack on the chloride occurs"],
+    mols: ["1-Chloropropane", "Isopropylbenzene"],
+    explain: "Friedel–Crafts alkylation goes through a carbocation (or cation-like complex), which rearranges by a hydride shift. Its other weakness: the product is more activated, so polysubstitution happens.",
+  },
+  'c3-2-17': {
+    q: "You want to make (straight-chain) propylbenzene cleanly. What is a good method?",
+    choices: ["Acylate with propanoyl chloride, then reduce C=O", "Alkylate with 1-chloropropane and AlCl₃", "Alkylate with propene and sulfuric acid", "Heat bromobenzene with 1-propanol"],
+    mols: ["Propylbenzene"],
+    explain: "The acylium ion is resonance-stabilized and doesn't rearrange, and the acyl group deactivates the ring, so there is no polysubstitution. Finally reduce C=O to CH₂ (Clemmensen or Wolff–Kishner).",
+  },
+  'c3-2-18': {
+    q: "Why are halogens (–Cl, etc.) ortho/para directors even though they are deactivating?",
+    choices: ["Induction deactivates, but lone-pair resonance favors o/p", "Resonance withdraws electrons, induction donates them", "Steric hindrance blocks the meta position", "The halogen acts as a leaving group"],
+    explain: "The rate (activation or deactivation) is ruled by induction; the position is decided by resonance. For ortho/para attack you can draw a structure with the positive charge on the carbon bearing the halogen, stabilized by its lone pair.",
+  },
+  'c3-2-19': {
+    q: "Where does Br go when p-nitroaniline is brominated?",
+    choices: ["Ortho to NH₂ (meta to NO₂)", "Ortho to NO₂", "Meta to NH₂", "The carbon bearing NH₂ (ipso)"],
+    mols: ["p-Nitroaniline"],
+    explain: "NH₂ is an ortho/para director (para is blocked) and NO₂ a meta director. The position ortho to NH₂ is also meta to NO₂: the two directing effects agree (cooperative). In practice it goes on to 2,6-dibromo-4-nitroaniline.",
+  },
+  'c3-2-20': {
+    q: "1-Chloro-2,4-dinitrobenzene reacts readily with NaOMe, but chlorobenzene barely reacts. Why?",
+    choices: ["o/p nitro groups stabilize the Meisenheimer complex", "The nitro groups push the Cl out sterically", "It reacts by SN1 through a phenyl cation", "A backside SN2 attack at the C–Cl occurs"],
+    mols: ["1-Chloro-2,4-dinitrobenzene", "Chlorobenzene"],
+    explain: "Nucleophilic aromatic substitution (SNAr) is a two-step addition–elimination. Electron-withdrawing groups at positions where the negative charge can reach the nitro oxygens (ortho/para) speed it up enormously.",
+  },
+  'c3-2-21': {
+    q: "Benzene was reduced with Na/liquid NH₃/EtOH (Birch reduction). What is the product?",
+    choices: ["1,4-Cyclohexadiene", "1,3-Cyclohexadiene", "Cyclohexane", "Cyclohexene"],
+    explain: "A solvated electron enters the ring to give a radical anion; protonation, a second electron and another protonation follow. It characteristically stops at the unconjugated 1,4-diene.",
+  },
+  'c3-2-22': {
+    q: "Benzenediazonium chloride was treated with CuCN (Sandmeyer reaction). What is the product?",
+    choices: ["Benzonitrile", "Aniline", "Phenol", "Chlorobenzene"],
+    mols: ["Benzenediazonium chloride"],
+    explain: "CuCl gives ArCl, CuBr gives ArBr, CuCN gives ArCN. Substituents hard to install by electrophilic substitution can be made from aniline.",
+  },
+
+  // ---------------- Grad Entrance Exam ----------------
+  'c3-3-01': {
+    q: "Which of these C–H bonds has the lowest bond dissociation energy?",
+    choices: ["PhCH₂–H (benzylic)", "CH₃–H", "Ph–H (aromatic C–H)", "H₂C=CH–H (vinylic)"],
+    explain: "Roughly: PhCH₂–H about 375, CH₃–H about 439, H₂C=CH–H about 464, Ph–H about 473 kJ/mol. The more the resulting radical is resonance-stabilized, the easier the bond breaks. sp² C–H bonds, with more s character, are actually stronger.",
+  },
+  'c3-3-02': {
+    q: "Which is true of the radicals formed when benzoyl peroxide (BPO) is heated?",
+    choices: ["PhCO₂• forms; some loses CO₂ to give Ph•", "It loses N₂ to give phenyl radicals", "Benzyl radicals form at the CH₂ groups", "Cations form instead of radicals"],
+    mols: ["Benzoyl peroxide"],
+    explain: "The weak O–O bond breaks to give two PhCO₂•, which decarboxylate to Ph•. It's azo compounds such as AIBN that release N₂.",
+  },
+  'c3-3-03': {
+    q: "Propane was photochlorinated at 25 °C. If a secondary C–H is about 3.9 times as reactive as a primary C–H, what is the approximate ratio of 1-chloropropane : 2-chloropropane?",
+    choices: ["43 : 57", "75 : 25", "3 : 97", "20 : 80"],
+    mols: ["1-Chloropropane", "2-Chloropropane"],
+    explain: "Primary: 6 H × 1 = 6; secondary: 2 H × 3.9 = 7.8. 6 : 7.8 ≈ 43 : 57. In chlorination, the number of hydrogens offsets the difference in reactivity.",
+  },
+  'c3-3-04': {
+    q: "Why is 1,4-cyclohexadiene an excellent hydrogen donor in radical reactions?",
+    choices: ["Losing two H's makes benzene, so abstraction is easy", "It is highly strained and ring-opens easily", "Its C–H bonds are all sp-hybridized", "It never forms any radicals itself"],
+    mols: ["1,4-Cyclohexadiene"],
+    explain: "The C–H of the CH₂ between two double bonds (bis-allylic) is weak, and once abstracted, the cyclohexadienyl radical becomes aromatic by losing one more H. Aromatization is a powerful driving force.",
+  },
+  'c3-3-05': {
+    q: "In allylic bromination with NBS (the Wohl–Ziegler reaction), what actually reacts with the allyl radical to form C–Br?",
+    choices: ["Br₂ formed slowly from NBS and HBr", "The N–Br bond of NBS itself", "Br⁻", "HOBr"],
+    mols: ["NBS"],
+    explain: "The Goldfinger mechanism. Br• abstracts H to give HBr, which regenerates Br₂ from NBS. The allyl radical takes Br from that Br₂. NBS is a low-concentration source of Br₂.",
+  },
+  'c3-3-06': {
+    q: "Toluene was treated with (a) Br₂ and light, and (b) Br₂ and FeBr₃. What are the major products?",
+    choices: ["(a) Benzyl bromide; (b) o- and p-bromotoluene", "(a) o- and p-bromotoluene; (b) benzyl bromide", "Benzyl bromide in both (a) and (b)", "m-Bromotoluene in both (a) and (b)"],
+    mols: ["Toluene"],
+    explain: "With light you get a radical chain, and the weak benzylic C–H reacts. With a Lewis acid, Br₂ becomes an electrophile and does aromatic electrophilic substitution (ortho/para, thanks to the methyl). The conditions change where the reaction happens.",
+  },
+  'c3-3-07': {
+    q: "Why is the 5-exo cyclization of the 5-hexenyl radical faster than 6-endo?",
+    choices: ["The 5-exo TS lets the radical reach π* at the ideal ~107°", "The 5-exo product is thermodynamically more stable", "6-endo can only give a primary radical", "Six-membered transition states are too strained to form"],
+    mols: ["5-Hexenyl radical"],
+    explain: "6-endo would give the secondary cyclohexyl radical and is actually favored thermodynamically. 5-exo is still about 50 times faster because of how the orbitals overlap in the transition state (a stereoelectronic effect, kinetic control).",
+  },
+  'c3-3-08': {
+    q: "The cyclization of the 5-hexenyl radical (k about 2×10⁵ s⁻¹) is used as a “radical clock.” What can it measure?",
+    choices: ["The rate constant of a competing step, like H abstraction", "Only the absolute activation energy of the reaction", "How many years the radical can survive in solution", "The absolute configuration of the final product"],
+    mols: ["5-Hexenyl radical"],
+    explain: "From the ratio of cyclized to uncyclized products and the H-donor concentration, you can calculate an unknown H-abstraction rate constant. A reaction of known speed serves as the “clock” for timing another.",
+  },
+  'c3-3-09': {
+    q: "In the Barton–McCombie deoxygenation, how is the OH of a secondary alcohol replaced with H?",
+    choices: ["Make a xanthate (–OC(=S)SMe), then Bu₃SnH / AIBN", "Treat the alcohol directly with Bu₃SnH / AIBN", "Make an ester, then reduce it with NaBH₄", "Make the methyl ether, then use Na/NH₃"],
+    explain: "Bu₃Sn• adds to the sulfur of C=S, the C–O bond breaks, and an alkyl radical is released, which takes H from Bu₃SnH. Forming a strong C=O is the driving force.",
+  },
+  'c3-3-10': {
+    q: "Where are unsaturated fatty acids such as linoleic acid most easily oxidized by air?",
+    choices: ["The CH₂ between two double bonds (bis-allylic)", "The α position of the carboxyl group", "The terminal methyl group", "The C–H on a double-bond carbon"],
+    mols: ["Linoleic acid"],
+    explain: "A bis-allylic C–H is very weak, about 315 kJ/mol. O₂ adds to the pentadienyl radical left behind, and a lipid-peroxidation chain takes off. That's why old oil smells.",
+  },
+  'c3-3-11': {
+    q: "How does vitamin E (α-tocopherol) act as an antioxidant in biological membranes?",
+    choices: ["Its phenolic H goes to a peroxyl radical, leaving a stable phenoxyl", "It gives an electron to the radical, turning it into an anion", "It hydrolyzes lipid hydroperoxides back to alcohols", "It binds O₂ itself to form an inert complex"],
+    mols: ["α-Tocopherol"],
+    explain: "A chain-breaking antioxidant, like BHT. The resulting tocopheroxyl radical is restored by vitamin C.",
+  },
+  'c3-3-12': {
+    q: "In the ¹H NMR of [18]annulene, where do the hydrogens pointing into the ring appear?",
+    choices: ["About −3 ppm (upfield of TMS)", "About +9 ppm (downfield)", "About +5.5 ppm (alkene region)", "They aren't observed"],
+    mols: ["[18]Annulene"],
+    explain: "The aromatic ring current creates an opposing magnetic field inside the ring, so the inner H's are strongly shielded. The outer H's are at about +9.3 ppm. Ring currents are experimental evidence of aromaticity.",
+  },
+  'c3-3-13': {
+    q: "Why does azulene (a fused five- and seven-membered hydrocarbon) have a large dipole moment?",
+    choices: ["Electrons shift so each ring approaches a 6π aromatic ion", "The seven-membered ring holds more electrons", "It contains a nitrogen atom", "The molecule isn't planar"],
+    mols: ["Azulene"],
+    explain: "The dipole runs from the seven-membered ring (+) to the five-membered ring (−): toward a 6π cyclopentadienyl anion and a 6π tropylium cation. Both rings gain stability by taking on aromatic-ion character. Azulene's blue color is related to this charge shift.",
+  },
+  'c3-3-14': {
+    q: "Reducing cyclooctatetraene with potassium gives a dianion that has gained two electrons. Which is true of it?",
+    choices: ["It is a planar, aromatic 10π system", "It stays an 8π tub", "It becomes antiaromatic and falls apart", "It splits into benzene and acetylene"],
+    mols: ["Cyclooctatetraene"],
+    explain: "Neutral, it is 8π (4n), tub-shaped and nonaromatic. Adding two electrons makes 10π (4n+2), a planar, regular-octagon aromatic ion.",
+  },
+  'c3-3-15': {
+    q: "In the nitration of benzene, C–H and C–D react at almost the same rate (isotope effect ≈ 1). What is the rate-determining step?",
+    choices: ["NO₂⁺ adding to form the σ complex", "Loss of H⁺ from the σ complex", "Loss of hydride from the aromatic ring", "Solvation of the nitroarene product"],
+    explain: "If losing H⁺ were rate-determining, C–D would be clearly slower. The addition step, which sacrifices aromaticity, is slow; the deprotonation after it is fast.",
+  },
+  'c3-3-16': {
+    q: "Using the σ complex, why does nitration of anisole give almost no meta product?",
+    choices: ["o/p attack puts + next to OMe, stabilized by O (oxonium)", "The meta position is more crowded", "Induction makes the meta position too electron-rich", "Meta attack destroys aromaticity"],
+    mols: ["Anisole"],
+    explain: "In the σ complex from meta attack, the positive charge never reaches the carbon bearing OMe, so the oxygen lone pair can't stabilize it. Every σ complex has lost aromaticity, whatever the position.",
+  },
+  'c3-3-17': {
+    q: "Nitration of tert-butylbenzene gives far less ortho product than toluene (about 58% → 16%). What is the main reason?",
+    choices: ["The bulky t-Bu group sterically blocks ortho attack", "t-Bu is an electron-withdrawing group", "t-Bu has more C–H bonds for hyperconjugation", "t-Bu is a meta director"],
+    mols: ["tert-Butylbenzene", "Toluene"],
+    explain: "Like methyl, t-Bu is an electron-donating ortho/para director. But it's big, so the adjacent ortho positions are crowded and para dominates (about 73%).",
+  },
+  'c3-3-18': {
+    q: "Why can nitrobenzene be used as a solvent for Friedel–Crafts reactions?",
+    choices: ["It is so deactivated that it barely reacts itself", "Its low boiling point makes it easy to remove", "It reduces AlCl₃ to a more active form", "It speeds up the reaction as a nucleophile"],
+    mols: ["Nitrobenzene"],
+    explain: "Rings bearing a strong deactivator like a nitro group hardly undergo Friedel–Crafts reactions, so nitrobenzene can serve as the solvent for reacting other aromatics.",
+  },
+  'c3-3-19': {
+    q: "p-Chlorotoluene with NaNH₂/liquid NH₃ gives a mixture of p-toluidine and m-toluidine. What intermediate does this point to?",
+    choices: ["Benzyne (an aryne)", "A Meisenheimer complex", "A phenyl cation", "An aryl radical"],
+    mols: ["p-Chlorotoluene", "p-Toluidine", "m-Toluidine"],
+    explain: "NH₂⁻ removes the H ortho to Cl, and Cl⁻ leaves to give benzyne with a triple bond. NH₂⁻ can add to either end, so products at the original position and the adjacent one are mixed.",
+  },
+  'c3-3-20': {
+    q: "Chlorobenzene labeled with ¹⁴C at C1 was treated with KNH₂/liquid NH₃. Where is the NH₂ of the aniline attached?",
+    choices: ["About half on C1 and half on C2", "All of it on the labeled C1", "All of it on the adjacent C2", "Half on C1 and half on C4"],
+    mols: ["Chlorobenzene"],
+    explain: "Roberts's experiment. Benzyne has its triple bond between C1 and C2 and is nearly symmetric, so NH₂⁻ adds about equally to either end. Direct substitution would put it only on C1.",
+  },
+  'c3-3-21': {
+    q: "Anisole was subjected to Birch reduction (Na/liquid NH₃/EtOH). What is the product?",
+    choices: ["1-Methoxy-1,4-cyclohexadiene", "3-Methoxy-1,4-cyclohexadiene", "1-Methoxy-1,3-cyclohexadiene", "Methoxycyclohexane"],
+    mols: ["Anisole"],
+    explain: "An electron-donating group (OMe) ends up on a remaining double bond. Acid hydrolysis turns that enol ether into a cyclohexenone (a common synthetic move). An electron-withdrawing group ends up on an sp³ carbon instead.",
+  },
+  'c3-3-22': {
+    q: "You want to make 1,3,5-tribromobenzene. What is a good route?",
+    choices: ["Tribrominate aniline, diazotize, then reduce with H₃PO₂", "Brominate benzene three times with Br₂/FeBr₃", "Meta-brominate bromobenzene twice", "Brominate nitrobenzene, then reduce it"],
+    mols: ["1,3,5-Tribromobenzene"],
+    explain: "Br directs ortho/para, so you can't put three bromines meta to each other directly. Use the strongly ortho/para-directing NH₂ to install all three, then “erase” the NH₂ by replacing it with H via the diazonium salt.",
+  },
+
+  // ---------------- PhD (Brutal) ----------------
+  'c3-4-01': {
+    q: "The quantum yield of photochlorination can be far above 1 (even in the thousands). What does that mean?",
+    choices: ["Radicals from one photon drive a long chain through many molecules", "One photon breaks many Cl₂ at once", "The reaction doesn't need light", "The products emit light that triggers more reaction"],
+    explain: "Quantum yield = molecules reacted ÷ photons absorbed. A value above 1 is evidence of a chain reaction. Conversely, a little inhibitor such as O₂ drops it sharply.",
+  },
+  'c3-4-02': {
+    q: "Why are Et₃B and a trace of O₂ used as a radical initiator?",
+    choices: ["Et₃B + O₂ releases Et•, so it initiates even at −78 °C", "Et₃B activates the substrate as a Lewis acid", "O₂ is reduced to water and that heat starts the chain", "Et₃B itself is an excellent hydrogen-atom donor"],
+    explain: "O₂ attaches to boron, and via B–O–O• the B–C bond breaks, releasing Et•. No heating is needed, unlike AIBN, so it's used for selective radical reactions at low temperature.",
+  },
+  'c3-4-03': {
+    q: "A substrate with a built-in cyclopropylcarbinyl radical clock (ring opening about 10⁸ s⁻¹) gave no ring-opened product. What is the most careful interpretation?",
+    choices: ["No radical, or one trapped faster than the ring opens (~ns)", "The reaction must be ionic", "A radical formed, but cyclopropanes never open", "The ring-opened product just evaporated"],
+    mols: ["Cyclopropylcarbinyl radical"],
+    explain: "A radical clock only tells you whether something is slower or faster than the clock. No ring opening doesn't prove there was no radical. The right move is to check with a faster clock (around 10¹¹ s⁻¹).",
+  },
+  'c3-4-04': {
+    q: "For hydrogen abstraction by electrophilic Cl•, which C–H reacts slowly? (polar effect)",
+    choices: ["A C–H next to an electron-withdrawing group", "A C–H next to an ether oxygen", "A tertiary C–H in a branched alkane", "A benzylic C–H next to a phenyl ring"],
+    explain: "In the abstraction transition state, the carbon side is slightly positive and the Cl side negative. Next to an electron-withdrawing group that positive charge is destabilized, so it's slow; α to an ether it's fast. Bond strength alone doesn't decide selectivity.",
+  },
+  'c3-4-05': {
+    q: "What is the “persistent radical effect”?",
+    choices: ["Transient + persistent radicals end up cross-coupling", "Persistent radicals speed up chain propagation", "Light extends the lifetime of every radical", "Radicals get trapped inside the solvent cage"],
+    explain: "As transient radicals die off by self-termination, a small excess of persistent radical builds up. That excess captures transient radicals one after another, so in the end only cross-coupling occurs. The basis of nitroxide-mediated polymerization.",
+  },
+  'c3-4-06': {
+    q: "In nitroxide-mediated polymerization (NMP), what property is needed of the alkoxyamine bond between TEMPO and the growing chain end?",
+    choices: ["It breaks and reforms reversibly on heating", "Once formed, it never breaks again", "It can be broken only by UV light", "It is hydrolyzed by traces of water"],
+    mols: ["TEMPO"],
+    explain: "The chain switches back and forth between dormant and growing many times, so termination is reduced and polymers of uniform molecular weight result (living radical polymerization). The bond coming apart again on heating is the key.",
+  },
+  'c3-4-07': {
+    q: "BrCCl₃ was reacted with 1-octene in the presence of peroxide (Kharasch addition). What is the major product?",
+    choices: ["3-Bromo-1,1,1-trichlorononane", "1-Bromooctane", "2-Bromooctane", "3-Chloro-1,1,1-tribromononane"],
+    mols: ["1-Octene", "BrCCl₃"],
+    explain: "The weak C–Br bond breaks to give •CCl₃, which adds to the terminal carbon to form a secondary radical. That radical abstracts Br from BrCCl₃, regenerating •CCl₃ (atom-transfer radical addition).",
+  },
+  'c3-4-08': {
+    q: "To avoid the toxicity of Bu₃SnH and the difficulty of removing it, which alternative hydrogen donor is often used?",
+    choices: ["Tris(trimethylsilyl)silane ((TMS)₃SiH)", "Triethylsilane (Et₃SiH), at the same rate", "NaBH₄", "Water"],
+    explain: "The silyl groups on silicon weaken the Si–H of (TMS)₃Si–H, giving H-donating ability close to Bu₃SnH. Ordinary Et₃SiH has a strong Si–H and can't sustain the chain by itself.",
+  },
+  'c3-4-09': {
+    q: "In the Ueno–Stork reaction, a bromoacetal made from an allylic alcohol is treated with Bu₃SnH and AIBN. What skeleton forms first?",
+    choices: ["A cyclic acetal from 5-exo cyclization", "A β-lactam from radical N–C bond formation", "A cyclopropane from 3-exo ring closure", "A pyridine ring after oxidation"],
+    explain: "The radical α to the acetal, formed when Br is abstracted, cyclizes 5-exo onto the allyl double bond. A radical cyclization from Japan, widely used to build γ-lactones in natural product synthesis.",
+  },
+  'c3-4-10': {
+    q: "What is the first step of the cumene (Hock) process for making phenol and acetone?",
+    choices: ["Autoxidation of cumene to its hydroperoxide", "Nitration of benzene to nitrobenzene", "Sulfonation of cumene with oleum", "Aldol condensation of acetone"],
+    mols: ["Cumene", "Cumene hydroperoxide"],
+    explain: "Air autoxidation gives the hydroperoxide; with acid, the Hock rearrangement (phenyl migrating onto oxygen) splits it into phenol and acetone. The main industrial route to phenol.",
+  },
+  'c3-4-11': {
+    q: "Photochlorination of alkanes in benzene solvent greatly raises the selectivity for tertiary C–H. Why?",
+    choices: ["A Cl•–benzene π complex: less reactive, more selective", "Benzene captures every Cl• before it can react", "Benzene's polarity destabilizes the transition state", "Benzene absorbs the light that would make Cl•"],
+    explain: "Russell's solvent effect. Complexed and “calmed down,” Cl• starts picking weaker C–H bonds. A classic case of lower reactivity giving higher selectivity.",
+  },
+  'c3-4-12': {
+    q: "Why does cyclobutadiene adopt a rectangular rather than square structure?",
+    choices: ["A 4π square is antiaromatic; a rectangle localizes bonds", "A rectangle relieves the angle strain of the ring", "It avoids steric repulsion between the hydrogens", "Two of its four carbons are actually sp³"],
+    mols: ["Cyclobutadiene"],
+    explain: "As a square, two degenerate orbitals each hold one electron. Distorting to a rectangle lifts the degeneracy so both electrons can pair in the lower orbital. An example of adopting an un-aromatic shape to escape antiaromaticity.",
+  },
+  'c3-4-13': {
+    q: "How do you estimate benzene's resonance energy from the heat of hydrogenation of cyclohexene (about 120 kJ/mol)?",
+    choices: ["Compare 3 × 120 = 360 with benzene's measured ~208", "Multiply cyclohexene's value by six and compare", "Use benzene's heat of combustion on its own", "It can't be found from heats of hydrogenation"],
+    mols: ["Cyclohexene", "Benzene"],
+    explain: "Treat hypothetical “cyclohexatriene” as 360 kJ/mol. Benzene is about 150 kJ/mol more stable than three double bonds would predict. It would lose this aromatic stabilization energy, which is why benzene avoids addition.",
+  },
+  'c3-4-14': {
+    q: "In toluene/benzene competition, nitration gives a rate ratio of about 25 : 1, but uncatalyzed bromination (in acetic acid) gives several hundred : 1. What does this show?",
+    choices: ["More reactive electrophiles are less selective", "Nitration is actually the slower reaction", "Bromination goes by a radical mechanism", "Toluene is unusually hard to nitrate"],
+    mols: ["Toluene", "Benzene"],
+    explain: "NO₂⁺ is so reactive that its transition state is early, and differences in substrate electron density barely matter. A weak electrophile (Br₂ itself) has a late transition state, so differences in activation show up strongly. Partial rate factors show the same trend.",
+  },
+  'c3-4-15': {
+    q: "When an aryltrimethylsilane (ArSiMe₃) is treated with an electrophile, where does substitution tend to occur?",
+    choices: ["At the ipso carbon; SiMe₃⁺ is lost", "At the position meta to SiMe₃", "Only at the position para to SiMe₃", "On the silicon atom itself"],
+    mols: ["Example: phenyltrimethylsilane"],
+    explain: "In the σ complex from ipso attack, the C–Si bond hyperconjugates with the adjacent positive charge. SiMe₃⁺ then leaves instead of H⁺. Useful for placing a substituent at a chosen position.",
+  },
+  'c3-4-16': {
+    q: "Nitrating aniline in concentrated sulfuric acid gives a large share of meta product (over 40%). Why?",
+    choices: ["It is protonated to –NH₃⁺, a meta director", "NH₂ is really a meta director to begin with", "NO₂⁺ attacks nitrogen first, then migrates", "Sulfonation takes place before nitration"],
+    mols: ["Aniline", "Anilinium ion"],
+    explain: "–NH₃⁺ has no lone pair to give the ring and withdraws electrons with its positive charge. The little free aniline left still gives ortho/para product, so you get a mixture. For a clean reaction, make acetanilide first, then nitrate.",
+  },
+  'c3-4-17': {
+    q: "Why does electrophilic substitution of naphthalene (nitration, etc.) occur mainly at position 1 (α)?",
+    choices: ["More σ-complex structures keep the other ring benzenoid", "Position 2 is more sterically crowded", "Position 1 has lower electron density", "2-attack destroys aromaticity in both rings"],
+    mols: ["Naphthalene"],
+    explain: "For attack at position 1, two resonance structures keep an intact benzene ring; for position 2, only one. So the transition state for 1-attack is lower (kinetic control).",
+  },
+  'c3-4-18': {
+    q: "Acetylation of naphthalene occurs mainly at position 1 in CS₂, but mainly at position 2 in nitrobenzene. What is the main reason?",
+    choices: ["A bulky solvent–reagent complex avoids the peri-crowded C1", "Nitrobenzene electronically activates position 2", "In CS₂ the reaction switches to a radical path", "CS₂ boils higher, favoring the 1-isomer"],
+    mols: ["Naphthalene"],
+    explain: "Position 1 is electronically favored but crowded by the H at position 8 on the other ring (the peri position). With a bulky electrophile the steric penalty wins and position 2 dominates. Reversible deacylation of the 1-acetyl isomer is also thought to play a part.",
+  },
+  'c3-4-19': {
+    q: "In SNAr reactions, halogen reactivity runs F ≫ Cl ≈ Br > I, the reverse of SN2. Why?",
+    choices: ["Rate-limiting addition is fastest with electronegative F", "The C–F bond is the weakest carbon–halogen bond", "F⁻ is by far the best halide leaving group", "Small F allows an easy SN2 backside attack"],
+    explain: "C–X breaks only after the rate-determining step. During addition, F's strong inductive effect makes the attacked carbon δ+ and stabilizes the anion formed. That's why 2,4-dinitrofluorobenzene (Sanger's reagent) reacts so well.",
+  },
+  'c3-4-20': {
+    q: "3-Bromoanisole with NaNH₂/liquid NH₃ gives almost only m-anisidine (3-methoxyaniline). Why?",
+    choices: ["Addition putting the − next to OMe is inductively favored", "The OMe group guides NH₂⁻ in by coordination", "It substitutes the Br directly, with no benzyne", "The meta position of anisole is the most electron-rich"],
+    mols: ["3-Bromoanisole", "m-Anisidine"],
+    explain: "Removing the H between OMe and Br forms a benzyne between the carbon next to OMe and the carbon meta to it. When NH₂⁻ adds to the meta end, the aryl anion sits next to OMe and is stabilized by the oxygen's inductive withdrawal.",
+  },
+  'c3-4-21': {
+    q: "Benzoic acid was subjected to Birch reduction. What is the product?",
+    choices: ["Cyclohexa-2,5-diene-1-carboxylic acid", "Cyclohexa-1,4-diene-1-carboxylic acid", "Cyclohexa-1,3-diene-1-carboxylic acid", "Cyclohexanecarboxylic acid"],
+    mols: ["Benzoic acid"],
+    explain: "An electron-withdrawing group pulls the radical anion's negative charge to its own carbon (ipso) and the para position, which get protonated. So COOH ends up on an sp³ carbon: the opposite of an electron donor (anisole).",
+  },
+  'c3-4-22': {
+    q: "What is the currently accepted mechanism of the Sandmeyer reaction (ArN₂⁺ + CuCl → ArCl)?",
+    choices: ["Electron transfer from Cu(I), then an aryl radical", "SN1: Cl⁻ captures a free aryl cation", "SNAr: Cl⁻ attacks the ipso carbon directly", "Elimination to benzyne, then HCl addition"],
+    explain: "The diazonium is reduced by one electron to Ar• and N₂, and Ar• takes Cl from Cu(II)Cl. Biaryl byproducts and the like are evidence for the radical path: a reaction where aromatic and radical chemistry meet.",
+  },
+} });

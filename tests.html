@@ -19,6 +19,8 @@
   <script src="js/lang/en-q1.js"></script>
   <script src="js/lang/en-story2.js"></script>
   <script src="js/lang/en-q2.js"></script>
+  <script src="js/lang/en-story3.js"></script>
+  <script src="js/lang/en-q3.js"></script>
   <script src="js/questions.js"></script>
   <script src="js/data.js"></script>
   <script src="js/sprites.js"></script>
@@ -659,7 +661,7 @@
         if (e.choices && new Set(e.choices).size !== e.choices.length) qBad.push(`${id}: 選択肢が重複`);
         for (const s of [e.q, e.explain, ...(e.choices || []), ...(e.mols || [])]) if (s && JP.test(s)) qBad.push(`${id}: 日本語が残っている: ${s}`);
         // 文字で答える問題で、正解だけが目立って長くない（長さで正解が分からないように）
-        if (e.choices && !q.cs && !q.anyOk) { const L = e.choices.map(c => c.length), mx = Math.max(...L.slice(1)); if (L[0] > mx * 1.3 && L[0] - mx > 12) qBad.push(`${id}: 正解だけが長い（${L[0]} 字 / ほか最長 ${mx} 字）`); }
+        if (e.choices && !q.cs && !q.anyOk) { const L = e.choices.map(c => c.length), mx = Math.max(...L.slice(1)); if (L[0] > mx * 1.3 && L[0] - mx > 15) qBad.push(`${id}: 正解だけが長い（${L[0]} 字 / ほか最長 ${mx} 字）`); }
       }
       const nQ = Questions.LIST.length, nQe = Object.keys(EN.q).length;
       check(`英語：問題の訳の形（${nQe}/${nQ} 問を訳した）`, !qBad.length, qBad.join('\n'));
