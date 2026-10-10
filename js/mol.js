@@ -70,9 +70,52 @@ const Mol = (() => {
       }
     }
   }
+  // SmilesDrawer は、自前の簡単な CIP 順位で R/S を決めてくさびを付けるので、ときどき逆に描く（(R)-1-フェニルエチルアミンなど）。
+  // SMILES の @ / @@ と、描いた位置・くさびから立体を求め直し、逆ならその中心のくさびを裏返す
+  // SMILES での隣の順：前の原子 → [ ] の中の H → 環の閉じの番号（書いた順）→ うしろに続く原子（書いた順）
+  function stereoCheck(g) {
+    const V = g.vertices, out = [], open = {}, rings = {};
+    for (const v of V) for (const rb of v.value.ringbonds || []) {
+      rings[v.id] = rings[v.id] || [];
+      if (open[rb.id] == null) { open[rb.id] = v.id; rings[v.id].push({ k: rb.id, partner: null }); }
+      else { const o = open[rb.id]; delete open[rb.id]; rings[o].find(s => s.k === rb.id && s.partner === null).partner = v.id; rings[v.id].push({ k: rb.id, partner: o }); }
+    }
+    for (const v of V) {
+      const ch = v.value.bracket && v.value.bracket.chirality;
+      if (!ch || !v.value.isStereoCenter) continue;
+      const nb = v.neighbours, isH = id => V[id].value.element === 'H', hId = nb.find(isH), order = [];
+      if (v.parentVertexId != null && nb.includes(v.parentVertexId) && !isH(v.parentVertexId)) order.push(v.parentVertexId);
+      if (v.value.bracket.hcount) order.push(hId != null ? hId : 'h');
+      for (const s of rings[v.id] || []) order.push(s.partner);
+      for (const c of nb.filter(n => !order.includes(n) && !isH(n)).sort((a, b) => a - b)) order.push(c);
+      if (order.length !== 4) continue;
+      const P = v.position;
+      const vs = order.map(n => {
+        if (n === 'h') return null;
+        const q = V[n].position, e = g.getEdge(v.id, n);
+        return [q.x - P.x, -(q.y - P.y), e && e.wedge ? (e.wedge === 'up' ? 1 : -1) : 0];
+      });
+      const hi = vs.indexOf(null);
+      if (hi >= 0) { const o = vs.filter(Boolean); vs[hi] = [0, 1, 2].map(k => -(o[0][k] + o[1][k] + o[2][k])); }
+      // 最初の隣から見て、残り 3 つが時計回り（@@）か反時計回り（@）か
+      const [n0, a, b, c] = vs, sub = u => u.map((x, k) => x - n0[k]), A = sub(a), B = sub(b), C = sub(c);
+      const det = A[0] * (B[1] * C[2] - B[2] * C[1]) - A[1] * (B[0] * C[2] - B[2] * C[0]) + A[2] * (B[0] * C[1] - B[1] * C[0]);
+      out.push({ v, ok: Math.abs(det) > 1e-6 && Math.sign(det) === (ch === '@@' ? 1 : -1) });
+    }
+    return out;
+  }
+  function fixStereo(g) {
+    for (const { v, ok } of stereoCheck(g)) {
+      if (ok) continue;
+      const es = v.neighbours.map(n => g.getEdge(v.id, n)).filter(e => e && e.wedge);
+      // ほかの立体中心とのあいだのくさびは、なるべく触らない
+      const own = es.filter(e => !g.vertices[e.sourceId === v.id ? e.targetId : e.sourceId].value.isStereoCenter);
+      for (const e of own.length ? own : es) e.wedge = e.wedge === 'up' ? 'down' : 'up';
+    }
+  }
   function newDrawer(opts) {
     const drawer = new SmilesDrawer.SvgDrawer(opts), pre = drawer.preprocessor, run = pre.processGraph.bind(pre);
-    pre.processGraph = () => { run(); fixEZ(pre.graph); };
+    pre.processGraph = () => { run(); fixEZ(pre.graph); fixStereo(pre.graph); };
     return drawer;
   }
 
@@ -101,5 +144,5 @@ const Mol = (() => {
     });
   }
 
-  return { svgTag, autoTag, drawAll, newDrawer };
+  return { svgTag, autoTag, drawAll, newDrawer, stereoCheck };
 })();

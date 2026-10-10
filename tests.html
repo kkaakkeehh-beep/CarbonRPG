@@ -438,6 +438,100 @@
     ezSvg.remove();
     check(`構造式の E/Z が正しく描かれる（${ezSmiles.size} 個）`, !ezBad.length, ezBad.join('\n'));
 
+    // ---- 立体中心の R/S：描いた位置とくさびから R/S を求め、RDKit の値と比べる（SmilesDrawer は R/S を描き違えることがある） ----
+    // 表：SMILES → [重原子の番号, 隣の原子を CIP の高い順に（-1 は H）, R/S]。
+    // 環の cis/trans など R/S の付かない立体（表が空）は、SMILES の @ / @@ と描いた形を Mol.stereoCheck で比べる
+    const RS = {
+      'Br[C@H](c1ccccc1)[C@@H](Br)c1ccccc1': [[1, [0, 8, 2, -1], 'R'], [8, [9, 1, 10, -1], 'S']],
+      'C=C[C@@H](C)[C@@H](C)C=C': [[2, [4, 1, 3, -1], 'R'], [4, [2, 6, 5, -1], 'S']],
+      'CC(=O)O[C@@H](C)[C@@H](C)c1ccccc1': [[4, [3, 6, 5, -1], 'S'], [6, [4, 8, 7, -1], 'S']],
+      'CC(=O)O[C@@H](C)[C@H](C)c1ccccc1': [[4, [3, 6, 5, -1], 'S'], [6, [4, 8, 7, -1], 'R']],
+      'CC(=O)O[C@@H]1C=C[C@H](OC(C)=O)C1': [[4, [3, 5, 12, -1], 'S'], [7, [8, 6, 12, -1], 'R']],
+      'CC(=O)O[C@@H]1CCCC[C@H]1OC(C)=O': [[4, [3, 9, 5, -1], 'R'], [9, [10, 4, 8, -1], 'R']],
+      'CC(=O)O[C@@H]1CCCC[C@H]1OS(=O)(=O)c1ccc(C)cc1': [[4, [3, 9, 5, -1], 'R'], [9, [10, 4, 8, -1], 'R']],
+      'CC(=O)O[C@@H]1C[C@@H]2CC[C@H]1C2': [[4, [3, 9, 5, -1], 'R'], [6, [5, 10, 7, -1], 'R'], [9, [4, 10, 8, -1], 'S']],
+      'CC(=O)O[C@H]1CCCC[C@H]1OC(C)=O': [[4, [3, 9, 5, -1], 'S'], [9, [10, 4, 8, -1], 'R']],
+      'CC(=O)O[C@H]1C[C@@H]2CC[C@H]1C2': [[4, [3, 9, 5, -1], 'S'], [6, [5, 10, 7, -1], 'R'], [9, [4, 10, 8, -1], 'S']],
+      'CC(C)(C)[C@H]1CC[C@@H](Cl)CC1': [],
+      'CC(C)(C)[C@H]1CC[C@H](Cl)CC1': [],
+      'CC(C)[C@@H]1CC[C@@H](C)C[C@H]1Cl': [[3, [9, 1, 4, -1], 'S'], [6, [8, 5, 7, -1], 'R'], [9, [10, 3, 8, -1], 'R']],
+      'CC(C)[C@@H]1CC[C@@H](C)C[C@H]1O': [[3, [9, 1, 4, -1], 'S'], [6, [8, 5, 7, -1], 'R'], [9, [10, 3, 8, -1], 'R']],
+      'CCC[C@](C)(Br)CC': [[3, [5, 2, 6, 4], 'R']],
+      'CCOC(=O)[C@H](O)[C@@H](O)C(=O)OCC': [[5, [6, 3, 7, -1], 'R'], [7, [8, 9, 5, -1], 'R']],
+      'CC[C@@H](Br)[C@@H](C)Br': [[2, [3, 4, 1, -1], 'R'], [4, [6, 2, 5, -1], 'R']],
+      'CC[C@@H](C)O': [[2, [4, 1, 3, -1], 'R']],
+      'CC[C@H](Br)[C@@H](C)Br': [[2, [3, 4, 1, -1], 'S'], [4, [6, 2, 5, -1], 'R']],
+      'CC[C@H](C)O': [[2, [4, 1, 3, -1], 'S']],
+      'COC(=O)[C@@H]1CC=CC[C@@H]1C(=O)OC': [[4, [2, 9, 5, -1], 'R'], [9, [10, 4, 8, -1], 'S']],
+      'COC(=O)[C@@H]1CC=CC[C@H]1C(=O)OC': [[4, [2, 9, 5, -1], 'R'], [9, [10, 4, 8, -1], 'R']],
+      'C[C@@H](Br)CC': [[1, [2, 3, 0, -1], 'R']],
+      'C[C@@H](Br)[C@@H](Br)C': [[1, [2, 3, 0, -1], 'R'], [3, [4, 1, 5, -1], 'S']],
+      'C[C@@H](Br)[C@H](Br)C': [[1, [2, 3, 0, -1], 'R'], [3, [4, 1, 5, -1], 'R']],
+      'C[C@@H](C#N)CC': [[1, [2, 4, 0, -1], 'R']],
+      'C[C@@H](N)c1ccccc1': [[1, [2, 3, 0, -1], 'R']],
+      'C[C@@H](N=[N+]=[N-])CC': [[1, [2, 5, 0, -1], 'R']],
+      'C[C@@H](O)CC': [[1, [2, 3, 0, -1], 'R']],
+      'C[C@@H](O)CCCCCC': [[1, [2, 3, 0, -1], 'R']],
+      'C[C@@H](O)CO': [[1, [2, 3, 0, -1], 'R']],
+      'C[C@@H](O)[C@@H](C)O': [[1, [2, 3, 0, -1], 'R'], [3, [5, 1, 4, -1], 'R']],
+      'C[C@@H](O)[C@H](C)O': [[1, [2, 3, 0, -1], 'R'], [3, [5, 1, 4, -1], 'S']],
+      'C[C@@H]1C=CC=C[C@@H]1C': [[1, [2, 6, 0, -1], 'S'], [6, [5, 1, 7, -1], 'R']],
+      'C[C@@H]1C=CC=C[C@H]1C': [[1, [2, 6, 0, -1], 'S'], [6, [5, 1, 7, -1], 'S']],
+      'C[C@@H]1C=C[C@@H]1C': [[1, [2, 4, 0, -1], 'S'], [4, [3, 1, 5, -1], 'R']],
+      'C[C@@H]1C=C[C@H]1C': [[1, [2, 4, 0, -1], 'S'], [4, [3, 1, 5, -1], 'S']],
+      'C[C@@H]1CCCC[C@H]1C': [[1, [6, 2, 0, -1], 'R'], [6, [1, 5, 7, -1], 'R']],
+      'C[C@@H]1C[C@@H]1C': [[1, [3, 2, 0, -1], 'R'], [3, [1, 2, 4, -1], 'S']],
+      'C[C@@H]1C[C@H]1C': [[1, [3, 2, 0, -1], 'R'], [3, [1, 2, 4, -1], 'R']],
+      'C[C@H](Br)CC': [[1, [2, 3, 0, -1], 'S']],
+      'C[C@H](Br)[C@@H](Br)C': [[1, [2, 3, 0, -1], 'S'], [3, [4, 1, 5, -1], 'S']],
+      'C[C@H](C#N)CC': [[1, [2, 4, 0, -1], 'S']],
+      'C[C@H](N=[N+]=[N-])CC': [[1, [2, 5, 0, -1], 'S']],
+      'C[C@H](O)CC': [[1, [2, 3, 0, -1], 'S']],
+      'C[C@H](O)CCC': [[1, [2, 3, 0, -1], 'S']],
+      'C[C@H](O)CCCCCC': [[1, [2, 3, 0, -1], 'S']],
+      'C[C@]12CC[C@H]3[C@@H](CCC4=CC(=O)CC[C@@]43C)[C@@H]1CC[C@@H]2O': [[1, [19, 16, 2, 0], 'S'], [4, [14, 5, 3, -1], 'S'], [5, [16, 4, 6, -1], 'R'], [14, [8, 4, 13, 15], 'R'], [16, [1, 5, 17, -1], 'S'], [19, [20, 1, 18, -1], 'S']],
+      'Cc1c(C)c2c(c(C)c1O)CC[C@@](C)(CCC[C@H](C)CCC[C@H](C)CCCC(C)C)O2': [[12, [30, 11, 14, 13], 'R'], [17, [16, 19, 18, -1], 'R'], [22, [21, 24, 23, -1], 'R']],
+      'Cc1ccc(S(=O)(=O)O[C@@H](C)[C@H](C)c2ccccc2)cc1': [[9, [8, 11, 10, -1], 'S'], [11, [9, 13, 12, -1], 'R']],
+      'Cc1ccc(S(=O)(=O)O[C@@H]2CCCC[C@H]2C)cc1': [[9, [8, 14, 10, -1], 'R'], [14, [9, 13, 15, -1], 'R']],
+      'Cc1ccc(S(=O)(=O)O[C@H]2CC[C@@H](C(C)(C)C)CC2)cc1': [],
+      'Cc1ccc(S(=O)(=O)O[C@H]2CC[C@H](C(C)(C)C)CC2)cc1': [],
+      'O=C(O)[C@@H](O)[C@@H](O)C(=O)O': [[3, [4, 1, 5, -1], 'S'], [5, [6, 7, 3, -1], 'R']],
+      'O=C(O)[C@@H](O)[C@H](O)C(=O)O': [[3, [4, 1, 5, -1], 'S'], [5, [6, 7, 3, -1], 'S']],
+      'O=C(O)[C@H](O)[C@@H](O)C(=O)O': [[3, [4, 1, 5, -1], 'R'], [5, [6, 7, 3, -1], 'R']],
+      'O=C1N[C@@H](Cc2ccccc2)CO1': [[3, [2, 11, 4, -1], 'S']],
+      'O=C[C@H](O)CO': [[2, [3, 1, 4, -1], 'R']],
+      'O=S(=O)(O[C@H]1C[C@@H]2CC[C@H]1C2)c1ccc(Br)cc1': [[4, [3, 9, 5, -1], 'S'], [6, [5, 10, 7, -1], 'R'], [9, [4, 10, 8, -1], 'S']],
+    };
+    const rsBad = [], rsSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    document.body.appendChild(rsSvg);
+    const rsSmiles = new Set(Questions.LIST.flatMap(q => [q.smiles, ...(q.cs || []), ...(q.cm || []), ...(q.mols || []).map(m => m[1])]).filter(x => x && x.includes('@')));
+    let rsN = 0;
+    for (const smi of rsSmiles) {
+      if (!RS[smi]) { rsBad.push(`${smi}: 期待値の表にない`); continue; }
+      SmilesDrawer.parse(smi, tree => {
+        const dr = Mol.newDrawer({ width: 200, height: 140, padding: 6, bondLength: 22, compactDrawing: false, themes: { dq: {} } });
+        dr.draw(tree, rsSvg, 'dq');
+        const g = dr.preprocessor.graph, V = g.vertices, heavy = V.filter(v => v.value.element !== 'H');
+        if (!RS[smi].length) {
+          const r = Mol.stereoCheck(g); rsN += r.length;
+          if (!r.length) rsBad.push(`${smi}: 立体中心が見つからない`);
+          r.filter(x => !x.ok).forEach(x => rsBad.push(`${smi}: ${x.v.id} 番の頂点の立体が SMILES と逆に描かれる`));
+        }
+        for (const [ci, order, want] of RS[smi]) {
+          const cv = heavy[ci], P = cv.position, hN = cv.neighbours.find(n => V[n].value.element === 'H');
+          const vec = id => { const q = V[id].position, e = g.getEdge(cv.id, id); return [q.x - P.x, P.y - q.y, e && e.wedge ? (e.wedge === 'up' ? 1 : -1) : 0]; };
+          const vs = order.map(n => (n === -1 ? (hN != null ? vec(hN) : null) : vec(heavy[n].id)));
+          if (!vs[3]) vs[3] = [0, 1, 2].map(k => -(vs[0][k] + vs[1][k] + vs[2][k]));
+          const sub = u => u.map((x, k) => x - vs[3][k]), A = sub(vs[0]), B = sub(vs[1]), C = sub(vs[2]);
+          const det = A[0] * (B[1] * C[2] - B[2] * C[1]) - A[1] * (B[0] * C[2] - B[2] * C[0]) + A[2] * (B[0] * C[1] - B[1] * C[0]);
+          const got = Math.abs(det) < 1e-6 ? '平面' : det < 0 ? 'R' : 'S';
+          rsN++; if (got !== want) rsBad.push(`${smi}: ${ci} 番の原子が ${want} のはずが ${got} に描かれる`);
+        }
+      }, () => rsBad.push(`${smi}: 読めない`));
+    }
+    rsSvg.remove();
+    check(`構造式の R/S が正しく描かれる（${rsSmiles.size} 個、立体中心 ${rsN} か所）`, !rsBad.length, rsBad.join('\n'));
+
     out.insertAdjacentHTML('afterbegin', `<h2 class="${fail ? 'ng' : 'ok'}" id="summary">${pass} 件成功 / ${fail} 件失敗</h2>`);
   </script>
 </body>
