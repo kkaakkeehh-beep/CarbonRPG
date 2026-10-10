@@ -32,19 +32,44 @@
       diff, party: [], owned: [], cfg: null, hp: BASE_HP, maxHp: BASE_HP, lv: 1, exp: 0, money: 0, skillLv: {},
       items: { coffee: 1, energy: 0, book: 0 }, map: 'lab', x: 5, y: 5, dir: 'up',
       flags: {}, used: {}, stats: { correct: 0, total: 0 }, chStats: {}, notebook: {}, topics: {}, ch: 1,
+      flip5: true,   // 第 5 章のマップを折り返したあとのセーブ（fixDistrict）
     };
   }
   // 古いセーブにない項目を補う
   function normalize(s) {
     const d = freshState(s.diff || 2);
-    for (const k of Object.keys(d)) if (s[k] === undefined) s[k] = d[k];
+    for (const k of Object.keys(d)) if (s[k] === undefined && k !== 'flip5') s[k] = d[k];
     for (const id of s.party) if (!s.skillLv[id]) s.skillLv[id] = 1;
     for (const id of s.party) if (!s.owned.includes(id)) s.owned.push(id);
     for (const id of Object.keys(ITEMS)) if (s.items[id] === undefined) s.items[id] = 0;
     // 問題の ID が変わったときに、ノートや出題の記録に残った古い ID を消す（練習で読み込めず止まらないように）
     const ids = new Set(Questions.LIST.map(q => q.id));
     for (const book of [s.notebook, s.used]) for (const id of Object.keys(book)) if (!ids.has(id)) delete book[id];
+    fixDistrict(s);
     return s;
+  }
+  // 第 5 章のマップを上下（タンクは左右）に折り返す前のセーブ：住人やカーボが、壁・閉じた扉・別の部屋に入ってしまう。
+  // おかしな場所にいたら、位置を折り返す。それでも合わない住人の部屋は、はじめに戻す
+  const FLIP5 = { boeki: 14, bridge5: 12, orgL: 15, aqL: 15, haikan: 14, hiroba: 13, hoshi: 11, hannou: 13 };
+  function fixDistrict(s) {
+    const E = Maps.EXTRACT, solidAt = (mid, x, y) => { const ch = MAPS[mid].grid[y] && MAPS[mid].grid[y][x]; return !ch || Sprites.SOLID.has(ch); };
+    const okAt = (id, p) => {
+      const mid = E.maps[p.layer];
+      return !solidAt(mid, p.x, p.y) && E.roomAt(p.y) === E.residents[id].room
+        && !MAPS[mid].events.some(e => e.x === p.x && e.y === p.y && e.on === 'bump' && (!e.when || e.when(s.flags)));
+    };
+    const first = !s.flip5; s.flip5 = true;
+    if (first && MAPS[s.map] && solidAt(s.map, s.x, s.y)) {
+      if (FLIP5[s.map] && !solidAt(s.map, s.x, FLIP5[s.map] - 1 - s.y)) s.y = FLIP5[s.map] - 1 - s.y;
+      else if (s.map === 'tank5' && !solidAt(s.map, 12 - s.x, s.y)) s.x = 12 - s.x;
+    }
+    if (!s.c5x) return;
+    const res = Object.entries(s.c5x.res);
+    if (first && !res.every(([id, p]) => okAt(id, p))) {
+      const flipped = res.map(([id, p]) => [id, { x: p.x, y: 14 - p.y, layer: p.layer }]);
+      if (flipped.every(([id, p]) => okAt(id, p))) { s.c5x.res = Object.fromEntries(flipped); s.c5x.follow = null; }
+    }
+    for (const r of E.rooms) if (Object.entries(s.c5x.res).some(([id, p]) => E.residents[id].room === r.id && !okAt(id, p))) E.resetRoom(s.c5x, r.id);
   }
   function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* 保存できない環境でも遊べる */ } }
   function loadSave() { try { const j = localStorage.getItem(SAVE_KEY); return j ? JSON.parse(j) : null; } catch (e) { return null; } }
