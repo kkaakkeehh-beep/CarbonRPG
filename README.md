@@ -1,12 +1,15 @@
-# CarbonRPG — 炭素の勇者
+# CarbonRPG — 炭素の勇者 / Hero of Carbon
 
-有機化学 RPG の試作版です。主人公は 4 本の手を持つ sp³ 炭素「カーボ」。
+> **English:** An organic chemistry RPG for people who know their chemistry. Carbo, an sp³ carbon with four hands, bonds with friends to become a stereocenter and takes on the Meso Order with chemistry questions: answer right to damage the enemy, answer wrong and you take the hit. All 5 chapters, 443 questions and the full story are available in English. Switch languages with the buttons at the top right of the title screen (English is chosen automatically if your browser isn't set to Japanese).
+
+有機化学 RPG です。主人公は 4 本の手を持つ sp³ 炭素「カーボ」。
 仲間と結合して不斉炭素になり、世界から「利き手」を消そうとする闇の組織 **メソ教団** に、有機化学の問題で挑みます。
 
 **第1章「求核の森」**、**第2章「カルボニル港」**、**第3章「芳香族の王国」**、**第4章「鏡の回廊」**、**第5章「廃液街」** の全 5 章を遊べます。章をクリアすると、クリア画面から次の章へ進めます。最後の章をクリアしたあとも、その後の世界を歩けます。
 
 - 遊ぶ: https://kkaakkeehh-beep.github.io/CarbonRPG/
 - 手元で遊ぶ: `index.html` をブラウザで開くだけ（ビルド不要）
+- 言語：日本語 / English。タイトル画面の右上で切り替える（ブラウザの言語が日本語でなければ、はじめは英語になる）。物語・問題・画面のすべてに英語版がある
 
 ## 遊び方
 
@@ -57,8 +60,10 @@ js/story.js       第1章〜第5章の台本
 js/sprites.js     タイルとキャラクターの描画（画像ファイルなし）
 js/data.js        仲間・敵・アイテム・レベル
 js/sound.js       BGM と効果音（Web Audio）
-js/questions.js   問題（第1章〜第4章で 347 問。各章・各難易度 20 問以上。構造式で答える問題を含む。第5章の物語の中の決まった問題 8 問）
+js/questions.js   問題（443 問。第1章 83 問、第2〜4章 88 問ずつ、第5章 88 問＋物語の中の決まった問題 8 問。各章・各難易度 20 問以上。構造式で答える問題を含む）
 js/mol.js         構造式の描画（SmilesDrawer）
+js/i18n.js        言語の切り替え（中身は日本語のまま持ち、画面に出す直前に訳す）
+js/lang/          英語の訳（en-ui：画面・名前・敵・マップ、en-storyN：第N章の台本、en-qN：第N章の問題）
 lib/              SmilesDrawer 2.1.7（MIT License）
 tests.html        問題データ・マップ・台本のテスト
 ```
@@ -69,7 +74,7 @@ tests.html        問題データ・マップ・台本のテスト
 py -m http.server 8765
 ```
 
-で起動して `http://localhost:8765/tests.html` を開くと、37 件のテストが走ります。
+で起動して `http://localhost:8765/tests.html` を開くと、52 件のテストが走ります。英語の訳がそろっていること（名前・セリフ・マップの文字・分野、台本の行の数、問題の選択肢の数、正解だけが長い選択肢がないこと）も検査します。
 問題データの形式と構造式、章・分野ごとの問題数、マップの形とイベントの参照先、キャラクターの絵、台本の参照先、BGM のデータ、「目的」の案内が最後まで途切れないこと、仲間の順位と技、話者の顔、鏡の広間の部屋と分液区の部屋がどれも解けることを検査します。
 
 ## クレジット
