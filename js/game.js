@@ -197,10 +197,10 @@
     const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
     for (const [id, x, y, sz] of [['cation', 2, 14, 64], ['thief', 56, 44, 48], ['radika', 214, 44, 48], ['achiral', 250, 4, 72]])
       Sprites.drawChar(g, id, x, y, sz, { colors: TITLE_COLORS, dir: 'down' });
-    g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(70, 40, 130, .55)'; g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(70, 40, 130, .42)'; g.fillRect(0, 0, W, H);
     g.globalCompositeOperation = 'destination-in';
     const fade = g.createLinearGradient(0, 0, 0, H);
-    fade.addColorStop(0, 'rgba(0,0,0,.5)'); fade.addColorStop(0.55, 'rgba(0,0,0,.42)'); fade.addColorStop(0.8, 'rgba(0,0,0,0)');
+    fade.addColorStop(0, 'rgba(0,0,0,.78)'); fade.addColorStop(0.55, 'rgba(0,0,0,.68)'); fade.addColorStop(0.82, 'rgba(0,0,0,0)');
     g.fillStyle = fade; g.fillRect(0, 0, W, H);
     villainCv = c;
     return c;
