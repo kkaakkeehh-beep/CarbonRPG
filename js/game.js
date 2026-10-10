@@ -545,7 +545,7 @@
   }
 
   // ---- 会話ログ（読んだ台詞を、あとから見返せるように残す） ----
-  // 訳す前の日本語で残し、見るときにいまの言語へ訳す（途中で言語を変えても混ざらない）。新しく始めたら消す
+  // 訳す前の日本語で残し、見るときにいまの言語へ訳す（途中で言語を変えても混ざらない）。残すのはいまの章の分だけで、新しく始めたときと次の章へ進んだときに消す
   // 1 行の形: { w, t, s, k } 台本の行（s は場面、k は場面の中の何行目か）, { m } メッセージ, { r } バトルの会話, { c } 選んだ選択肢
   // f は、〈自分〉などを埋めるための、そのときの状態
   const LOG_KEY = 'carbonrpg-log', LOG_MAX = 300;
@@ -1823,25 +1823,25 @@
     clearNote() { UI.noteFromClear = true; UI.screen = 'note'; render(); },
     choose(i) { choose(i); },
     toCh2() {
-      S.ch = 2; S.hp = S.maxHp; UI.clearCh = null;
+      S.ch = 2; S.hp = S.maxHp; UI.clearCh = null; clearLog();
       S.map = 'town'; S.x = 19; S.y = 5; S.dir = 'right';
       save(); UI.screen = 'world'; render();
       if (!S.flags.ch2) playScene('c2_start');
     },
     toCh3() {
-      S.ch = 3; S.hp = S.maxHp; UI.clearCh = null;
+      S.ch = 3; S.hp = S.maxHp; UI.clearCh = null; clearLog();
       S.map = 'port'; S.x = 13; S.y = 15; S.dir = 'left';
       save(); UI.screen = 'world'; render();
       if (!S.flags.ch3) playScene('c3_start');
     },
     toCh4() {
-      S.ch = 4; S.hp = S.maxHp; UI.clearCh = null;
+      S.ch = 4; S.hp = S.maxHp; UI.clearCh = null; clearLog();
       S.map = 'lab'; S.x = 5; S.y = 5; S.dir = 'up';
       save(); UI.screen = 'world'; render();
       if (!S.flags.ch4) playScene('c4_start');
     },
     toCh5() {
-      S.ch = 5; S.hp = S.maxHp; UI.clearCh = null;
+      S.ch = 5; S.hp = S.maxHp; UI.clearCh = null; clearLog();
       S.map = 'lab'; S.x = 5; S.y = 5; S.dir = 'up';
       save(); UI.screen = 'world'; render();
       if (!S.flags.ch5) playScene('c5_start');
