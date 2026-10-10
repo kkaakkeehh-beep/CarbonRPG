@@ -245,6 +245,8 @@ p { margin: .4em 0; }
 }
 .diff-btn:hover { border-color: var(--accent); }
 .diff-name { font-size: 20px; color: var(--accent); }
+.dev-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 12px; max-width: 560px; }
+.dev-row .btn.dev-on { border-color: var(--accent); color: var(--accent); }
 
 .world { max-width: 720px; margin: 0 auto; }
 .hud {

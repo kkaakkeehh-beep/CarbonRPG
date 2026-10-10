@@ -105,7 +105,7 @@
   // =================================================================
   function render() {
     stopTyping();
-    const fn = { title: vTitle, diff: vDiff, party: vParty, world: vWorld, battle: vBattle, over: vOver, clear: vClear, note: vNote, ending: vEnding }[UI.screen];
+    const fn = { title: vTitle, diff: vDiff, dev: vDev, party: vParty, world: vWorld, battle: vBattle, over: vOver, clear: vClear, note: vNote, ending: vEnding }[UI.screen];
     app.innerHTML = fn();
     if (UI.screen === 'world') { setupCanvas(); renderOverlay(); }
     if (UI.screen === 'battle') { drawEnemy(); drawTalkFaces(); startTyping(); }
@@ -136,7 +136,7 @@
     return `<div class="title-screen">
       <div class="title-hero">
         <canvas id="tcv" width="320" height="168" aria-hidden="true"></canvas>
-        <div class="title-logo">
+        <div class="title-logo" data-act="devTap">
           <h1 class="logo" data-text="CarbonRPG">CarbonRPG</h1>
           <p class="logo-sub">炭 素 の 勇 者</p>
         </div>
@@ -254,6 +254,34 @@
       <p class="center dim small">バトルで出る問題の難しさが変わります。あとから変えることはできません。</p>
       <div class="diff-list">${[1, 2, 3, 4].map(d => `<button class="diff-btn" data-act="pickDiff" data-arg="${d}">
         <span class="diff-name">${Questions.DIFFS[d].name}</span><span class="small dim">${Questions.DIFFS[d].desc}</span></button>`).join('')}</div>`;
+  }
+
+  // ---- 開発者用：章を選んで始める（タイトルのロゴを 2 秒以内に 5 回タップ） ----
+  const DEV_CH = { 1: '第1章「求核の森」', 2: '第2章「カルボニル港」', 3: '第3章「芳香族の王国」', 4: '第4章「鏡の回廊」', 5: '第5章「廃液街」', 6: '全章クリアのあと' };
+  function vDev() {
+    const D = UI.dev, pick = (act, v, on, label) => `<button class="btn${on ? ' dev-on' : ''}" data-act="${act}" data-arg="${v}">${label}</button>`;
+    return `<h2 class="screen-title">開発者メニュー</h2>
+      <p class="center dim small">選んだ章のはじめから遊べます。前の章までは、クリアしたことになります（レベル・研究費・仲間も、ふつうに遊んだときに合わせる）。<br>いまのセーブは上書きされます。</p>
+      <div class="dev-row">難易度　${[1, 2, 3, 4].map(d => pick('devDiff', d, D.diff === d, Questions.DIFFS[d].name)).join('')}</div>
+      <div class="dev-row">立体　${['R', 'S'].map(c => pick('devCfg', c, D.cfg === c, `(${c})`)).join('')}<span class="small dim">（第1章は仲間選びで決まる）</span></div>
+      <div class="diff-list">${Object.entries(DEV_CH).map(([n, t]) => `<button class="diff-btn" data-act="devStart" data-arg="${n}">
+        <span class="diff-name">${t}</span><span class="small dim">${n === '1' ? 'はじめから' : n === '6' ? `研究所から。Lv${DevStart.lv[5]}` : `Lv${DevStart.lv[n - 1]}　研究費 ${DevStart.money[n - 1]} 円`}</span></button>`).join('')}</div>
+      <div class="center"><button class="btn" data-act="toTitle">もどる</button></div>`;
+  }
+  // 第 n 章のはじめ（n = 6 は全章クリアのあと）の状態をつくる
+  function devState(n, diff, cfg) {
+    const s = freshState(diff), done = n - 1;
+    for (let c = 1; c <= done; c++) for (const f of DevStart.flags[c]) s.flags[f] = true;
+    s.lv = DevStart.lv[done]; s.money = DevStart.money[done]; s.items = { ...s.items, ...DevStart.items };
+    const party = [...DevStart.party];
+    if (heroCfg(party) !== cfg) [party[2], party[3]] = [party[3], party[2]];
+    s.party = party; s.owned = [...party]; s.cfg = heroCfg(party);
+    s.maxHp = s.hp = maxHpFor(s.lv, s.cfg);
+    // レベルアップのたびに技を 1 つ強くしたことにする（4 人に順に）
+    party.forEach(id => { s.skillLv[id] = 1; });
+    for (let i = 0; i < s.lv - 1; i++) { const id = party[i % 4]; s.skillLv[id] = Math.min(SKILL_MAX, s.skillLv[id] + 1); }
+    s.ch = Math.min(5, n);
+    return s;
   }
 
   function vParty() {
@@ -1534,6 +1562,24 @@
   // =================================================================
   const actions = {
     newGame() { UI.screen = 'diff'; render(); },
+    devTap() {
+      const now = Date.now();
+      UI.devTaps = [...(UI.devTaps || []).filter(t => now - t < 2000), now];
+      if (UI.devTaps.length < 5 || typeof DevStart === 'undefined') return;
+      UI.devTaps = []; UI.dev = UI.dev || { diff: 2, cfg: 'S' };
+      Sound.se('level'); UI.screen = 'dev'; render();
+    },
+    devDiff(d) { UI.dev.diff = +d; render(); },
+    devCfg(c) { UI.dev.cfg = c; render(); },
+    devStart(n) {
+      n = +n;
+      if (n === 1) return actions.pickDiff(UI.dev.diff);
+      S = devState(n, UI.dev.diff, UI.dev.cfg);
+      UI.shadow = null; UI.scene = null; UI.msg = null; UI.menu = false; UI.shop = false; UI.clearCh = null;
+      if (n <= 5) return actions[`toCh${n}`]();
+      S.map = 'lab'; S.x = 5; S.y = 5; S.dir = 'up';
+      save(); UI.screen = 'world'; render();
+    },
     continue() {
       const s = loadSave();
       if (!s) return;

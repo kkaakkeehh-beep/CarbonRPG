@@ -20,6 +20,7 @@
   <script src="js/story.js"></script>
   <script src="js/sound.js"></script>
   <script src="js/mol.js"></script>
+  <script src="js/dev.js"></script>
   <script>
     const out = document.getElementById('out');
     let pass = 0, fail = 0;
@@ -258,6 +259,27 @@
       if (!g || !g.t.includes(want)) goalBad.push(`${Object.keys(fl).join(',')} のとき、目的が「${g && g.t}」（期待：${want}）`);
     }
     check('いまの目的が物語の最後まで途切れない', !goalBad.length, goalBad.join('\n'));
+
+    // ---- 開発者メニュー：章のはじめの状態のフラグが、物語のどこかで立つものか。前の章の目的が出ないか ----
+    const devBad = [], setFlags = new Set(['started']);
+    for (const steps of Object.values(Story.SCENES)) for (const st of steps) if (st.do === 'flag') setFlags.add(st.f);
+    for (const m of Object.values(Maps.MAPS)) {
+      for (const o of [].concat(m.onEnter || [])) setFlags.add(o.flag);
+      for (const r of (m.mirror && m.mirror.rooms) || []) setFlags.add(r[2]);   // 鏡の広間の部屋
+    }
+    for (const L of Maps.EXTRACT.locks) setFlags.add(L.flag);                   // 分液区の扉
+    for (const id of Object.keys(Maps.EXTRACT.residents)) setFlags.add('c5t_' + id);   // 分液区の住人と話した
+    for (const [ch, fs] of Object.entries(DevStart.flags)) {
+      for (const f of fs) if (!setFlags.has(f) && !/^(clear\d?|ch\d)$/.test(f)) devBad.push(`第 ${ch} 章の ${f} は、どこでも立たない`);
+      if (!fs.includes(ch === '1' ? 'clear' : `clear${ch}`)) devBad.push(`第 ${ch} 章のフラグに clear がない`);
+      if (!DevStart.lv[ch] || DevStart.money[ch] == null) devBad.push(`第 ${ch} 章のレベルか研究費がない`);
+    }
+    for (let n = 2; n <= 6; n++) {
+      const fl = Object.fromEntries(Object.entries(DevStart.flags).filter(([c]) => +c < n).flatMap(([, fs]) => fs.map(f => [f, true])));
+      const g = Maps.goalOf(fl);
+      if (n === 6 ? g : !g) devBad.push(`第 ${n} 章のはじめの目的が「${g && g.t}」`);
+    }
+    check('開発者メニューで選べる章のはじめの状態', !devBad.length, devBad.join('\n'));
 
     // ---- 鏡の広間：どの部屋も、カーボと影が同時にスイッチを踏めるように解ける ----
     const mirBad = [];
