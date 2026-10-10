@@ -30,6 +30,8 @@
   <script src="js/lang/zh-q1.js"></script>
   <script src="js/lang/zh-story2.js"></script>
   <script src="js/lang/zh-q2.js"></script>
+  <script src="js/lang/zh-story3.js"></script>
+  <script src="js/lang/zh-q3.js"></script>
   <script src="js/questions.js"></script>
   <script src="js/data.js"></script>
   <script src="js/sprites.js"></script>
@@ -647,8 +649,8 @@
 
       // {0} {1} の数が、日本語と訳で同じ
       const ph = s => (s.match(/\{\d\}/g) || []).sort().join('');
-      const phBad = Object.entries(tx).filter(([k, v]) => ph(k) !== ph(v)).map(([k, v]) => `${k} → ${v}`);
-      check(`${NAME}：{0} などの埋め込みの数が日本語と同じ`, !phBad.length, phBad.join('\n'));
+      const phBad = Object.entries(tx).filter(([k, v]) => ph(k) !== ph(v) || JP.test(v)).map(([k, v]) => `${k} → ${v}`);
+      check(`${NAME}：{0} などの埋め込みの数が日本語と同じで、訳に日本語が残っていない`, !phBad.length, phBad.join('\n'));
 
       // 台本：t のある行の数が、日本語の台本と同じ
       const scBad = [];
