@@ -1,5 +1,5 @@
 // =============================================================
-// i18n.js — 表示する言語の切り替え（日本語 / English / 简体中文）
+// i18n.js — 表示する言語の切り替え（日本語 / English / 简体中文 / 한국어）
 //
 // ゲームの中身（セーブ・フラグ・分野の名前など）は、すべて日本語のまま持つ。
 // 画面に出す直前に、ここで選んだ言語に置き換える。訳がないところは日本語のまま出す。
@@ -10,18 +10,18 @@
 //   I18N.scene(id)       台本 id の、その言語のセリフ（t のある行を順に並べた配列）
 //   I18N.qv(q)           問題を、いまの言語で見せる形にしたもの（中身の判定には元の q を使う）
 //
-// 訳の本体は js/lang/en-*.js・zh-*.js が I18N.add('en', { text, scenes, q }) の形で足す。
+// 訳の本体は js/lang/en-*.js・zh-*.js・ko-*.js が I18N.add('en', { text, scenes, q }) の形で足す。
 // =============================================================
 const I18N = (() => {
   const KEY = 'carbonrpg-lang';
-  const LANGS = { ja: '日本語', en: 'English', zh: '简体中文' };
+  const LANGS = { ja: '日本語', en: 'English', zh: '简体中文', ko: '한국어' };
   const packs = {};
   let lang = 'ja';
-  // 選んだことがなければ、ブラウザの言語に合わせる（日本語・中国語でなければ英語）
+  // 選んだことがなければ、ブラウザの言語に合わせる（日本語・中国語・韓国語でなければ英語）
   let saved = null;
   try { saved = localStorage.getItem(KEY); } catch (e) { /* 何もしない */ }
   if (LANGS[saved]) lang = saved;
-  else if (typeof navigator !== 'undefined' && navigator.language && !/^ja/i.test(navigator.language)) lang = /^zh/i.test(navigator.language) ? 'zh' : 'en';
+  else if (typeof navigator !== 'undefined' && navigator.language && !/^ja/i.test(navigator.language)) lang = /^zh/i.test(navigator.language) ? 'zh' : /^ko/i.test(navigator.language) ? 'ko' : 'en';
 
   const pack = () => (lang === 'ja' ? null : packs[lang]);
   function add(l, p) {
@@ -55,10 +55,10 @@ const I18N = (() => {
     showLang();
   }
   // ページの言語と、タブの題名
-  const TITLE = { ja: 'CarbonRPG — 炭素の勇者', en: 'CarbonRPG — Hero of Carbon', zh: 'CarbonRPG — 碳之勇者' };
+  const TITLE = { ja: 'CarbonRPG — 炭素の勇者', en: 'CarbonRPG — Hero of Carbon', zh: 'CarbonRPG — 碳之勇者', ko: 'CarbonRPG — 탄소의 용사' };
   const HTML_LANG = { zh: 'zh-Hans' };
   function showLang() { document.documentElement.lang = HTML_LANG[lang] || lang; if (document.getElementById('app')) document.title = TITLE[lang] || TITLE.ja; }
   showLang();
-  // 漢字・かなの言語（1 文字に詰まっているので、会話の文字送りを遅くする）
-  return { LANGS, add, tr, T, say, scene, skipQ, qv, setLang, packs, get lang() { return lang; }, get cjk() { return lang === 'ja' || lang === 'zh'; } };
+  // 漢字・かな・ハングルの言語（1 文字に詰まっているので、会話の文字送りを遅くする）
+  return { LANGS, add, tr, T, say, scene, skipQ, qv, setLang, packs, get lang() { return lang; }, get cjk() { return lang === 'ja' || lang === 'zh' || lang === 'ko'; } };
 })();

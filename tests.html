@@ -36,6 +36,9 @@
   <script src="js/lang/zh-q4.js"></script>
   <script src="js/lang/zh-story5.js"></script>
   <script src="js/lang/zh-q5.js"></script>
+  <script src="js/lang/ko-ui.js"></script>
+  <script src="js/lang/ko-story1.js"></script>
+  <script src="js/lang/ko-q1.js"></script>
   <script src="js/questions.js"></script>
   <script src="js/data.js"></script>
   <script src="js/sprites.js"></script>
@@ -611,10 +614,10 @@
     rsSvg.remove();
     check(`構造式の R/S が正しく描かれる（${rsSmiles.size} 個、立体中心 ${rsN} か所）`, !rsBad.length, rsBad.join('\n'));
 
-    // ---- 訳（英語・中国語） ----
+    // ---- 訳（英語・中国語・韓国語） ----
     // JP: 訳に日本語が残っていないか（中国語は漢字を使うので、かなだけで見る）
     // LONG: 正解だけが目立って長いとみなす字数の差（中国語は 1 字に詰まっているので小さく）
-    for (const [L, NAME, JP, LONG] of [['en', '英語', /[぀-ヿ一-鿿]/, 15], ['zh', '中国語', /[぀-ヿ]/, 6]]) {
+    for (const [L, NAME, JP, LONG] of [['en', '英語', /[぀-ヿ一-鿿]/, 15], ['zh', '中国語', /[぀-ヿ]/, 6], ['ko', '韓国語', /[぀-ヿ一-鿿]/, 10]]) {
       const EN = I18N.packs[L], tx = EN.text, miss = [], JA = /[぀-ヿ一-鿿]/;
       const need = (s, where) => { if (typeof s === 'string' && JA.test(s) && tx[s] === undefined) miss.push(`${where}: ${s}`); };
       // 「名前「台詞」」の行は、行ごとの訳がなければ、名前と台詞に分けて訳す（game.js の trLine）
