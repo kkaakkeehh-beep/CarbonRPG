@@ -40,6 +40,8 @@ I18N.add('en', { text: {
   '攻撃型: 続けて正解するほどダメージが上がる': "Offense: damage rises with each correct answer in a row",
   '防御型: 最大 HP +10、間違えたときのダメージ −25%': "Defense: max HP +10, damage taken on a wrong answer −25%",
   '技「{0}」': "Skill “{0}”",
+  '（{0}）': " ({0}) ",
+  '（エノラスの姿が変わった。出題の分野が変わる）': "(Enolas has changed form. The question topics change.)",
   '{0}「{1}」': "{0} · {1}",
   'まだ仲間になっていない（売店で紹介料 {0} を払うと迎えられる）': "Not an ally yet (can join for an introduction fee of {0} at a shop)",
   '▶ この 4 人と結合しなおす': "▶ Rebond with these 4",

@@ -543,7 +543,7 @@
 
   function vMenu() {
     const party = S.party.map(id => { const c = comp(id), lv = skillLv(id);
-      return `<li><b style="color:${c.color}">${tr(c.name)}</b>（${c.group}）${T('技「{0}」', tr(c.skill.name))}Lv${lv}: ${tr(skillAt(id).desc)}</li>`; }).join('');
+      return `<li><b style="color:${c.color}">${tr(c.name)}</b>${T('（{0}）', c.group)}${T('技「{0}」', tr(c.skill.name))}Lv${lv}: ${tr(skillAt(id).desc)}</li>`; }).join('');
     const items = Object.entries(S.items).filter(([, n]) => n > 0).map(([id, n]) =>
       `<li>${tr(ITEMS[id].name)} ×${n} <span class="dim small">${tr(ITEMS[id].desc)}</span>${ITEMS[id].heal ? ` <button class="btn small-btn" data-act="drink" data-arg="${id}" ${S.hp >= S.maxHp ? 'disabled' : ''}>${T('飲む')}</button>` : ''}</li>`).join('') || `<li class="dim">${T('なし')}</li>`;
     const st = S.stats.total ? T('{0}/{1} 問正解（{2}%）', S.stats.correct, S.stats.total, Math.round(S.stats.correct / S.stats.total * 100)) : T('まだ問題に答えていない');
@@ -570,7 +570,7 @@
         <button class="btn small-btn" data-act="buy" data-arg="${id}" ${can ? '' : 'disabled'}>${T('買う')}</button></li>`; }).join('');
     // まだ仲間になっていない人を、紹介料を払って迎える
     const cands = COMPANIONS.filter(c => !S.owned.includes(c.id));
-    const comps = cands.map(c => `<li class="shop-row"><span><b style="color:${c.color}">${tr(c.name)}</b>（${c.group}）　${yen(priceOf(c))}<br>
+    const comps = cands.map(c => `<li class="shop-row"><span><b style="color:${c.color}">${tr(c.name)}</b>${T('（{0}）', c.group)}　${yen(priceOf(c))}<br>
         <span class="small dim">${T('{0}。技「{1}」: {2}', tr(c.role), tr(c.skill.name), tr(c.skill.lv[0].desc))}</span></span>
         <button class="btn small-btn" data-act="buyComp" data-arg="${c.id}" ${S.money >= priceOf(c) ? '' : 'disabled'}>${T('迎える')}</button></li>`).join('');
     return `<div class="menu win">
