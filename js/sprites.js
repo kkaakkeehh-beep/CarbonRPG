@@ -1128,6 +1128,11 @@ const Sprites = (() => {
     // 界面のはしご（泡がたまると使えない）
     ladder(c, x, y, s) { ladderArt(c, x, y, s, false); },
     ladderFoam(c, x, y, s) { ladderArt(c, x, y, s, true); },
+    // 分液区：有機層では下の水層へ下りる穴、水層では上の有機層へ伸びるはしご
+    ladderDown(c, x, y, s) { ladderArt(c, x, y, s, false, 'down'); },
+    ladderDownFoam(c, x, y, s) { ladderArt(c, x, y, s, true, 'down'); },
+    ladderUp(c, x, y, s) { ladderArt(c, x, y, s, false, 'up'); },
+    ladderUpFoam(c, x, y, s) { ladderArt(c, x, y, s, true, 'up'); },
     // キラルな鍵穴の扉（鍵穴の形で、合う分子がわかる）
     lockS(c, x, y, s) { lockDoor(c, x, y, s, '#79c0ff', false); },
     lockR(c, x, y, s) { lockDoor(c, x, y, s, '#ff9ec4', true); },
@@ -1146,9 +1151,23 @@ const Sprites = (() => {
     dot(c, x, y, s, 7, 0, 2, 3, '#8a9692'); dot(c, x, y, s, 6, 0, 4, 1, '#c9d3e6');
     c.fillStyle = '#10181a'; c.font = `bold ${Math.round(s * (letter.length > 3 ? 0.2 : 0.24))}px sans-serif`; c.textAlign = 'center'; c.fillText(letter, x + s * 0.5, y + s * 0.64);
   }
-  function ladderArt(c, x, y, s, foam) {
-    dot(c, x, y, s, 3, 0, 1.5, 16, '#c9a227'); dot(c, x, y, s, 11.5, 0, 1.5, 16, '#c9a227');
-    for (let i = 0; i < 4; i++) dot(c, x, y, s, 3, 2 + i * 4, 10, 1.2, '#e6c75a');
+  function ladderArt(c, x, y, s, foam, way) {
+    if (way === 'down') {
+      // 床にあいた穴。のぞくと青い水層が見え、はしごが奥へ細くなっていく
+      dot(c, x, y, s, 1, 1, 14, 14, '#2a2410'); dot(c, x, y, s, 2, 2, 12, 12, '#0f2a44'); dot(c, x, y, s, 3, 9, 10, 5, '#2f6f9f');
+      dot(c, x, y, s, 4, 2, 1.2, 12, '#c9a227'); dot(c, x, y, s, 10.8, 2, 1.2, 12, '#c9a227');
+      for (let i = 0; i < 3; i++) dot(c, x, y, s, 4 + i * 0.8, 4 + i * 4, 8 - i * 1.6, 1, i ? '#a8862a' : '#e6c75a');
+      poly(c, x, y, s, [[5, 0.5], [11, 0.5], [8, 4]], '#ffd75e', '#3a2a00');      // ▼
+    } else if (way === 'up') {
+      // 上の有機層へ伸びるはしご。上から黄色い光が差す
+      dot(c, x, y, s, 2, 0, 12, 5, 'rgba(255, 226, 138, .35)');
+      dot(c, x, y, s, 3, 3, 1.5, 13, '#c9a227'); dot(c, x, y, s, 11.5, 3, 1.5, 13, '#c9a227');
+      for (let i = 0; i < 3; i++) dot(c, x, y, s, 3, 6 + i * 4, 10, 1.2, '#e6c75a');
+      poly(c, x, y, s, [[8, 0.2], [11.5, 4], [4.5, 4]], '#ffd75e', '#3a2a00');    // ▲
+    } else {
+      dot(c, x, y, s, 3, 0, 1.5, 16, '#c9a227'); dot(c, x, y, s, 11.5, 0, 1.5, 16, '#c9a227');
+      for (let i = 0; i < 4; i++) dot(c, x, y, s, 3, 2 + i * 4, 10, 1.2, '#e6c75a');
+    }
     if (foam) for (let i = 0; i < 7; i++) circle(c, x, y, s, 2 + (i * 5) % 12, 3 + (i * 7) % 11, 2 + (i % 3) * 0.6, 'rgba(250, 250, 255, .9)', '#c9d3e6');
   }
   function lockDoor(c, x, y, s, col, right) {

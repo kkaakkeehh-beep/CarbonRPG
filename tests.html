@@ -326,10 +326,20 @@
     mustStep('kairo', [6, 11], [6, 1], { ...fC4, c4_door1: true, c4_door2: true, c4_door3: true, c4_door4: true }, 'テンポの話');
     mustStep('capital', [16, 27], [16, 13], { c3_king1: true }, 'ラジカとの出会い');
     const fC5 = Object.fromEntries(c5Order.slice(0, c5Order.indexOf('c5_tppo') + 1).map(k => [k, true]));
-    mustStep('hiroba', [7, 11], [7, 2], fC5, 'カチオーネとの戦い');
-    mustStep('hannou', [7, 11], [7, 6], { ...fC5, c5_cation: true, c5_star: true, c5_starGone: true }, 'ボーカとの戦い');
-    mustStep('bridge5', [7, 10], [7, 1], { ch5: true }, '配管橋の待ち伏せ');
+    mustStep('hiroba', [7, 1], [7, 10], fC5, 'カチオーネとの戦い');
+    mustStep('hannou', [7, 1], [7, 6], { ...fC5, c5_cation: true, c5_star: true, c5_starGone: true }, 'ボーカとの戦い');
+    mustStep('bridge5', [7, 1], [7, 10], { ch5: true }, '配管橋の待ち伏せ');
     check('物語の出来事を、踏まずに回りこめない', !gateBad.length, gateBad.join('\n'));
+
+    // ---- マップの端から出たら、次のマップの反対側の端に着く（右から出て右から入る、のようにならない） ----
+    const edgeBad = [], OPP = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+    const edgeOf = (m, x, y, w) => { const H = m.grid.length, W = m.grid[0].length; return y <= w ? 'top' : y >= H - 1 - w ? 'bottom' : x <= w ? 'left' : x >= W - 1 - w ? 'right' : null; };
+    for (const [id, m] of Object.entries(Maps.MAPS)) for (const e of m.events || []) {
+      const to = e.warp && Maps.MAPS[e.warp.map]; if (!to) continue;
+      const a = edgeOf(m, e.x, e.y, 0), b = a && edgeOf(to, e.warp.x, e.warp.y, 1);
+      if (b && b !== OPP[a]) edgeBad.push(`${id} (${e.x},${e.y}) の${a}から出ると、${e.warp.map} の${b}に着く`);
+    }
+    check('マップの端から出ると、次のマップの反対側に着く', !edgeBad.length, edgeBad.join('\n'));
 
     // ---- 村・森・港の住人は、章が進むと台詞が変わる（第 1 章の台詞のまま、第 4 章まで残らない） ----
     const later = { boss: true, elder: true, clear: true, ch2: true, c2_met: true, c2_reveal: true, c2_kidnap: true, c2_rescued: true, c2_boss: true };
@@ -384,7 +394,7 @@
     for (const lk of X.locks) if (!free(lk.layer, ...lk.front)) exBad.push(`${lk.flag} の扉の前が、歩けない`);
     const st = X.init(), at = (id, x, y) => Object.assign(st.res[id], { x, y });
     // 部屋 1：弟を扉の真上（有機層）へ連れて行き、酸
-    at('amS', 7, 11); X.applyPh(st, 1, 'acid', free);
+    at('amS', ...X.locks[0].front); X.applyPh(st, 1, 'acid', free);
     if (st.res.amS.layer !== 'aq') exBad.push('部屋 1：酸で弟が水層へ下りない');
     // 部屋 2：クレゾールは扉の前（有機層）から動かない。NaOH では扉の前（水層）に下りてふさぐ。重曹に替えると、クレゾールだけ上がる
     if (!X.residents.cres.fixed || X.residents.cres.at.join() !== X.locks[1].front.join()) exBad.push('部屋 2：クレゾールが、扉の真上で動かない人になっていない');
@@ -395,13 +405,13 @@
     // 部屋 3：塩基で番人を水層へ。姉を扉の真上へ。酸で 2 人が同じ場所で入れ替わる
     X.applyPh(st, 3, 'base', free);
     if (st.res.mand.layer !== 'aq') exBad.push('部屋 3：塩基で番人が水層へ下りない');
-    at('amR', 7, 3); X.applyPh(st, 3, 'acid', free);
+    at('amR', ...X.locks[2].front); X.applyPh(st, 3, 'acid', free);
     if (st.res.amR.layer !== 'aq' || st.res.mand.layer !== 'org') exBad.push('部屋 3：酸で、姉と番人が入れ替わらない');
-    // 部屋 3：水層の扉の前は、まわりが壁の小部屋（上から下りるしかない）
-    const [px, py] = X.locks[2].front;
-    if ([[px - 1, py], [px + 1, py], [px, py + 1]].some(([x, y]) => floor('aq', x, y))) exBad.push('部屋 3：扉の前（水層）に、横か下から歩いて入れる');
-    // 壁の下へは移らない（部屋 3 の水層は 2 行目が壁）
-    const st2 = X.init(); st2.res.amR.x = 5; st2.res.amR.y = 2; X.applyPh(st2, 3, 'acid', free);
+    // 部屋 3：水層の扉の前は、まわりが壁の小部屋（上の層から下りるしかない）。扉の反対側と左右が壁
+    const [px, py] = X.locks[2].front, back = 2 * py - X.locks[2].at[1];
+    if ([[px - 1, py], [px + 1, py], [px, back]].some(([x, y]) => floor('aq', x, y))) exBad.push('部屋 3：扉の前（水層）に、横か後ろから歩いて入れる');
+    // 壁の下へは移らない（部屋 3 の水層は、扉の手前の行が壁）
+    const st2 = X.init(); st2.res.amR.x = 5; st2.res.amR.y = 12; X.applyPh(st2, 3, 'acid', free);
     if (st2.res.amR.layer !== 'org') exBad.push('壁の下へ移ってしまう');
     // カーボが、両方の層で、部屋の中を歩いて扉の前・はしごの横・ポンプの横まで行ける
     for (const layer of ['org', 'aq']) for (const r of X.rooms) {

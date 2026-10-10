@@ -623,6 +623,8 @@
     else { st.follow = id; message(`${resName(id)}「ついていくね」`); }
     save();
   }
+  // 扉や出口の上（ついてくる住人は、ここから先へは来ない）
+  const onThreshold = (x, y) => Maps.EXTRACT.thresholds.some(([tx, ty, layer]) => tx === x && ty === y && layer === map().layer);
   // カーボが歩くと、ついてくる住人はカーボのいた場所に入る。扉や出口の上では、そこで待つ
   function moveFollower(ox, oy) {
     const m = map();
@@ -631,7 +633,7 @@
     if (!id) return;
     const p = st.res[id];
     if (p.layer !== m.layer || Math.abs(p.x - ox) + Math.abs(p.y - oy) > 1) { st.follow = null; return; }
-    if (Maps.EXTRACT.thresholds.some(([x, y, layer]) => x === S.x && y === S.y && layer === m.layer)) { st.follow = null; flash(`${resName(id)}は、ここで待っている`); return; }
+    if (onThreshold(S.x, S.y)) { st.follow = null; flash(`${resName(id)}は、ここで待っている`); return; }
     Object.assign(p, { fx: p.x, fy: p.y, mt: UI.move ? UI.move.t0 : 0, x: ox, y: oy });
     checkLocks();
   }
@@ -649,6 +651,15 @@
       }
     }
     return false;
+  }
+  // 鍵になる住人を連れて扉にぶつかっても開く（扉の前に立たせなくてよい）
+  function openWithFollower(ev) {
+    const m = map(), st = m.layer && ex();
+    const L = st && Maps.EXTRACT.locks.find(l => l.layer === m.layer && l.at[0] === ev.x && l.at[1] === ev.y && !S.flags[l.flag]);
+    if (!L || st.follow !== L.key || st.res[L.key].layer !== L.layer) return false;
+    S.flags[L.flag] = true; st.follow = null; save();
+    UI.held = null; playScene(L.scene);
+    return true;
   }
   // 住人が移れる場所か（壁・人や物・カーボのいる場所には移れない）
   function freeIn(layer, x, y) {
@@ -880,9 +891,21 @@
 
   const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
   function tryMove(dir) {
+    const prevDir = S.dir;
     S.dir = dir;
     const [dx, dy] = DIRS[dir], nx = S.x + dx, ny = S.y + dy;
     const ev = eventAt(nx, ny, 'bump');
+    // 分液区：ついてくる住人のほうへ進むと、まずそちらを向く（「話す」で待ってもらえる）。
+    // 向いたままもう一度進むと、場所を入れ替わる（せまい所で動けなくならないように）
+    if (ev && ev.res && map().layer && ex().follow === ev.res && prevDir !== dir) { UI.held = null; return; }
+    if (ev && ev.res && map().layer && ex().follow === ev.res && !onThreshold(S.x, S.y)) {
+      const p = ex().res[ev.res], ox = S.x, oy = S.y;
+      UI.move = { fx: S.x, fy: S.y, t0: performance.now() };
+      S.x = nx; S.y = ny;
+      Object.assign(p, { fx: p.x, fy: p.y, mt: UI.move.t0, x: ox, y: oy });
+      checkLocks();
+      return;
+    }
     if (ev) { UI.held = null; return trigger(ev); }
     const ch = tileAt(nx, ny);
     if (!passableTile(ch)) {
@@ -928,6 +951,7 @@
 
   function trigger(ev) {
     if (ev.res) return talkResident(ev.res);
+    if (openWithFollower(ev)) return;
     if (ev.pump) return askPump(ev);
     if (ev.ladder) return askLadder();
     if (ev.tap) return playScene('c5_tap');
