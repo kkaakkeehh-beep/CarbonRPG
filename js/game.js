@@ -164,7 +164,7 @@
 
   function vTitle() {
     const sv = loadSave();
-    const where = sv && MAPS[sv.map] ? `${MAPS[sv.map].name}　Lv${sv.lv || 1}` : '';
+    const where = sv && MAPS[sv.map] ? `${sv.flags && sv.flags.clear5 ? '★ 全章クリア　' : ''}${MAPS[sv.map].name}　Lv${sv.lv || 1}` : '';
     return `<div class="title-screen">
       <div class="title-hero">
         <canvas id="tcv" width="320" height="168" aria-hidden="true"></canvas>
@@ -173,7 +173,7 @@
           <p class="logo-sub">炭 素 の 勇 者</p>
         </div>
       </div>
-      <p class="title-chapter">全 5 章（第5章「廃液街」で完結）</p>
+      <p class="title-chapter">全 5 章<br>${['求核の森', 'カルボニル港', '芳香族の王国', '鏡の回廊', '廃液街'].map(n => `<span class="nowrap">${n}</span>`).join('・')}</p>
       <div class="title-menu">
         <button class="tbtn" data-act="newGame">はじめから</button>
         ${sv ? `<button class="tbtn" data-act="continue">つづきから<small>${esc(where)}</small></button>` : ''}
@@ -182,7 +182,7 @@
         <p class="story">ところがある日、森の分子たちが次々と「平ら」にされ、利き手を失いはじめた。</p>
         <p class="story">闇の組織「メソ教団」。その名が、ささやかれている。</p>`, 'msg title-story')}
       <div class="center">${muteBtn()}</div>
-      <p class="small dim center">化学がわかる人向けの有機化学 RPG（試作版）。問題に正解すると敵にダメージ、間違えると自分がダメージを受けます。</p>
+      <p class="small dim center">化学がわかる人向けの有機化学 RPG。問題に正解すると敵にダメージ、間違えると自分がダメージを受けます。</p>
     </div>`;
   }
 
@@ -274,8 +274,30 @@
     g.fillRect(hx - 7, hy - 24, 14, 18); g.fillRect(hx - 2, hy - 31, 4, 7);
     g.fillStyle = '#ffd75e';
     for (const [wx, wy] of [[-4, -19], [2, -19], [-1, -13], [-14, -7], [11, -7]]) g.fillRect(hx + wx, hy + wy, 2, 2);
+    // 第 4 章：鏡の湖と、左右対称の神殿（左寄り）。湖面に逆さまに映る
+    const tx = 118, ty = 118;
+    const temple = (sgn, alpha) => {
+      g.save(); g.globalAlpha = alpha; g.translate(tx, ty); g.scale(1, sgn);
+      g.fillStyle = '#c9cde0'; g.beginPath(); g.moveTo(-13, -14); g.lineTo(0, -21); g.lineTo(13, -14); g.closePath(); g.fill();   // 破風
+      g.fillRect(-13, -14, 26, 2); g.fillRect(-14, -1, 28, 1);
+      for (let k = 0; k < 5; k++) g.fillRect(-11 + k * 5, -12, 2, 11);                                                    // 柱
+      g.fillStyle = '#ffe9a8'; g.fillRect(-1, -19, 2, 2);                                                                   // 丸い鏡の窓
+      g.restore();
+    };
+    g.fillStyle = '#15204a'; g.fillRect(tx - 24, ty, 48, 9);
+    temple(1, 1); temple(-1, 0.32);
+    g.fillStyle = 'rgba(190,210,255,.25)';
+    for (let k = 0; k < 3; k++) g.fillRect(tx - 18 + ((k * 13 + Math.floor(t * 6)) % 36), ty + 3 + k * 2, 6, 1);           // さざ波
     // 手前の丘と、カーボ
     hill(148, 6, '#0b0f24', 4);
+    // 第 5 章：地面の下から伸びる配管。先が、ぼんやり光る（廃液街）
+    for (const [px, ph] of [[34, 9], [44, 6], [272, 8]]) {
+      g.fillStyle = '#2a3348'; g.fillRect(px, 150 - ph, 3, ph + 18);
+      const a = 0.35 + 0.25 * Math.sin(t * 1.7 + px);
+      const pg = g.createRadialGradient(px + 1.5, 150 - ph, 0, px + 1.5, 150 - ph, 7);
+      pg.addColorStop(0, `rgba(120,255,200,${a})`); pg.addColorStop(1, 'rgba(120,255,200,0)');
+      g.fillStyle = pg; g.fillRect(px - 6, 143 - ph, 15, 15);
+    }
     const bob = reduceMotion ? 0 : Math.round(Math.sin(t * 2.2));
     g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(cx - 9, 145, 18, 2);
     Sprites.drawChar(g, 'hero', cx - 16, 112 + bob, 32, { colors: TITLE_COLORS, dir: 'down' });

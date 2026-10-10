@@ -457,3 +457,4 @@ a.btn { display: inline-block; text-decoration: none; }
 
 /* 長い敵の名前（エノラスの抜け殻など）が、右上の音のボタンに隠れないように */
 .enemy-box .enemy-info h3 { padding-right: 92px; overflow-wrap: anywhere; }
+.nowrap { white-space: nowrap; }
