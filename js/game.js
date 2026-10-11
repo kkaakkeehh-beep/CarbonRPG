@@ -19,6 +19,8 @@
   const SAVE_KEY = 'carbonrpg-save-v2';
   const BASE_HP = 30;
   const GAME_URL = 'https://kkaakkeehh-beep.github.io/CarbonRPG/';
+  // 共有するリンク：日本語以外は、その言語のプレビューが出るページ（en/ など）。開くとその言語でゲームが始まる
+  const shareUrl = () => GAME_URL + (I18N.lang === 'ja' ? '' : `${I18N.lang}/`);
   const app = document.getElementById('app');
 
   let S = null;   // セーブされる状態
@@ -1683,8 +1685,8 @@
   function vClear() {
     const { st, rate, title } = clearResult();
     const text = shareText();
-    const xUrl = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(GAME_URL)}`;
-    const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(GAME_URL)}&text=${encodeURIComponent(text)}`;
+    const xUrl = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl())}`;
+    const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl())}&text=${encodeURIComponent(text)}`;
     const ch = clearCh();
     return `<h2 class="screen-title">${T('{0}クリア！', tr(CHAPTERS[ch]))}</h2>
       ${win(`<p class="center">${T('難易度: {0}', tr(Questions.DIFFS[S.diff].name))}</p>
@@ -1692,7 +1694,7 @@
         <p class="center">${T('称号「{0}」', `<span class="accent">${title}</span>`)}</p>
         <p class="center small dim">${S.cfg ? `${heroName()} Lv${S.lv}　${heroFormula(S.party)}` : ''}</p>`, 'msg')}
       ${win(`<h3>${T('結果をシェアする')}</h3>
-        <pre class="share-text">${esc(text)}\n${GAME_URL}</pre>
+        <pre class="share-text">${esc(text)}\n${shareUrl()}</pre>
         <div class="share-btns">
           ${navigator.share ? `<button class="btn" data-act="shareNative">${T('共有…')}</button>` : ''}
           <a class="btn" href="${xUrl}" target="_blank" rel="noopener noreferrer">${T('X でポスト')}</a>
@@ -1862,9 +1864,9 @@
     run() { const B = UI.battle; if (B && B.random) { UI.battle = null; UI.screen = 'world'; render(); message('うまく にげきれた。'); } },
     mute() { Sound.setMuted(!Sound.isMuted()); document.querySelectorAll('[data-act=mute]').forEach(b => { b.textContent = muteLabel(); }); },
     toTitle() { stopTimer(); UI.screen = 'title'; UI.scene = null; UI.msg = null; render(); },
-    shareNative() { navigator.share({ title: 'CarbonRPG', text: shareText(), url: GAME_URL }).catch(() => { /* 閉じられたときは何もしない */ }); },
+    shareNative() { navigator.share({ title: 'CarbonRPG', text: shareText(), url: shareUrl() }).catch(() => { /* 閉じられたときは何もしない */ }); },
     shareCopy() {
-      const t = `${shareText()}\n${GAME_URL}`;
+      const t = `${shareText()}\n${shareUrl()}`;
       const done = () => flash(T('文面をコピーしました'));
       if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(done, () => fallbackCopy(t) && done());
       else if (fallbackCopy(t)) done();

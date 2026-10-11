@@ -11,7 +11,7 @@
 
 **第1章「求核の森」**、**第2章「カルボニル港」**、**第3章「芳香族の王国」**、**第4章「鏡の回廊」**、**第5章「廃液街」** の全 5 章を遊べます。章をクリアすると、クリア画面から次の章へ進めます。最後の章をクリアしたあとも、その後の世界を歩けます。
 
-- 遊ぶ: https://kkaakkeehh-beep.github.io/CarbonRPG/
+- 遊ぶ: https://kkaakkeehh-beep.github.io/CarbonRPG/（英語・中国語・韓国語で始めるリンク：[en/](https://kkaakkeehh-beep.github.io/CarbonRPG/en/)・[zh/](https://kkaakkeehh-beep.github.io/CarbonRPG/zh/)・[ko/](https://kkaakkeehh-beep.github.io/CarbonRPG/ko/)。共有するとプレビューもその言語で出る）
 - 手元で遊ぶ: `index.html` をブラウザで開くだけ（ビルド不要）
 - 言語：日本語 / English / 简体中文 / 한국어。タイトル画面の右上で切り替える（ブラウザの言語が日本語でなければ、中国語・韓国語のブラウザではその言語、それ以外では英語ではじまる）。物語・問題・画面のすべてに英語版・中国語版・韓国語版がある
 
@@ -70,7 +70,8 @@ js/i18n.js        言語の切り替え（中身は日本語のまま持ち、�
 js/lang/          訳（en-*：英語、zh-*：中国語、ko-*：韓国語。…-ui：画面・名前・敵・マップ、…-storyN：第N章の台本、…-qN：第N章の問題）
 lib/              SmilesDrawer 2.1.7（MIT License）
 tests.html        問題データ・マップ・台本のテスト
-og.png            リンクを共有したときのプレビュー画像（タイトル画面から作った 1200×630）
+og.png            リンクを共有したときのプレビュー画像（タイトル画面から作った 1200×630）。og-en / og-zh / og-ko.png はその言語の版
+en/ zh/ ko/       その言語のプレビューが出る入口（開くと、その言語にしてゲームへ移る）。ゲームの共有ボタンは、いまの言語の入口を共有する
 ```
 
 ## テスト
