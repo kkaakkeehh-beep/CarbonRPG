@@ -20,8 +20,13 @@ const I18N = (() => {
   // 選んだことがなければ、ブラウザの言語に合わせる（日本語・中国語・韓国語でなければ英語）
   let saved = null;
   try { saved = localStorage.getItem(KEY); } catch (e) { /* 何もしない */ }
-  if (LANGS[saved]) lang = saved;
-  else if (typeof navigator !== 'undefined' && navigator.language && !/^ja/i.test(navigator.language)) lang = /^zh/i.test(navigator.language) ? 'zh' : /^ko/i.test(navigator.language) ? 'ko' : 'en';
+  // en/ zh/ ko/ のページ（<html data-lang="en"> など）は、その言語で始めて、選んだ言語として覚える
+  const forced = typeof document !== 'undefined' ? document.documentElement.getAttribute('data-lang') : null;
+  if (LANGS[forced]) { lang = forced; try { localStorage.setItem(KEY, forced); } catch (e) { /* 何もしない */ } }
+  else if (LANGS[saved]) lang = saved;
+  // 検索エンジンには、ブラウザの言語に合わせず、そのページの言語（日本語のページは日本語）を見せる
+  else if (typeof navigator !== 'undefined' && !/bot|crawl|spider|slurp|Google-InspectionTool|Lighthouse/i.test(navigator.userAgent || '')
+    && navigator.language && !/^ja/i.test(navigator.language)) lang = /^zh/i.test(navigator.language) ? 'zh' : /^ko/i.test(navigator.language) ? 'ko' : 'en';
 
   const pack = () => (lang === 'ja' ? null : packs[lang]);
   function add(l, p) {
@@ -55,7 +60,8 @@ const I18N = (() => {
     showLang();
   }
   // ページの言語と、タブの題名
-  const TITLE = { ja: 'CarbonRPG — 炭素の勇者', en: 'CarbonRPG — Hero of Carbon', zh: 'CarbonRPG — 碳之勇者', ko: 'CarbonRPG — 탄소의 용사' };
+  // tools/lang_pages.py の題名と同じ（検索結果に出る題名）
+  const TITLE = { ja: 'CarbonRPG — 炭素の勇者｜有機化学のクイズ RPG', en: 'CarbonRPG — Hero of Carbon | Organic Chemistry Quiz RPG', zh: 'CarbonRPG — 碳之勇者｜有机化学答题 RPG', ko: 'CarbonRPG — 탄소의 용사 | 유기화학 퀴즈 RPG' };
   const HTML_LANG = { zh: 'zh-Hans' };
   function showLang() { document.documentElement.lang = HTML_LANG[lang] || lang; if (document.getElementById('app')) document.title = TITLE[lang] || TITLE.ja; }
   showLang();

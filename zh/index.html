@@ -1,15 +1,23 @@
 <!doctype html>
-<html lang="zh-Hans">
+<html lang="zh-Hans" data-lang="zh">
 <head>
   <meta charset="utf-8">
+  <!-- tools/lang_pages.py で index.html から作ったページ。直接は直さない -->
+  <base href="../">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CarbonRPG — 碳之勇者</title>
-  <meta name="description" content="面向懂化学的人的有机化学 RPG。拥有四只手的手性碳原子卡波，用有机化学题挑战黑暗组织“内消旋教团”。">
-  <!-- リンクを共有したときのプレビュー（zh）。開いた人は、言語を zh にしてゲームへ移る -->
+  <!-- lang:head -->
+  <title>CarbonRPG — 碳之勇者｜有机化学答题 RPG</title>
+  <meta name="description" content="面向懂化学的人的有机化学 RPG。拥有四只手的手性碳原子卡波，用有机化学题挑战黑暗组织“内消旋教团”。全 5 章、443 道题（从本科到博士水平）。在浏览器中免费游玩，无需注册。">
+  <link rel="canonical" href="https://kkaakkeehh-beep.github.io/CarbonRPG/zh/">
+  <link rel="alternate" hreflang="ja" href="https://kkaakkeehh-beep.github.io/CarbonRPG/">
+  <link rel="alternate" hreflang="en" href="https://kkaakkeehh-beep.github.io/CarbonRPG/en/">
+  <link rel="alternate" hreflang="zh-Hans" href="https://kkaakkeehh-beep.github.io/CarbonRPG/zh/">
+  <link rel="alternate" hreflang="ko" href="https://kkaakkeehh-beep.github.io/CarbonRPG/ko/">
+  <link rel="alternate" hreflang="x-default" href="https://kkaakkeehh-beep.github.io/CarbonRPG/">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kkaakkeehh-beep.github.io/CarbonRPG/zh/">
   <meta property="og:title" content="CarbonRPG — 碳之勇者">
-  <meta property="og:description" content="面向懂化学的人的有机化学 RPG。拥有四只手的手性碳原子卡波，用有机化学题挑战黑暗组织“内消旋教团”。">
+  <meta property="og:description" content="面向懂化学的人的有机化学 RPG。拥有四只手的手性碳原子卡波，用有机化学题挑战黑暗组织“内消旋教团”。全 5 章、443 道题（从本科到博士水平）。在浏览器中免费游玩，无需注册。">
   <meta property="og:image" content="https://kkaakkeehh-beep.github.io/CarbonRPG/og-zh.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -19,14 +27,61 @@
   <meta property="og:locale:alternate" content="en_US">
   <meta property="og:locale:alternate" content="ko_KR">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="alternate" hreflang="ja" href="https://kkaakkeehh-beep.github.io/CarbonRPG/">
-  <link rel="alternate" hreflang="en" href="https://kkaakkeehh-beep.github.io/CarbonRPG/en/">
-  <link rel="alternate" hreflang="zh-Hans" href="https://kkaakkeehh-beep.github.io/CarbonRPG/zh/">
-  <link rel="alternate" hreflang="ko" href="https://kkaakkeehh-beep.github.io/CarbonRPG/ko/">
-  <link rel="alternate" hreflang="x-default" href="https://kkaakkeehh-beep.github.io/CarbonRPG/">
-  <script>try { localStorage.setItem('carbonrpg-lang', 'zh'); } catch (e) { /* 何もしない */ } location.replace('../' + location.hash);</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "VideoGame", "name": "CarbonRPG", "alternateName": ["炭素の勇者", "Hero of Carbon", "碳之勇者", "탄소의 용사"], "url": "https://kkaakkeehh-beep.github.io/CarbonRPG/zh/", "image": "https://kkaakkeehh-beep.github.io/CarbonRPG/og-zh.png", "description": "面向懂化学的人的有机化学 RPG。拥有四只手的手性碳原子卡波，用有机化学题挑战黑暗组织“内消旋教团”。全 5 章、443 道题（从本科到博士水平）。在浏览器中免费游玩，无需注册。", "inLanguage": ["ja", "en", "zh-Hans", "ko"], "genre": ["RPG", "Quiz", "Educational"], "gamePlatform": "Web browser", "applicationCategory": "Game", "operatingSystem": "Any", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}}</script>
+  <!-- /lang:head -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
-<body style="background:#0a0d1c;color:#f4f4f4;font-family:sans-serif;text-align:center;padding:40px">
-  <p><a href="../" style="color:#ffd75e">开始游戏</a></p>
+<body>
+  <main id="app"></main>
+  <!-- lang:body -->
+  <noscript><p>面向懂化学的人的有机化学 RPG。拥有四只手的手性碳原子卡波，用有机化学题挑战黑暗组织“内消旋教团”。全 5 章、443 道题（从本科到博士水平）。在浏览器中免费游玩，无需注册。</p><p>启用 JavaScript 后即可游玩。</p></noscript>
+  <!-- /lang:body -->
+  <script src="lib/smiles-drawer.min.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/lang/en-ui.js"></script>
+  <script src="js/lang/en-story1.js"></script>
+  <script src="js/lang/en-q1.js"></script>
+  <script src="js/lang/en-story2.js"></script>
+  <script src="js/lang/en-q2.js"></script>
+  <script src="js/lang/en-story3.js"></script>
+  <script src="js/lang/en-q3.js"></script>
+  <script src="js/lang/en-story4.js"></script>
+  <script src="js/lang/en-q4.js"></script>
+  <script src="js/lang/en-story5.js"></script>
+  <script src="js/lang/en-q5.js"></script>
+  <script src="js/lang/zh-ui.js"></script>
+  <script src="js/lang/zh-story1.js"></script>
+  <script src="js/lang/zh-q1.js"></script>
+  <script src="js/lang/zh-story2.js"></script>
+  <script src="js/lang/zh-q2.js"></script>
+  <script src="js/lang/zh-story3.js"></script>
+  <script src="js/lang/zh-q3.js"></script>
+  <script src="js/lang/zh-story4.js"></script>
+  <script src="js/lang/zh-q4.js"></script>
+  <script src="js/lang/zh-story5.js"></script>
+  <script src="js/lang/zh-q5.js"></script>
+  <script src="js/lang/ko-ui.js"></script>
+  <script src="js/lang/ko-story1.js"></script>
+  <script src="js/lang/ko-q1.js"></script>
+  <script src="js/lang/ko-story2.js"></script>
+  <script src="js/lang/ko-q2.js"></script>
+  <script src="js/lang/ko-story3.js"></script>
+  <script src="js/lang/ko-q3.js"></script>
+  <script src="js/lang/ko-story4.js"></script>
+  <script src="js/lang/ko-q4.js"></script>
+  <script src="js/lang/ko-story5.js"></script>
+  <script src="js/lang/ko-q5.js"></script>
+  <script src="js/questions.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/maps.js"></script>
+  <script src="js/story.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/mol.js"></script>
+  <script src="js/dev.js"></script>
+  <script src="js/game.js"></script>
 </body>
 </html>

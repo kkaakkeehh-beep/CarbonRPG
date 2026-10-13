@@ -696,6 +696,23 @@
       check(`${NAME}：問題の訳の形（${nQe}/${nQ} 問を訳した）`, !qBad.length && nQe === nQ, qBad.join('\n'));
     }
 
+    // 言語ごとのページ（en/ zh/ ko/）が、index.html とずれていない（tools/lang_pages.py で作りなおし忘れていない）
+    {
+      const get = p => { try { const x = new XMLHttpRequest(); x.open('GET', `${p}?t=${Date.now()}`, false); x.send(); return x.status === 200 ? x.responseText.replace(/\r\n/g, '\n') : null; } catch (e) { return null; } };
+      const strip = s => s.replace(/<!-- lang:(head|body) -->[\s\S]*?<!-- \/lang:\1 -->/g, '').replace(/<html[^>]*>/, '<html>')
+        .replace(/\n {2}<!-- tools\/lang_pages\.py[^\n]*\n {2}<base href="\.\.\/">/, '');
+      const base = get('index.html'), bad = [];
+      if (!base) bad.push('index.html が読めない（http サーバーから開く）');
+      else for (const [k, hl] of [['en', 'en'], ['zh', 'zh-Hans'], ['ko', 'ko']]) {
+        const s = get(`${k}/index.html`);
+        if (!s) { bad.push(`${k}/index.html がない`); continue; }
+        if (strip(s) !== strip(base)) bad.push(`${k}/: index.html とずれている（py -X utf8 tools/lang_pages.py を走らせなおす）`);
+        if (!s.includes(`<html lang="${hl}" data-lang="${k}">`)) bad.push(`${k}/: html の lang が違う`);
+        if (!s.includes(`<link rel="canonical" href="https://kkaakkeehh-beep.github.io/CarbonRPG/${k}/">`)) bad.push(`${k}/: canonical が違う`);
+      }
+      check('言語ごとのページ（en/ zh/ ko/）が index.html と同じ作り', !bad.length, bad.join('\n'));
+    }
+
     out.insertAdjacentHTML('afterbegin', `<h2 class="${fail ? 'ng' : 'ok'}" id="summary">${pass} 件成功 / ${fail} 件失敗</h2>`);
   </script>
 </body>

@@ -1,15 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-lang="en">
 <head>
   <meta charset="utf-8">
+  <!-- tools/lang_pages.py で index.html から作ったページ。直接は直さない -->
+  <base href="../">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CarbonRPG — Hero of Carbon</title>
-  <meta name="description" content="An organic chemistry RPG for people who know their chemistry. Carbo, a chiral carbon with four hands, takes on the dark Meso Order with organic chemistry questions.">
-  <!-- リンクを共有したときのプレビュー（en）。開いた人は、言語を en にしてゲームへ移る -->
+  <!-- lang:head -->
+  <title>CarbonRPG — Hero of Carbon | Organic Chemistry Quiz RPG</title>
+  <meta name="description" content="An organic chemistry RPG for people who know their chemistry. Carbo, a chiral carbon with four hands, takes on the dark Meso Order with organic chemistry questions. 5 chapters and 443 questions, from undergraduate to PhD level. Free in your browser, no sign-up.">
+  <link rel="canonical" href="https://kkaakkeehh-beep.github.io/CarbonRPG/en/">
+  <link rel="alternate" hreflang="ja" href="https://kkaakkeehh-beep.github.io/CarbonRPG/">
+  <link rel="alternate" hreflang="en" href="https://kkaakkeehh-beep.github.io/CarbonRPG/en/">
+  <link rel="alternate" hreflang="zh-Hans" href="https://kkaakkeehh-beep.github.io/CarbonRPG/zh/">
+  <link rel="alternate" hreflang="ko" href="https://kkaakkeehh-beep.github.io/CarbonRPG/ko/">
+  <link rel="alternate" hreflang="x-default" href="https://kkaakkeehh-beep.github.io/CarbonRPG/">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kkaakkeehh-beep.github.io/CarbonRPG/en/">
   <meta property="og:title" content="CarbonRPG — Hero of Carbon">
-  <meta property="og:description" content="An organic chemistry RPG for people who know their chemistry. Carbo, a chiral carbon with four hands, takes on the dark Meso Order with organic chemistry questions.">
+  <meta property="og:description" content="An organic chemistry RPG for people who know their chemistry. Carbo, a chiral carbon with four hands, takes on the dark Meso Order with organic chemistry questions. 5 chapters and 443 questions, from undergraduate to PhD level. Free in your browser, no sign-up.">
   <meta property="og:image" content="https://kkaakkeehh-beep.github.io/CarbonRPG/og-en.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -19,14 +27,61 @@
   <meta property="og:locale:alternate" content="zh_CN">
   <meta property="og:locale:alternate" content="ko_KR">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="alternate" hreflang="ja" href="https://kkaakkeehh-beep.github.io/CarbonRPG/">
-  <link rel="alternate" hreflang="en" href="https://kkaakkeehh-beep.github.io/CarbonRPG/en/">
-  <link rel="alternate" hreflang="zh-Hans" href="https://kkaakkeehh-beep.github.io/CarbonRPG/zh/">
-  <link rel="alternate" hreflang="ko" href="https://kkaakkeehh-beep.github.io/CarbonRPG/ko/">
-  <link rel="alternate" hreflang="x-default" href="https://kkaakkeehh-beep.github.io/CarbonRPG/">
-  <script>try { localStorage.setItem('carbonrpg-lang', 'en'); } catch (e) { /* 何もしない */ } location.replace('../' + location.hash);</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "VideoGame", "name": "CarbonRPG", "alternateName": ["炭素の勇者", "Hero of Carbon", "碳之勇者", "탄소의 용사"], "url": "https://kkaakkeehh-beep.github.io/CarbonRPG/en/", "image": "https://kkaakkeehh-beep.github.io/CarbonRPG/og-en.png", "description": "An organic chemistry RPG for people who know their chemistry. Carbo, a chiral carbon with four hands, takes on the dark Meso Order with organic chemistry questions. 5 chapters and 443 questions, from undergraduate to PhD level. Free in your browser, no sign-up.", "inLanguage": ["ja", "en", "zh-Hans", "ko"], "genre": ["RPG", "Quiz", "Educational"], "gamePlatform": "Web browser", "applicationCategory": "Game", "operatingSystem": "Any", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}}</script>
+  <!-- /lang:head -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
-<body style="background:#0a0d1c;color:#f4f4f4;font-family:sans-serif;text-align:center;padding:40px">
-  <p><a href="../" style="color:#ffd75e">Play CarbonRPG</a></p>
+<body>
+  <main id="app"></main>
+  <!-- lang:body -->
+  <noscript><p>An organic chemistry RPG for people who know their chemistry. Carbo, a chiral carbon with four hands, takes on the dark Meso Order with organic chemistry questions. 5 chapters and 443 questions, from undergraduate to PhD level. Free in your browser, no sign-up.</p><p>Turn on JavaScript to play.</p></noscript>
+  <!-- /lang:body -->
+  <script src="lib/smiles-drawer.min.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/lang/en-ui.js"></script>
+  <script src="js/lang/en-story1.js"></script>
+  <script src="js/lang/en-q1.js"></script>
+  <script src="js/lang/en-story2.js"></script>
+  <script src="js/lang/en-q2.js"></script>
+  <script src="js/lang/en-story3.js"></script>
+  <script src="js/lang/en-q3.js"></script>
+  <script src="js/lang/en-story4.js"></script>
+  <script src="js/lang/en-q4.js"></script>
+  <script src="js/lang/en-story5.js"></script>
+  <script src="js/lang/en-q5.js"></script>
+  <script src="js/lang/zh-ui.js"></script>
+  <script src="js/lang/zh-story1.js"></script>
+  <script src="js/lang/zh-q1.js"></script>
+  <script src="js/lang/zh-story2.js"></script>
+  <script src="js/lang/zh-q2.js"></script>
+  <script src="js/lang/zh-story3.js"></script>
+  <script src="js/lang/zh-q3.js"></script>
+  <script src="js/lang/zh-story4.js"></script>
+  <script src="js/lang/zh-q4.js"></script>
+  <script src="js/lang/zh-story5.js"></script>
+  <script src="js/lang/zh-q5.js"></script>
+  <script src="js/lang/ko-ui.js"></script>
+  <script src="js/lang/ko-story1.js"></script>
+  <script src="js/lang/ko-q1.js"></script>
+  <script src="js/lang/ko-story2.js"></script>
+  <script src="js/lang/ko-q2.js"></script>
+  <script src="js/lang/ko-story3.js"></script>
+  <script src="js/lang/ko-q3.js"></script>
+  <script src="js/lang/ko-story4.js"></script>
+  <script src="js/lang/ko-q4.js"></script>
+  <script src="js/lang/ko-story5.js"></script>
+  <script src="js/lang/ko-q5.js"></script>
+  <script src="js/questions.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/maps.js"></script>
+  <script src="js/story.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/mol.js"></script>
+  <script src="js/dev.js"></script>
+  <script src="js/game.js"></script>
 </body>
 </html>
