@@ -73,6 +73,7 @@ tests.html        問題データ・マップ・台本のテスト
 og.png            リンクを共有したときのプレビュー画像（タイトル画面から作った 1200×630）。og-en / og-zh / og-ko.png はその言語の版
 en/ zh/ ko/       その言語で始まるゲームのページ（題名・説明・プレビュー・検索向けの情報がその言語）。ゲームの共有ボタンは、いまの言語のページを共有する
 sitemap.xml       検索エンジン向けの、4 つの言語のページの一覧
+favicon.ico       タブのアイコン（カーボのドット絵。16・32・48 px）。icon-192.png・apple-touch-icon.png はスマホのホーム画面用
 tools/lang_pages.py  index.html から en/ zh/ ko/ と sitemap.xml を作る（index.html を直したら走らせなおす）
 ```
 
