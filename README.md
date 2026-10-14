@@ -1,6 +1,6 @@
 # CarbonRPG — 炭素の勇者 / Hero of Carbon
 
-> **English:** An organic chemistry RPG for people who know their chemistry. Carbo, an sp³ carbon with four hands, bonds with friends to become a stereocenter and takes on the Meso Order with chemistry questions: answer right to damage the enemy, answer wrong and you take the hit. All 5 chapters, 443 questions and the full story are available in English, Simplified Chinese and Korean. Switch languages with the buttons at the top right of the title screen (if your browser isn't set to Japanese, the game starts in Chinese or Korean for those browsers and in English otherwise).
+> **English:** An organic chemistry RPG for people who know their chemistry. Carbo, an sp³ carbon with four hands, bonds with friends to become a stereocenter and takes on the Meso Order with chemistry questions: answer right to damage the enemy, answer wrong and you take the hit. All 5 chapters, 443 questions and the full story are available in English, Simplified Chinese and Korean. Play it here or on [itch.io](https://takato-yoda.itch.io/carbonrpg). Switch languages with the buttons at the top right of the title screen (if your browser isn't set to Japanese, the game starts in Chinese or Korean for those browsers and in English otherwise).
 >
 > **简体中文：** 面向懂化学的人的有机化学 RPG。全 5 章、443 道题和全部剧情都有简体中文版。可以在标题画面右上角切换语言。
 >
@@ -12,6 +12,7 @@
 **第1章「求核の森」**、**第2章「カルボニル港」**、**第3章「芳香族の王国」**、**第4章「鏡の回廊」**、**第5章「廃液街」** の全 5 章を遊べます。章をクリアすると、クリア画面から次の章へ進めます。最後の章をクリアしたあとも、その後の世界を歩けます。
 
 - 遊ぶ: https://kkaakkeehh-beep.github.io/CarbonRPG/（英語・中国語・韓国語で始めるリンク：[en/](https://kkaakkeehh-beep.github.io/CarbonRPG/en/)・[zh/](https://kkaakkeehh-beep.github.io/CarbonRPG/zh/)・[ko/](https://kkaakkeehh-beep.github.io/CarbonRPG/ko/)。共有するとプレビューもその言語で出る）
+- itch.io: https://takato-yoda.itch.io/carbonrpg（同じゲームを itch.io の中で遊べる）
 - 手元で遊ぶ: `index.html` をブラウザで開くだけ（ビルド不要）
 - 言語：日本語 / English / 简体中文 / 한국어。タイトル画面の右上で切り替える（ブラウザの言語が日本語でなければ、中国語・韓国語のブラウザではその言語、それ以外では英語ではじまる）。物語・問題・画面のすべてに英語版・中国語版・韓国語版がある
 
