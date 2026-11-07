@@ -149,6 +149,8 @@
     stopTyping();
     const fn = { title: vTitle, diff: vDiff, dev: vDev, party: vParty, world: vWorld, battle: vBattle, over: vOver, clear: vClear, note: vNote, ending: vEnding }[UI.screen];
     app.innerHTML = fn();
+    // タイトル画面の下の紹介は、タイトル画面のときだけ見せる
+    document.body.classList.toggle('in-game', UI.screen !== 'title');
     if (UI.screen === 'world') { setupCanvas(); renderOverlay(); }
     if (UI.screen === 'battle') { drawEnemy(); drawTalkFaces(); startTyping(); }
     if (UI.screen === 'ending') drawEnding();

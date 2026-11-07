@@ -120,6 +120,18 @@ p { margin: .4em 0; }
 }
 @keyframes shine { 0% { background-position: 150% 0; } 30%, 100% { background-position: -50% 0; } }
 .logo-sub { margin: 6px 0 0; font-size: clamp(16px, 3.6vw, 24px); letter-spacing: .3em; color: #f4f4f4; text-shadow: 2px 2px 0 #2a1a4f, 0 0 8px rgba(160, 140, 255, .8); }
+/* タイトル画面の下の紹介（ページに直接書いた文。検索エンジンにも読める）。ゲームの画面では隠す */
+.about { max-width: 720px; margin: 0 auto 40px; padding: 0 16px; color: var(--dim); font-size: 13px; line-height: 1.75; }
+.about h2 { font-size: 16px; color: var(--text); margin: 28px 0 8px; padding-top: 20px; border-top: 1px solid #262c4a; }
+.about h3 { font-size: 14px; color: var(--accent); margin: 18px 0 4px; }
+.about p { margin: 6px 0; }
+.about ul { margin: 4px 0; padding-left: 1.2em; }
+.about li { margin: 3px 0; }
+.about b { color: var(--text); font-weight: normal; }
+.about dl { margin: 4px 0; }
+.about dt { color: var(--text); margin-top: 8px; }
+.about dd { margin: 0 0 0 1em; }
+body.in-game .about { display: none; }
 .title-chapter { margin: 14px 0 6px; color: var(--dim); font-size: 14px; }
 .lang-btns { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px; }
 .title-menu { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 10px 0 16px; }
