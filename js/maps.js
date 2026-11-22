@@ -17,9 +17,10 @@
 const Maps = (() => {
   // 章が進むと台詞が変わる住人：id に _2（森の霧が晴れたあと）/ _3（港の灯台のあと）/ _4（王国のあと）/ _5（神殿のあと）/ _6（廃液街のあと）を
   // つけた台本があれば、いまの章までのうち、いちばん新しいものを使う
+  // 第 6 章のあいだは _7（村の異変の台詞）、第 6 章のあとは _8。_8 がなければ、異変の台詞（_7）は飛ばして _6 から探す
   const staged = (id, f) => {
-    const st = f.c5_boss ? 6 : f.c4_boss ? 5 : f.c3_boss ? 4 : f.c2_boss ? 3 : f.boss ? 2 : 1;
-    for (let s = st; s >= 2; s--) if (Story.SCENES[`${id}_${s}`]) return `${id}_${s}`;
+    const st = f.clear6 ? 8 : f.ch6 ? 7 : f.c5_boss ? 6 : f.c4_boss ? 5 : f.c3_boss ? 4 : f.c2_boss ? 3 : f.boss ? 2 : 1;
+    for (let s = st; s >= 2; s--) if (!(s === 7 && st === 8) && Story.SCENES[`${id}_${s}`]) return `${id}_${s}`;
     return id;
   };
   // 子どもたちは、ケトー卿の居場所をそれとなく教えてくれる
@@ -49,7 +50,7 @@ const Maps = (() => {
     // 第 3 章のあと、王国に残っているときは、まず船で港へ戻る
     if (here && f.clear3 && !f.c4_boss && MAPS[here] && MAPS[here].ch === 3) return G('グリニャの船で、港へ戻る', ['shore', 12, 17]);
     // いまの章。前の章の記録が欠けていても（古いセーブなど）、先の章の記録を優先して、前の章の目的に戻らない
-    const stage = (f.clear4 || f.ch5) ? 5 : (f.clear3 || f.ch4) ? 4 : (f.ch3 || f.c2_boss || f.clear2) ? 3 : (f.clear || f.ch2 || f.c2_arrive) ? 2 : 1;
+    const stage = (f.clear4 || f.ch5 || f.clear5 || f.ch6) ? 5 : (f.clear3 || f.ch4) ? 4 : (f.ch3 || f.c2_boss || f.clear2) ? 3 : (f.clear || f.ch2 || f.c2_arrive) ? 2 : 1;
     // 目的の文は、台詞で「どこへ行け」と言われた分だけ書く。言われていないときは場所を書かず、印もつけない
     // 第 1 章
     if (stage === 1 && !f.elder) return G('村の東の庵で、長老ベンゼンに会う', ['town', 16, 4]);
@@ -102,7 +103,7 @@ const Maps = (() => {
     }
     // 第 5 章
     if (stage < 5) return null;
-    if (!f.c5_boss) {
+    if (!f.c5_boss && !f.clear5 && !f.ch6) {
       if (!f.ch5) return G('研究所で、教授たちと話す', ['town', 5, 11], ['lab', 5, 3]);
       if (!f.c5_gesui) return G('ドラフトの奥の階段から、地下へ', ['lab', 2, 1]);
       if (!f.c5_ambush) return V('地下の街の奥へ進む', ['lab', 2, 1], ['gesui', 5, 8], ['boeki', 10, 13], ['bridge5', 7, 5]);
@@ -112,8 +113,85 @@ const Maps = (() => {
       if (!f.c5_star) return V('さらに下へ', ['hiroba', 7, 11]);
       return G('反応槽で、ボーカを止める', ['hiroba', 7, 11], ['hoshi', 6, 10], ['hannou', 7, 7]);
     }
+    // 第 6 章（第 5 章をクリアしたセーブは、研究所に入ると始まる）
+    if (!f.ch6) return f.clear5 ? G('研究所へ戻る（第 6 章が始まる）', ['town', 5, 11], ['lab', 5, 3]) : null;
+    if (!f.c6_boss) {
+      if (!f.c6_elder) return G('村の様子を見て回り、長老ベンゼンにも話を聞く', ['town', 16, 4]);
+      if (!f.c6_tempo) return G('研究所へ戻って、教授に知らせる', ['town', 5, 11], ['lab', 5, 3]);
+      if (!f.c6_toko) return G('村の南の薬草屋へ', ['town', 15, 11]);
+      if (!f.c6_lane) return G('村の西の、油の小道で連鎖を止める', ['town', 0, 12], ['nomichi', 0, 4], ['lane', 3, 5]);
+      if (!f.c6_night) return G('研究所のベッドで、夜まで休む', ['nomichi', 15, 4], ['town', 5, 11], ['lab', 9, 1]);
+      if (!f.c6_peruo1) return G('夜の油倉へ', ['town', 0, 12], ['nomichi', 0, 4], ['lane', 0, 5], ['kura', 2, 4]);
+      if (!f.c6_boxes) return G('木箱を、坂の下の氷室へ運ぶ', ['slope', 4, 10], ['slope', 5, 10]);
+      return G('風車小屋の上へ', ['slope', 5, 0], ['slope', 6, 0], ['fusha', 4, 2]);
+    }
     return null;
   }
+
+  // ---- 第 6 章：油の小道（連鎖を止める） ----
+  // 住人は 3 列（北・中・南）× 4 段。油のしみた跡でとなりどうしがつながり、連鎖は跡をたどって、となりの住人のうち、いちばん水素の取られやすい人へうつる
+  // rank: 取られやすさ（小さいほど取られやすい）。null は連鎖がうつらない住人
+  const LANE = {
+    entry: [17, 5], start: 'M3', limit: 3, bht: 3,
+    RANK: { bis: 1, ald: 2, eth: 3, alk: 4 },
+    residents: {
+      N3: { x: 3, y: 2, type: 'meth', sprite: 'laneMeth', name: 'メタンのガス灯守り',
+        talk: ['メタンのガス灯守り「わしの水素は 4 本とも、炭素にがっちりつかまっとる。ラジカルが来ても、わしからは取れんよ」'] },
+      N7: { x: 7, y: 2, type: 'water', sprite: 'laneWater', name: '井戸の水番',
+        talk: ['井戸の水番「水の O–H は、とても強いのさ。連鎖のほうから、よけていくよ」'] },
+      N11: { x: 11, y: 2, type: 'ald', sprite: 'laneAld', name: 'デカナールの香水売り',
+        talk: ['デカナールの香水売り「わたしの端には、アルデヒドの C–H があるの。……空気の中に置いておくと、すぐ酸っぱくなっちゃう」'] },
+      N15: { x: 15, y: 2, type: 'benz', sprite: 'laneBenz', name: 'ベンゼンの行商人',
+        talk: ['ベンゼンの行商人「芳香環の C–H は、強いんだ。長老さまと同じでね。連鎖は、ぼくの前を素通りするよ」'] },
+      M3: { x: 3, y: 5, type: 'bis', sprite: 'laneBis', name: 'リノール酸のランプ油売り',
+        talk: ['リノール酸のランプ油売り「……体が、熱い。わたしの水素、2 つの二重結合にはさまれてるの。……取られちゃった」', '（この人が、いま連鎖を運んでいる。となりの人のうち、いちばん水素の取られやすい人へ、うつろうとしている）'] },
+      M7: { x: 7, y: 5, type: 'bis', sprite: 'laneBis', name: 'アマニ油の絵描き',
+        talk: ['アマニ油の絵描き「油絵の具はね、空気で酸化されて固まるの。わたしの CH₂ は、2 つの二重結合にはさまれてるのよ。いちばん取られやすいところ」'] },
+      M11: { x: 11, y: 5, type: 'eth', sprite: 'laneEth', name: 'ジエチルエーテルの薬屋',
+        talk: ['ジエチルエーテルの薬屋「酸素のとなりの CH₂ は、少し取られやすい。古いエーテルには過酸化物ができるからね。……でも、二重結合の人ほどじゃない」'] },
+      M15: { x: 15, y: 5, type: 'alk', sprite: 'laneAlk', name: 'パラフィンのろうそく屋',
+        talk: ['パラフィンのろうそく屋「わしはただのアルカンじゃ。CH₂ ばかり。取られんことはないが、最後のほうじゃな」'] },
+      S3: { x: 3, y: 8, type: 'alk', sprite: 'laneAlk', name: 'ヘキサンの洗い屋',
+        talk: ['ヘキサンの洗い屋「おれは CH₂ と CH₃ だけのアルカンさ。二重結合も酸素もない。取られやすさで言えば、いちばん後ろだね」'] },
+      S7: { x: 7, y: 8, type: 'bis', sprite: 'laneBis', name: 'ベニバナ油の料理人',
+        talk: ['ベニバナ油の料理人「うちの油は、リノール酸がたっぷり。二重結合にはさまれた CH₂ が、いくつもあるんだ」'] },
+      S11: { x: 11, y: 8, type: 'eth', sprite: 'laneEth', name: 'ジイソプロピルエーテルの番頭',
+        talk: ['ジイソプロピルエーテルの番頭「エーテルの中でも、わたしは過酸化物ができやすいほうでね。酸素のとなりの C–H が狙われるのさ」'] },
+      S15: { x: 15, y: 8, type: 'ald', sprite: 'laneAld', name: 'ヘキサナールの草刈り',
+        talk: ['ヘキサナールの草刈り「刈った草のにおい、わかる？ アルデヒドなんだ。端の C–H が、わりと取られやすいよ」'] },
+    },
+    // となりどうしの住人をつなぐ、油の跡
+    edges: [],
+    // 住人が置かれた場所の決まり（テスト用）：連鎖の行き先が同じ取られやすさで迷わない
+  };
+  for (const r of ['N', 'M', 'S']) for (const [a, b] of [[3, 7], [7, 11], [11, 15]]) LANE.edges.push([r + a, r + b]);
+  for (const x of [3, 7, 11, 15]) LANE.edges.push(['N' + x, 'M' + x], ['M' + x, 'S' + x]);
+  LANE.nb = id => LANE.edges.filter(e => e.includes(id)).map(e => e[0] === id ? e[1] : e[0]);
+  // 連鎖を 1 つ進める。うつる先がなければ null
+  LANE.next = (car, cons, safe) => {
+    const R = LANE.residents, rk = id => LANE.RANK[R[id].type];
+    const c = LANE.nb(car).filter(id => rk(id) && !cons.includes(id) && !safe(id));
+    if (!c.length) return null;
+    return c.sort((a, b) => rk(a) - rk(b) || (a < b ? -1 : 1))[0];
+  };
+  LANE.init = () => ({ bht: LANE.bht, prot: [], run: false, car: LANE.start, cons: [LANE.start], tempo: [LANE.entry[0] + 1, LANE.entry[1]] });
+  // BHT とテンポで守った住人を除いて、最後まで走らせる（テスト用）
+  LANE.simulate = (prot, tempo) => {
+    const R = LANE.residents, safe = id => prot.includes(id) || (tempo && Math.abs(R[id].x - tempo[0]) + Math.abs(R[id].y - tempo[1]) === 1);
+    const cons = [LANE.start];
+    for (let car = LANE.start, n; (n = LANE.next(car, cons, safe));) { cons.push(n); car = n; }
+    return cons;
+  };
+
+  // ---- 第 6 章：風車小屋への坂（木箱を氷室へ。日なたとランプのとなりでは、箱が割れる） ----
+  const SLOPE = {
+    crates: [[3, 2], [5, 2], [7, 2]],
+    hot(m, x, y) {
+      const ch = (xx, yy) => m.grid[yy] && m.grid[yy][xx];
+      return ch(x, y) === '陽' || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => ch(x + dx, y + dy) === '灯');
+    },
+    init: () => SLOPE.crates.map(([x, y]) => ({ x, y, done: false })),
+  };
 
   // ---- 第 5 章：分液区（有機層と水層の 2 枚のマップ。pH で、酸と塩基の住人が層を移る） ----
   // 住人は、いま立っている場所のまま、上の層（有機層）と下の層（水層）を移る。移った先が壁や人なら、移らない
@@ -288,17 +366,21 @@ const Maps = (() => {
         '#__________#',
         '#####D######',
       ],
+      // 第 5 章をクリアしたセーブは、研究所に入ると第 6 章が始まる。長老に会ったあとで戻ると、テンポが来ている
+      onEnter: [{ flag: 'ch6', when: f => f.clear5, scene: 'c6_start' }, { flag: 'c6_tempo', when: f => f.c6_elder, scene: 'c6_tempo' }],
+      night6: true,
       // ドラフトの奥の板を外すと、廃液街へ下りる階段がある（第 5 章から）
       passable: { '(': f => f.ch5 },
       openTile: { '(': '>' },
       inspect: {
         F: 'ドラフトのファンが、静かに回っている。',
         '(': 'ドラフトのファンが、静かに回っている。……奥の板が、少しだけ浮いている。',
-        S: f => f.c5_boss ? ['試薬棚だ。いちばん見やすい段に、小さな瓶が 2 本、隣り合わせに並んでいる。', 'ラベルには、アルファベットと、今日の日付。'] : '試薬棚だ。NaN₃、TsCl、PBr₃……見慣れた瓶が並んでいる。',
+        S: f => f.c6_boss ? ['試薬棚だ。いちばん見やすい段に、小さな瓶が 2 本、隣り合わせに並んでいる。', 'その隣に、透明で硬いかたまりが 1 つ。ラベルには、ボーカの字で今日の日付。']
+          : f.c5_boss ? ['試薬棚だ。いちばん見やすい段に、小さな瓶が 2 本、隣り合わせに並んでいる。', 'ラベルには、アルファベットと、今日の日付。'] : '試薬棚だ。NaN₃、TsCl、PBr₃……見慣れた瓶が並んでいる。',
         B: { rest: true },
       },
       events: [
-        { x: 5, y: 3, sprite: 'prof', on: 'bump', when: f => !f.ch5 || f.c5_boss, scene: f => f.c5_boss ? 'lab_prof_c5end' : f.clear4 ? 'c5_start' : f.c4_boss ? 'lab_prof_c4end' : f.ch4 ? 'lab_prof_c4' : f.clear3 ? 'c4_start' : f.c3_boss ? 'lab_prof_c3end' : f.ch3 ? 'lab_prof_c3' : f.c2_boss ? 'lab_prof_c2end' : f.clear ? 'lab_prof3' : f.elder ? 'lab_prof2' : 'lab_prof' },
+        { x: 5, y: 3, sprite: 'prof', on: 'bump', when: f => !f.ch5 || f.c5_boss, scene: f => f.c6_boss ? 'lab_prof_c6end' : f.c6_peruo1 ? 'lab_prof_c6c' : f.c6_tempo ? 'lab_prof_c6b' : f.ch6 ? 'lab_prof_c6' : f.c5_boss ? 'lab_prof_c5end' : f.clear4 ? 'c5_start' : f.c4_boss ? 'lab_prof_c4end' : f.ch4 ? 'lab_prof_c4' : f.clear3 ? 'c4_start' : f.c3_boss ? 'lab_prof_c3end' : f.ch3 ? 'lab_prof_c3' : f.c2_boss ? 'lab_prof_c2end' : f.clear ? 'lab_prof3' : f.elder ? 'lab_prof2' : 'lab_prof' },
         { x: 5, y: 8, on: 'step', warp: { map: 'town', x: 5, y: 12, dir: 'down' } },
         { x: 2, y: 1, on: 'step', when: f => f.ch5, warp: { map: 'gesui', x: 5, y: 1, dir: 'down' } },
         // 第 5 章：地下へ行っているあいだ、灯台守とグリニャが研究所で待っている
@@ -307,7 +389,9 @@ const Maps = (() => {
         { x: 8, y: 4, sprite: 'ketohNoMono', when: f => f.clear4 && !f.ch5 },
         { x: 9, y: 6, sprite: 'achiralOpen', when: f => f.clear4 && !f.ch5 },
         // 第 5 章のあと：窓辺のボーカ。ベッドのそばの封筒（続編への伏線）
-        { x: 7, y: 6, sprite: 'boka', on: 'bump', when: f => f.c5_boss, scene: 'c5_lab_boka' },
+        { x: 7, y: 6, sprite: 'boka', on: 'bump', when: f => f.c5_boss, scene: f => f.c6_boss ? 'c6_lab_boka_end' : f.ch6 ? 'c6_lab_boka' : 'c5_lab_boka' },
+        // 第 6 章：長老に会ったあとで戻ると、教授の机のそばにテンポがいる。章のあとも、研究所に残っている
+        { x: 4, y: 3, sprite: 'tempo', on: 'bump', when: f => (f.c6_elder && !f.c6_tempo) || f.c6_boss, scene: 'c6_lab_tempo_end' },
         { x: 10, y: 2, sprite: 'letter', on: 'bump', when: f => f.c5_boss, scene: 'c5_epi_letter' },
       ],
     },
@@ -324,15 +408,19 @@ const Maps = (() => {
         'T..~~~....,,.........T',
         'T..~~~....,,...ggg...T',
         'T.........,,.........T',
-        'T...RRRR..,,.........T',
-        'T...WWWW..,,.........T',
-        'T...WDWW..,,.........T',
-        'T...,,,,,,,,.........T',
+        'T...RRRR..,,..RRR.RRRT',
+        'T...WWWW..,,..hhh.hhhT',
+        'T...WDWW..,,..hEh.hEhT',
+        '藪...,,,,,,,,.........T',
         'T....................T',
         'TTTTTTTTTTTTTTTTTTTTTT',
       ],
+      night6: true,
+      // 西の藪は、第 6 章から油の小道への抜け道になる
+      passable: { '藪': f => f.ch6 },
+      openTile: { '藪': ',' },
       events: [
-        { x: 16, y: 4, sprite: f => f.c3_lastpillar ? 'elderCl' : 'elder', on: 'bump', when: f => !f.ch3 || f.clear3, scene: f => f.c5_boss ? 'elder_c5end' : f.c4_boss ? 'elder_c4end' : f.c3_boss ? 'elder_c3' : f.boss ? 'elder_after2' : f.elder ? 'elder_after' : 'elder' },
+        { x: 16, y: 4, sprite: f => f.c3_lastpillar ? 'elderCl' : 'elder', on: 'bump', when: f => !f.ch3 || f.clear3, scene: f => f.c6_boss ? 'elder_c6end' : f.c6_elder ? 'c6_elder_after' : f.ch6 ? 'c6_elder' : f.c5_boss ? 'elder_c5end' : f.c4_boss ? 'elder_c4end' : f.c3_boss ? 'elder_c3' : f.boss ? 'elder_after2' : f.elder ? 'elder_after' : 'elder' },
         { x: 5, y: 11, on: 'step', warp: { map: 'lab', x: 5, y: 7, dir: 'up' } },
         { x: 10, y: 0, on: 'step', gate: true },
         { x: 11, y: 0, on: 'step', gate: true },
@@ -343,6 +431,10 @@ const Maps = (() => {
         { x: 3, y: 12, sprite: 'shop', on: 'bump', shop: true },
         { x: 21, y: 5, on: 'step', eastGate: true },
         { x: 3, y: 11, sprite: 'sign', on: 'bump', text: '購買部　コーヒー・エナジードリンク・参考書あります' },
+        // 第 6 章：薬草屋のトコ（小道へ出かけているあいだは、店にいない）と、菓子屋のおばあさん
+        { x: 15, y: 11, sprite: 'toko', on: 'bump', when: f => f.ch6 && (!f.c6_toko || f.c6_boss), scene: f => f.c6_boss ? 'c6_toko_end' : f.c6_tempo ? 'c6_toko' : 'c6_toko_early' },
+        { x: 19, y: 11, sprite: 'candy', on: 'bump', when: f => f.ch6, scene: f => f.c6_boss ? 'c6_candy_end' : 'c6_candy' },
+        { x: 0, y: 12, on: 'step', when: f => f.ch6, warp: { map: 'nomichi', x: 14, y: 4, dir: 'left' } },
       ],
     },
 
@@ -592,7 +684,8 @@ const Maps = (() => {
         { x: 12, y: 17, sprite: 'grignard', on: 'bump', when: f => !((f.clear4 || f.ch5) && !f.c5_boss), scene: f => f.c3_boss ? 'c3_grignard_end' : 'c3_grignard' },
         { x: 14, y: 16, sprite: 'boat' },
         // 戦いのあと、テンポとラジカは塔の前にいる
-        { x: 26, y: 7, sprite: 'tempo', on: 'bump', when: f => f.c3_boss, scene: 'c3_tempo_end' },
+        // 第 6 章からは、テンポは船でカルボニアへ来ている（研究所にいる）
+        { x: 26, y: 7, sprite: 'tempo', on: 'bump', when: f => f.c3_boss && !f.c6_elder, scene: 'c3_tempo_end' },
         { x: 27, y: 7, sprite: 'radika3', on: 'bump', when: f => f.c3_boss, scene: 'c3_radika_end' },
       ],
     },
@@ -1368,7 +1461,135 @@ const Maps = (() => {
         ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map(x => ({ x, y: 4, on: 'step', when: f => !f.c5_boss, scene: 'c5_boss' })),
       ],
     },
+
+    // ================= 第 6 章 =================
+    nomichi: {
+      name: '西の野道', ch: 6, night6: true,
+      encounters: { tiles: ['g'], when: f => f.c6_toko && !f.c6_boss, enemies: ['c6Peroxyl', 'c6Peroxyl', 'c6Hydro'] },
+      grid: [
+        'TTTTTTTTTTTTTTTT',
+        'T..gg....ggg...T',
+        'T..ggg..gggg...T',
+        'T.....,,,,.....T',
+        ',,,,,,,..,,,,,,,',
+        'T..ggg.....gg..T',
+        'T.gggg....ggg..T',
+        'T.....fff......T',
+        'TTTTTTTTTTTTTTTT',
+      ],
+      events: [
+        { x: 15, y: 4, on: 'step', warp: { map: 'town', x: 1, y: 12, dir: 'right' } },
+        { x: 0, y: 4, on: 'step', warp: { map: 'lane', x: 17, y: 5, dir: 'left' } },
+        { x: 7, y: 3, sprite: 'sign', on: 'bump', text: '← 油の小道　　村 →' },
+      ],
+    },
+    lane: {
+      name: '油の小道', ch: 6, night6: true,
+      grid: [
+        'RRRRRRRRRRRRRRRRRRR',
+        'hhhEhhhEhhhEhhhEhhh',
+        'T.................T',
+        'T.................T',
+        'T.................T',
+        '門.................,',
+        'T.................T',
+        'T.................T',
+        'T.................T',
+        'hhhEhhhEhhhEhhhEhhh',
+        'TTTTTTTTTTTTTTTTTTT',
+      ],
+      onEnter: { flag: 'c6_lane_in', when: f => f.c6_toko, scene: 'c6_lane_in' },
+      // 油倉への木戸は、連鎖を止めると開く
+      passable: { '門': f => f.c6_lane },
+      openTile: { '門': ',' },
+      blockedText: { '門': '油倉の木戸だ。油がべっとりついて、開かない。……先に、小道の連鎖を止めよう。' },
+      // 住人どうしをつなぐ油の跡（住人は game.js が出す）
+      paint(g, T) {
+        g.save(); g.strokeStyle = 'rgba(120, 84, 30, .55)'; g.lineWidth = T * 0.22; g.lineCap = 'round';
+        for (const [a, b] of LANE.edges) {
+          const A = LANE.residents[a], B = LANE.residents[b];
+          g.beginPath(); g.moveTo((A.x + 0.5) * T, (A.y + 0.5) * T); g.lineTo((B.x + 0.5) * T, (B.y + 0.5) * T); g.stroke();
+        }
+        g.restore();
+      },
+      events: [
+        { x: 18, y: 5, on: 'step', warp: { map: 'nomichi', x: 1, y: 4, dir: 'right' } },
+        // 夜だけ、油倉に入れる（ペルオのあとは、いつでも）
+        { x: 0, y: 5, on: 'step', when: f => f.c6_lane && (f.c6_night || f.c6_peruo1), warp: { map: 'kura', x: 9, y: 4, dir: 'left' } },
+        { x: 0, y: 5, on: 'step', when: f => f.c6_lane && !f.c6_night && !f.c6_peruo1, text: ['油倉は、しんとしている。', 'トコ「夜になると、においが強くなるの。……研究所のベッドで、夜まで休みましょう」'] },
+        { x: 17, y: 3, sprite: 'toko', on: 'bump', when: f => f.c6_toko && !f.c6_lane, laneReset: true },
+      ],
+    },
+    kura: {
+      name: '油倉', ch: 6, night6: true, bgm: f => f.c6_peruo1 ? 'town' : 'night',
+      grid: [
+        '###########',
+        '#XXwwXwwXX#',
+        '#wwwwwwwww#',
+        '#wwXwwwXww#',
+        '門wwwwwwwww,',
+        '#wXXwwwXXw#',
+        '#wwwwwwwww#',
+        '###########',
+      ],
+      onEnter: { flag: 'c6_kura', when: f => f.c6_night && !f.c6_peruo1, scene: 'c6_kura' },
+      passable: { '門': f => f.c6_peruo1 },
+      openTile: { '門': ',' },
+      blockedText: { '門': '裏口の戸だ。……今は、開かない。' },
+      events: [
+        { x: 10, y: 4, on: 'step', warp: { map: 'lane', x: 1, y: 5, dir: 'right' } },
+        { x: 0, y: 4, on: 'step', when: f => f.c6_peruo1, warp: { map: 'slope', x: 9, y: 3, dir: 'left' } },
+        { x: 2, y: 4, sprite: 'peruo', on: 'bump', when: f => !f.c6_peruo1, scene: 'c6_kura' },
+      ],
+    },
+    slope: {
+      name: '風車小屋への坂', ch: 6,
+      grid: [
+        'TTTTT柵柵TTTT',
+        'T.........T',
+        'T.........T',
+        'T.........,',
+        'T陽陽陽.T陽陽.TT',
+        'T.........T',
+        'T陽.T陽陽.T陽陽T',
+        'T.........T',
+        'T..T..灯...T',
+        'T.........T',
+        'TTTT氷氷TTTTT',
+      ],
+      onEnter: { flag: 'c6_slope', when: f => f.c6_peruo1, scene: 'c6_slope' },
+      // 全部の箱を氷室に入れると、風車小屋への柵が開く
+      passable: { '柵': f => f.c6_boxes },
+      openTile: { '柵': ',' },
+      blockedText: { '柵': '木の柵だ。木箱をみんな氷室に入れたら、通してもらおう。', '氷': '氷室の入口だ。中は、冷たくて暗い。（木箱を押して入れる）' },
+      inspect: { '灯': 'ランプがともっている。まわりが、ほんのり温かい。' },
+      events: [
+        { x: 10, y: 3, on: 'step', warp: { map: 'kura', x: 1, y: 4, dir: 'right' } },
+        { x: 5, y: 0, on: 'step', when: f => f.c6_boxes, warp: { map: 'fusha', x: 4, y: 5, dir: 'up' } },
+        { x: 6, y: 0, on: 'step', when: f => f.c6_boxes, warp: { map: 'fusha', x: 5, y: 5, dir: 'up' } },
+        { x: 9, y: 9, sprite: 'toko', on: 'bump', when: f => f.c6_peruo1 && !f.c6_boss, slopeReset: true },
+      ],
+    },
+    fusha: {
+      name: '風車小屋の上', ch: 6, bgm: f => f.c6_boss ? 'town' : 'tower',
+      grid: [
+        '風風風風風風風風風',
+        '風屋屋屋屋屋屋屋風',
+        '風屋屋屋屋屋屋屋風',
+        '風屋樽屋屋屋屋屋風',
+        '風屋屋屋屋屋屋屋風',
+        '風屋屋屋屋屋屋屋風',
+        '風風風風>>風風風',
+      ],
+      onEnter: { flag: 'c6_top', scene: 'c6_boss' },
+      inspect: { '樽': f => f.c6_boss ? '樽の中に、透明で硬いかたまりが残っている。' : '屋根裏の窓の奥の、スチレンの樽だ。ふたが半分開いている。' },
+      events: [
+        { x: 4, y: 6, on: 'step', warp: { map: 'slope', x: 5, y: 1, dir: 'down' } },
+        { x: 5, y: 6, on: 'step', warp: { map: 'slope', x: 6, y: 1, dir: 'down' } },
+        { x: 4, y: 2, sprite: 'peruo', on: 'bump', when: f => !f.c6_boss, scene: 'c6_boss' },
+      ],
+    },
   };
 
-  return { MAPS, pillarsLit, goalOf, EXTRACT };
+  return { MAPS, pillarsLit, goalOf, EXTRACT, LANE, SLOPE };
 })();

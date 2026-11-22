@@ -63,7 +63,25 @@
     const ids = new Set(Questions.LIST.map(q => q.id));
     for (const book of [s.notebook, s.used]) for (const id of Object.keys(book)) if (!ids.has(id)) delete book[id];
     fixDistrict(s);
+    unstick(s);
     return s;
+  }
+  // マップに建物を足したあとの古いセーブで、カーボが壁の中にいたら、いちばん近い歩ける場所へ動かす
+  function unstick(s) {
+    const m = MAPS[s.map];
+    if (!m) { Object.assign(s, { map: 'lab', x: 5, y: 5 }); return; }
+    const open = (x, y) => { const ch = m.grid[y] && m.grid[y][x]; if (!ch) return false; const p = m.passable && m.passable[ch]; return p ? p(s.flags) : !Sprites.SOLID.has(ch); };
+    if (open(s.x, s.y)) return;
+    const seen = new Set([s.x + ',' + s.y]), q = [[s.x, s.y]];
+    while (q.length) {
+      const [x, y] = q.shift();
+      for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+        const nx = x + dx, ny = y + dy, k = nx + ',' + ny;
+        if (seen.has(k) || !(m.grid[ny] && m.grid[ny][nx])) continue;
+        if (open(nx, ny)) { s.x = nx; s.y = ny; return; }
+        seen.add(k); q.push([nx, ny]);
+      }
+    }
   }
   // 第 5 章のマップを上下（タンクは左右）に折り返す前のセーブ：住人やカーボが、壁・閉じた扉・別の部屋に入ってしまう。
   // おかしな場所にいたら、位置を折り返す。それでも合わない住人の部屋は、はじめに戻す
@@ -161,6 +179,7 @@
   function musicFor() {
     if (UI.screen === 'battle') return UI.battle && ENEMIES[UI.battle.key].boss ? 'boss' : UI.battle && UI.battle.key === 'practice' ? 'town' : 'battle';
     if (UI.screen === 'world') {
+      if (night6()) return 'night';
       if (MAPS[S.map].bgm) return resolve(MAPS[S.map].bgm, S.flags);
       if (S.map === 'forest') return S.flags.boss ? 'town' : 'forest';
       if (MAPS[S.map].ch === 2) return S.flags.night ? 'night' : 'port';
@@ -171,13 +190,17 @@
     if (UI.screen === 'over' || UI.screen === 'clear') return null;
     return 'town';
   }
+  // 第 6 章：研究所のベッドで休んでから、油倉でペルオと会うまでは夜
+  const night6 = () => !!(S && MAPS[S.map] && MAPS[S.map].night6 && S.flags.c6_night && !S.flags.c6_peruo1);
   const win = (inner, cls = '') => `<section class="win ${cls}">${inner}</section>`;
   const muteLabel = () => (Sound.isMuted() ? T('♪ 音: OFF') : T('♪ 音: ON'));
   const muteBtn = () => `<button class="btn small-btn" data-act="mute">${muteLabel()}</button>`;
 
   function vTitle() {
     const sv = loadSave();
-    const where = sv && MAPS[sv.map] ? `${sv.flags && sv.flags.clear5 ? T('★ 全章クリア　') : ''}${tr(MAPS[sv.map].name)}　Lv${sv.lv || 1}` : '';
+    const fl = (sv && sv.flags) || {};
+    const star = fl.clear6 ? T('★ 第 6 章クリア　') : fl.clear5 && !fl.ch6 ? T('★ 新しい章（第 6 章）があります　') : '';
+    const where = sv && MAPS[sv.map] ? `${star}${tr(MAPS[sv.map].name)}　Lv${sv.lv || 1}` : '';
     return `<div class="title-screen">
       <div class="lang-btns" role="group" aria-label="Language">${Object.entries(I18N.LANGS).map(([k, n]) =>
         `<button class="btn small-btn${I18N.lang === k ? ' dev-on' : ''}" data-act="lang" data-arg="${k}" lang="${k}" aria-pressed="${I18N.lang === k}">${n}</button>`).join('')}</div>
@@ -188,7 +211,7 @@
           <p class="logo-sub">${T('炭 素 の 勇 者')}</p>
         </div>
       </div>
-      <p class="title-chapter">${T('全 5 章')}<br>${['求核の森', 'カルボニル港', '芳香族の王国', '鏡の回廊', '廃液街'].map(n => `<span class="nowrap">${tr(n)}</span>`).join(T('・'))}</p>
+      <p class="title-chapter">${T('第 1〜6 章')}<br>${['求核の森', 'カルボニル港', '芳香族の王国', '鏡の回廊', '廃液街', '錆びる村'].map(n => `<span class="nowrap">${tr(n)}</span>`).join(T('・'))}</p>
       <div class="title-menu">
         <button class="tbtn" data-act="newGame">${T('はじめから')}</button>
         ${sv ? `<button class="tbtn" data-act="continue">${T('つづきから')}<small>${esc(where)}</small></button>` : ''}
@@ -321,6 +344,12 @@
     temple(1, 1); temple(-1, 0.32);
     g.fillStyle = 'rgba(190,210,255,.25)';
     for (let k = 0; k < 3; k++) g.fillRect(tx - 18 + ((k * 13 + Math.floor(t * 6)) % 36), ty + 3 + k * 2, 6, 1);           // さざ波
+    // 第 6 章：丘の上の風車小屋。羽根がゆっくり回る
+    const wx = 178, wy = 124;
+    g.fillStyle = '#2e2a48'; g.beginPath(); g.moveTo(wx - 7, wy); g.lineTo(wx - 4, wy - 20); g.lineTo(wx + 4, wy - 20); g.lineTo(wx + 7, wy); g.closePath(); g.fill();
+    g.fillStyle = '#ffd36b'; g.fillRect(wx - 1, wy - 12, 2, 3);
+    g.strokeStyle = 'rgba(200, 190, 230, .7)'; g.lineWidth = 1.5;
+    for (let k = 0; k < 4; k++) { const an = t * 0.5 + k * Math.PI / 2; g.beginPath(); g.moveTo(wx, wy - 20); g.lineTo(wx + 13 * Math.cos(an), wy - 20 + 13 * Math.sin(an)); g.stroke(); }
     // 手前の丘と、カーボ
     hill(148, 6, '#0b0f24', 4);
     // 第 5 章：地面の下から伸びる配管。先が、ぼんやり光る（廃液街）
@@ -344,7 +373,7 @@
   }
 
   // ---- 開発者用：章を選んで始める（タイトルのロゴを 2 秒以内に 5 回タップ） ----
-  const DEV_CH = { 1: '第1章「求核の森」', 2: '第2章「カルボニル港」', 3: '第3章「芳香族の王国」', 4: '第4章「鏡の回廊」', 5: '第5章「廃液街」', 6: '全章クリアのあと' };
+  const DEV_CH = { 1: '第1章「求核の森」', 2: '第2章「カルボニル港」', 3: '第3章「芳香族の王国」', 4: '第4章「鏡の回廊」', 5: '第5章「廃液街」', 6: '第6章「錆びる村」', 7: '第 6 章クリアのあと' };
   function vDev() {
     const D = UI.dev, pick = (act, v, on, label) => `<button class="btn${on ? ' dev-on' : ''}" data-act="${act}" data-arg="${v}">${label}</button>`;
     return `<h2 class="screen-title">${T('開発者メニュー')}</h2>
@@ -352,10 +381,10 @@
       <div class="dev-row">${T('難易度')}　${[1, 2, 3, 4].map(d => pick('devDiff', d, D.diff === d, tr(Questions.DIFFS[d].name))).join('')}</div>
       <div class="dev-row">${T('立体')}　${['R', 'S'].map(c => pick('devCfg', c, D.cfg === c, `(${c})`)).join('')}<span class="small dim">${T('（第1章は仲間選びで決まる）')}</span></div>
       <div class="diff-list">${Object.entries(DEV_CH).map(([n, t]) => `<button class="diff-btn" data-act="devStart" data-arg="${n}">
-        <span class="diff-name">${tr(t)}</span><span class="small dim">${n === '1' ? T('はじめから') : n === '6' ? T('研究所から。Lv{0}', DevStart.lv[5]) : `Lv${DevStart.lv[n - 1]}　${T('研究費 {0}', yen(DevStart.money[n - 1]))}`}</span></button>`).join('')}</div>
+        <span class="diff-name">${tr(t)}</span><span class="small dim">${n === '1' ? T('はじめから') : n === '7' ? T('研究所から。Lv{0}', DevStart.lv[6]) : `Lv${DevStart.lv[n - 1]}　${T('研究費 {0}', yen(DevStart.money[n - 1]))}`}</span></button>`).join('')}</div>
       <div class="center"><button class="btn" data-act="toTitle">${T('もどる')}</button></div>`;
   }
-  // 第 n 章のはじめ（n = 6 は全章クリアのあと）の状態をつくる
+  // 第 n 章のはじめ（n = 7 は第 6 章クリアのあと）の状態をつくる
   function devState(n, diff, cfg) {
     const s = freshState(diff), done = n - 1;
     for (let c = 1; c <= done; c++) for (const f of DevStart.flags[c]) s.flags[f] = true;
@@ -367,7 +396,7 @@
     // レベルアップのたびに技を 1 つ強くしたことにする（4 人に順に）
     party.forEach(id => { s.skillLv[id] = 1; });
     for (let i = 0; i < s.lv - 1; i++) { const id = party[i % 4]; s.skillLv[id] = Math.min(SKILL_MAX, s.skillLv[id] + 1); }
-    s.ch = Math.min(5, n);
+    s.ch = Math.min(6, n);
     return s;
   }
 
@@ -410,7 +439,10 @@
 
   // 第 2 章は昼と夜、第 3 章は残っている柱の数をマップ名に添える
   const mapTitle = () => tr(map().name) + (map().ch === 2 ? (S.flags.night ? T('（夜）') : T('（昼）'))
-    : map().ch === 3 && !S.flags.c3_boss ? T('　柱 {0}/6', Maps.pillarsLit(S.flags)) : '');
+    : map().ch === 3 && !S.flags.c3_boss ? T('　柱 {0}/6', Maps.pillarsLit(S.flags))
+    : S.map === 'lane' && S.flags.c6_toko && !S.flags.c6_lane ? T('　BHT {0}　のまれた人 {1}/{2}', c6().bht, c6().cons.length, Maps.LANE.limit)
+    : S.map === 'slope' && !S.flags.c6_boxes ? T('　氷室 {0}/{1}', box().filter(b => b.done).length, box().length)
+    : night6() ? T('（夜）') : '');
   // いまの目的（どこへ行けばよいかを HUD に出す）
   const goalText = () => { const g = Maps.goalOf(S.flags, S.map); return g ? tr(g.t) : ''; };
   function vWorld() {
@@ -644,6 +676,8 @@
       const st = sc.steps[sc.i];
       if (st.do === 'flag') { S.flags[st.f] = true; save(); sc.i++; continue; }
       if (st.do === 'heal') { S.hp = S.maxHp; sc.i++; continue; }
+      // 章を始める（第 6 章は、クリア画面からでも、あとから研究所に入っても、ここから始まる）
+      if (st.do === 'chapter') { S.ch = Math.max(S.ch || 1, st.n); S.hp = S.maxHp; UI.clearCh = null; clearLog(); save(); sc.i++; continue; }
       if (st.do === 'se') { Sound.se(st.s); sc.i++; continue; }
       if (st.do === 'night' || st.do === 'day') { S.flags.night = st.do === 'night'; sc.i++; save(); if (UI.screen === 'world') render(); continue; }
       if (st.do === 'warp') { S.map = st.map; S.x = st.x; S.y = st.y; S.dir = st.dir || S.dir; UI.move = null; sc.i++; save(); render(); continue; }
@@ -731,7 +765,7 @@
     if (p) return p(S.flags);
     return !Sprites.SOLID.has(ch);
   }
-  const activeEvents = () => (map().events || []).filter(e => !e.when || e.when(S.flags)).concat(resEvents());
+  const activeEvents = () => (map().events || []).filter(e => !e.when || e.when(S.flags)).concat(resEvents(), laneEvents());
 
   // ---- 第 5 章：分液区 ----
   const ex = () => { if (!S.c5x) S.c5x = Maps.EXTRACT.init(); return S.c5x; };
@@ -860,6 +894,118 @@
   }
   const eventAt = (x, y, on) => activeEvents().find(e => e.x === x && e.y === y && (!on || e.on === on));
 
+  // ---- 第 6 章：油の小道（連鎖を止める） ----
+  // 準備のあいだは、住人に BHT の小瓶を渡せる（返してもらうこともできる）。テンポはカーボの 1 歩うしろをついてくる
+  // 顔の赤い住人に話しかけて連鎖を動かすと、テンポはその場に残り、カーボが 1 歩進むたびに連鎖が 1 回うつる
+  const c6 = () => { if (!S.c6) S.c6 = Maps.LANE.init(); return S.c6; };
+  const laneOn = () => S.map === 'lane' && S.flags.c6_toko && !S.flags.c6_lane;
+  function laneEvents() {
+    if (S.map !== 'lane' || !S.flags.ch6) return [];
+    return Object.entries(Maps.LANE.residents).map(([id, r]) => ({ x: r.x, y: r.y, sprite: r.sprite, on: 'bump', lane: id }));
+  }
+  const laneSafe = st => id => { const r = Maps.LANE.residents[id], t = st.tempoAt; return st.prot.includes(id) || (t && Math.abs(r.x - t[0]) + Math.abs(r.y - t[1]) === 1); };
+  function laneTalk(id) {
+    const L = Maps.LANE, r = L.residents[id], st = c6(), lines = r.talk;
+    UI.held = null;
+    if (!laneOn()) return message(id === L.start && S.flags.c6_lane ? say(tr(r.name), tr('……熱が、引いたみたい。ありがとう')) : lines.slice(0, 1));
+    const give = () => { st.prot.push(id); st.bht--; save(); Sound.se('heal'); refreshHud(); message(T('{0}に、BHT の小瓶を渡した。（残り {1}）', tr(r.name), st.bht), () => laneCheckStop()); };
+    if (st.run) {
+      if (id === st.car) return message('（この人が、いま連鎖を運んでいる。まわりの人を守って、うつる先をなくそう）');
+      if (st.cons.includes(id)) return message(T('{0}は、連鎖にのまれてしまった。', tr(r.name)));
+      if (st.prot.includes(id)) return message(T('{0}は、BHT の小瓶を持っている。', tr(r.name)));
+      if (st.bht > 0) { UI.choice = [{ t: T('BHT の小瓶を渡す（残り {0}）', st.bht), fn: give }, { t: 'やめておく' }]; return renderOverlay(); }
+      return message(lines.slice(0, 1));
+    }
+    if (id === st.car) return message(lines, () => { UI.choice = [{ t: '連鎖を動かす（準備ができた）', fn: laneStart }, { t: 'まだ準備する' }]; renderOverlay(); });
+    if (st.prot.includes(id)) return message([...lines, '（BHT の小瓶を持っている）'], () => {
+      UI.choice = [{ t: '小瓶を返してもらう', fn: () => { st.prot.splice(st.prot.indexOf(id), 1); st.bht++; save(); refreshHud(); message(T('小瓶を返してもらった。（残り {0}）', st.bht)); } }, { t: 'そのまま持っていてもらう' }];
+      renderOverlay();
+    });
+    if (st.bht > 0) return message(lines, () => { UI.choice = [{ t: T('BHT の小瓶を渡す（残り {0}）', st.bht), fn: give }, { t: 'やめておく' }]; renderOverlay(); });
+    return message([...lines, '（BHT の小瓶は、もう残っていない。誰かに返してもらうこともできる）']);
+  }
+  function laneStart() {
+    const st = c6();
+    st.run = true; st.tempoAt = [...st.tempo]; save(); Sound.se('transform'); refreshHud();
+    message(['（連鎖が、動きだした！）', 'テンポ「わしは、ここに残るぞ。……カーボが 1 歩進むたびに、連鎖が 1 回うつる」'], () => laneCheckStop());
+  }
+  // 連鎖のうつる先がなければ、止まった
+  function laneCheckStop() {
+    const st = c6();
+    if (!st.run || Maps.LANE.next(st.car, st.cons, laneSafe(st))) return false;
+    st.run = false; save(); UI.held = null;
+    playScene('c6_lane_done', () => refreshHud());
+    return true;
+  }
+  // カーボが 1 歩進んだ：準備のあいだはテンポがついてくる。連鎖が動いていれば、1 回うつる
+  function laneStep(ox, oy) {
+    if (!laneOn()) return false;
+    const st = c6(), L = Maps.LANE;
+    if (!st.run) { st.tempo = [ox, oy]; return false; }
+    const n = L.next(st.car, st.cons, laneSafe(st));
+    if (!n) return laneCheckStop();
+    st.car = n; st.cons.push(n); Sound.se('ng'); refreshHud();
+    if (st.cons.length > L.limit) {
+      UI.held = null; save();
+      message([T('{0}にも、連鎖がうつった。', tr(L.residents[n].name)), '連鎖にのまれた人が、多すぎる……！', 'トコ「いったん、戻りましょう。……みんなの手当てをして、やり直しよ」'], () => laneReset(true));
+      return true;
+    }
+    flash(T('{0}に、連鎖がうつった（{1}/{2}）', tr(L.residents[n].name), st.cons.length, L.limit), 'bad');
+    return laneCheckStop();
+  }
+  function laneReset(toEntry) {
+    S.c6 = Maps.LANE.init();
+    if (toEntry) { [S.x, S.y] = Maps.LANE.entry; S.dir = 'left'; UI.move = null; }
+    save(); render();
+  }
+  function askLaneReset() {
+    UI.held = null;
+    if (c6().run) return message('トコ「連鎖が動いているあいだは、わたしも手が出せないの。……あと少し、がんばって」');
+    message('トコ「BHT の小瓶を、みんなに返してもらって、はじめからやり直す？」', () => {
+      UI.choice = [{ t: 'はじめからやり直す', fn: () => { laneReset(true); message('（BHT の小瓶を、みんなから返してもらった）'); } }, { t: 'このまま続ける' }];
+      renderOverlay();
+    });
+  }
+
+  // ---- 第 6 章：風車小屋への坂（木箱を押して氷室へ） ----
+  const box = () => { if (!S.c6box) S.c6box = Maps.SLOPE.init(); return S.c6box; };
+  const crateAt = (x, y) => S.map === 'slope' ? box().find(b => !b.done && b.x === x && b.y === y) : null;
+  // 割れた箱は、はじめの場所に戻す（ほかの箱やカーボがいたら、坂の上の空いている場所へ）
+  function crateHome(b) {
+    const i = box().indexOf(b), [hx, hy] = Maps.SLOPE.crates[i];
+    const free = (x, y) => !box().some(o => o !== b && !o.done && o.x === x && o.y === y) && !(S.x === x && S.y === y) && passableTile(tileAt(x, y)) && !eventAt(x, y, 'bump');
+    const spots = [[hx, hy], ...[1, 2, 3].flatMap(y => [...Array(9)].map((_, k) => [k + 1, y]))];
+    const p = spots.find(([x, y]) => free(x, y));
+    if (p) [b.x, b.y] = p;
+  }
+  function pushCrate(b, dx, dy) {
+    const bx = b.x + dx, by = b.y + dy, ch = tileAt(bx, by);
+    if (ch === '氷') {
+      b.done = true;
+      const n = box().filter(o => o.done).length;
+      Sound.se('chest'); save(); refreshHud();
+      if (n === box().length) { UI.held = null; playScene('c6_boxes_done', () => refreshHud()); }
+      else flash(T('木箱を氷室に入れた（{0}/{1}）', n, box().length));
+      return true;
+    }
+    if (!passableTile(ch) || crateAt(bx, by) || eventAt(bx, by, 'bump')) return false;
+    b.x = bx; b.y = by;
+    if (Maps.SLOPE.hot(map(), bx, by)) {
+      UI.held = null; Sound.se('hurt');
+      message(['木箱が温まって、中のかけらが割れた！', '（つんとしたにおいが広がる。……箱は、坂の上に戻された）'], () => { crateHome(b); save(); });
+    }
+    save();
+    return true;
+  }
+  function askSlopeReset() {
+    UI.held = null;
+    if (S.flags.c6_boxes) return message('トコ「氷室の中は、冷たくて暗いわ。……ペルオさんのかけらは、もう割れない」');
+    message('トコ「箱を、みんな坂の上に戻しましょうか？（氷室に入れた箱は、そのまま）」', () => {
+      UI.choice = [{ t: '戻してもらう', fn: () => { box().filter(b => !b.done).forEach(b => { b.x = -1; }); box().filter(b => !b.done).forEach(crateHome); save(); render(); message('（木箱を、坂の上に戻した）'); } }, { t: 'このまま続ける' }];
+      renderOverlay();
+    });
+  }
+
   function mapCanvas() {
     // openTile: 通れるようになった門を、開いた絵に差し替える
     const open = m0 => Object.keys(m0.openTile || {}).map(c => passableTile(c) ? 1 : 0).join('');
@@ -945,7 +1091,7 @@
     camY = H <= VH ? -(VH - H) / 2 : Math.max(0, Math.min(H - VH, camY));
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.drawImage(mapCanvas(), Math.round(-camX * TILE), Math.round(-camY * TILE));
-    if (S.flags.night && m.ch === 2) { ctx.fillStyle = 'rgba(10, 18, 52, 0.55)'; ctx.fillRect(0, 0, cv.width, cv.height); }
+    if ((S.flags.night && m.ch === 2) || night6()) { ctx.fillStyle = 'rgba(10, 18, 52, 0.55)'; ctx.fillRect(0, 0, cv.width, cv.height); }
     // 第 3 章：柱の光が消えるほど、外の景色が暗く沈む
     if (m.dim && !S.flags.c3_boss) {
       const dark = 6 - Maps.pillarsLit(S.flags);
@@ -985,6 +1131,8 @@
         Sprites.drawChar(ctx, 'shadow', (ox - camX) * TILE, (oy - camY) * TILE, TILE, { colors });
       }
     }
+    if (S.map === 'lane') drawLane(camX, camY, colors);
+    if (S.map === 'slope') for (const b of box()) if (!b.done) Sprites.drawChar(ctx, 'crate6', (b.x - camX) * TILE, (b.y - camY) * TILE, TILE);
     Sprites.drawChar(ctx, 'hero', (hx - camX) * TILE, (hy - camY) * TILE, TILE, { colors, dir: S.dir });
     drawGoalMarks(camX, camY);
     // 分液区：いまどちらの層にいるかを、左上に出す
@@ -995,6 +1143,31 @@
       ctx.fillStyle = 'rgba(0, 0, 0, .65)'; ctx.fillRect(bx, 4, tw + 14, 24);
       ctx.fillStyle = m.layer === 'org' ? '#ffe28a' : '#9fd0ff'; ctx.textBaseline = 'middle'; ctx.fillText(label, bx + 7, 16.5);
       ctx.restore();
+    }
+  }
+  // 油の小道：連鎖を運んでいる人は赤く、のまれた人は灰色に。BHT を持っている人には小瓶の印。テンポも描く
+  function drawLane(camX, camY, colors) {
+    if (!S.flags.ch6) return;
+    const st = c6(), on = laneOn(), t = performance.now() / 1000;
+    for (const [id, r] of Object.entries(Maps.LANE.residents)) {
+      const px = (r.x - camX) * TILE, py = (r.y - camY) * TILE;
+      if (on && id === st.car) {
+        ctx.save(); ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = `rgba(255, 70, 50, ${0.25 + 0.12 * Math.sin(t * 5)})`; ctx.fillRect(px + 6, py + 2, TILE - 12, TILE * 0.45); ctx.restore();
+        ctx.strokeStyle = `rgba(255, 90, 60, ${0.6 + 0.3 * Math.sin(t * 5)})`; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
+      } else if (on && st.cons.includes(id)) {
+        ctx.fillStyle = 'rgba(60, 60, 70, .55)'; ctx.fillRect(px, py, TILE, TILE);
+      }
+      if (on && st.prot.includes(id)) {
+        ctx.fillStyle = '#e8f4ff'; ctx.fillRect(px + TILE - 9, py + 1, 7, 10); ctx.fillStyle = '#4a7ab0'; ctx.fillRect(px + TILE - 8, py + 5, 5, 5); ctx.fillStyle = '#2a3a4a'; ctx.fillRect(px + TILE - 8, py, 5, 2);
+      }
+      if (on && st.run && st.tempoAt && Math.abs(r.x - st.tempoAt[0]) + Math.abs(r.y - st.tempoAt[1]) === 1) {
+        ctx.strokeStyle = 'rgba(120, 230, 200, .8)'; ctx.lineWidth = 2; ctx.strokeRect(px + 3, py + 3, TILE - 6, TILE - 6);
+      }
+    }
+    if (on && S.flags.c6_tempo) {
+      const [tx, ty] = st.run ? st.tempoAt : st.tempo;
+      Sprites.drawChar(ctx, 'tempo', (tx - camX) * TILE, (ty - camY) * TILE, TILE, { colors });
     }
   }
   // 目的の場所に、上下に揺れる黄色い矢印を出す（会話中は出さない）
@@ -1039,6 +1212,10 @@
       return;
     }
     if (ev) { UI.held = null; return trigger(ev); }
+    const cr = crateAt(nx, ny);
+    if (cr) {
+      if (!pushCrate(cr, dx, dy)) return;
+    }
     const ch = tileAt(nx, ny);
     if (!passableTile(ch)) {
       const bt = map().blockedText && map().blockedText[ch];
@@ -1050,11 +1227,13 @@
     S.x = nx; S.y = ny;
     moveShadow(dx, dy);
     moveFollower(ox, oy);
+    UI.laneFrom = [ox, oy];
   }
 
   function afterStep() {
     syncShadow();
     if (checkMirror()) return;
+    if (UI.laneFrom) { const [ox, oy] = UI.laneFrom; UI.laneFrom = null; if (laneStep(ox, oy)) return; }
     const ev = eventAt(S.x, S.y, 'step');
     if (ev) { UI.held = null; return trigger(ev); }
     const enc = map().encounters;
@@ -1077,13 +1256,20 @@
     if (ev) return trigger(ev);
     const ins = resolve(map().inspect && map().inspect[tileAt(fx, fy)], S.flags);
     if (ins) {
-      if (ins.rest) { S.hp = S.maxHp; save(); refreshHud(); Sound.se('heal'); return message(['ベッドで仮眠をとった。', 'HP が全回復した。（セーブしました）']); }
+      if (ins.rest) {
+        S.hp = S.maxHp; save(); refreshHud(); Sound.se('heal');
+        if (S.flags.c6_lane && !S.flags.c6_night) return playScene('c6_night', () => render());
+        return message(['ベッドで仮眠をとった。', 'HP が全回復した。（セーブしました）']);
+      }
       return message(ins);
     }
   }
 
   function trigger(ev) {
     if (ev.res) return talkResident(ev.res);
+    if (ev.lane) return laneTalk(ev.lane);
+    if (ev.laneReset) return askLaneReset();
+    if (ev.slopeReset) return askSlopeReset();
     if (openWithFollower(ev)) return;
     if (ev.pump) return askPump(ev);
     if (ev.ladder) return askLadder();
@@ -1115,6 +1301,8 @@
     S.map = w.map; S.x = w.x; S.y = w.y; S.dir = w.dir || S.dir;
     if (MAPS[S.map].layer && !MAPS[from].layer) enterDistrict();
     if (MAPS[from].layer && !MAPS[S.map].layer && S.c5x) S.c5x.follow = null;
+    if (S.map === 'lane' && from !== 'lane' && !S.flags.c6_lane) S.c6 = Maps.LANE.init();
+    if (S.map === 'slope' && from !== 'slope' && !S.flags.c6_boxes) { box().filter(b => !b.done).forEach(b => { b.x = -1; }); box().filter(b => !b.done).forEach(crateHome); }
     UI.move = null; UI.steps = 0; UI.shadow = null;
     save();
     render();
@@ -1180,6 +1368,8 @@
       timeMax: S.diff >= 4 ? 120 : 90, timeLeft: 0, queue: queue ? [...queue] : null, fromNote, levels: 0,
     };
     if (fromNote) UI.battle.lines = [say(tr(E.name), tr(E.start)), T('ノートの問題 {0} 問に挑戦する。', queue.length)];
+    else if (E.note) UI.battle.lines.push(tr(E.note));
+    if (E.tokoShield && !fromNote) UI.battle.toko = E.tokoShield;
     else if (E.queue) UI.battle.lines = [tr(E.start)];
     // エノラスとアキラルの戦い：カーボではなく 2 人の HP で受ける（0 にはならない）
     if (E.duo) Object.assign(UI.battle, { allyHp: E.ally.hp, allyMax: E.ally.hp });
@@ -1293,6 +1483,7 @@
         if (B.shadowCfg) B.missStreak = (B.missStreak || 0) + 1;
         if (S.cfg === 'S' && trait) dmg = Math.max(1, Math.round(dmg * 0.75));
         if (B.guard) { dmg = 0; B.guard--; lines.push(T('ブトキが立ちはだかった！')); }
+        else if (B.toko) { dmg = 0; B.toko--; lines.push(T('トコが、水素を差し出した！ ダメージを肩代わりしてくれた。')); }
         if (E.duo) {
           B.allyHp = Math.max(1, B.allyHp - dmg);
           lines.push((choice < 0 ? T('時間切れ！ ') : T('不正解……。')) + T('{0}は {1} のダメージを受けた。', tr(E.ally.name), dmg));
@@ -1666,10 +1857,10 @@
   }
 
   const TITLES = [[90, '不斉の勇者'], [75, '求核の剣士'], [60, '見習い化学者'], [0, 'ラセミの迷い子']];
-  const CHAPTERS = { 1: '第1章「求核の森」', 2: '第2章「カルボニル港」', 3: '第3章「芳香族の王国」', 4: '第4章「鏡の回廊」', 5: '第5章「廃液街」' };
-  const NEXT = { 1: '第2章「カルボニル港」', 2: '第3章「芳香族の王国」', 3: '第4章「鏡の回廊」', 4: '第5章「廃液街」' };
-  const NEXT_ACT = { 1: 'toCh2', 2: 'toCh3', 3: 'toCh4', 4: 'toCh5' };
-  const clearCh = () => UI.clearCh || (S.flags.clear5 ? 5 : S.flags.clear4 ? 4 : S.flags.clear3 ? 3 : S.flags.clear2 ? 2 : 1);
+  const CHAPTERS = { 1: '第1章「求核の森」', 2: '第2章「カルボニル港」', 3: '第3章「芳香族の王国」', 4: '第4章「鏡の回廊」', 5: '第5章「廃液街」', 6: '第6章「錆びる村」' };
+  const NEXT = { 1: '第2章「カルボニル港」', 2: '第3章「芳香族の王国」', 3: '第4章「鏡の回廊」', 4: '第5章「廃液街」', 5: '第6章「錆びる村」' };
+  const NEXT_ACT = { 1: 'toCh2', 2: 'toCh3', 3: 'toCh4', 4: 'toCh5', 5: 'toCh6' };
+  const clearCh = () => UI.clearCh || (S.flags.clear6 ? 6 : S.flags.clear5 ? 5 : S.flags.clear4 ? 4 : S.flags.clear3 ? 3 : S.flags.clear2 ? 2 : 1);
   function clearResult() {
     const ch = clearCh();
     const cs = S.chStats[ch], st = cs ? { correct: cs.c, total: cs.t } : S.stats;
@@ -1705,7 +1896,7 @@
         </div>
         <p class="small dim">${T('ストーリーのネタバレは含まれません。')}</p>`)}
       ${NEXT_ACT[ch] ? `<div class="center"><button class="btn big" data-act="${NEXT_ACT[ch]}">${T('▶ {0}へ進む', tr(NEXT[ch]))}</button></div>`
-        : `<p class="center accent">${T('全 5 章クリア！ 最後まで遊んでくれて、ありがとう。')}</p><div class="center"><button class="btn big" data-act="afterClear">${T('▶ その後の世界を歩く')}</button></div>`}
+        : `<p class="center accent">${T('第 6 章まで遊んでくれて、ありがとう。第 7 章は、ただいま準備中です。')}</p><div class="center"><button class="btn big" data-act="afterClear">${T('▶ その後の世界を歩く')}</button></div>`}
       <div class="center"><button class="btn" data-act="clearNote">${T('復習ノートを見る')}</button><button class="btn" data-act="toTitle">${T('タイトルへ')}</button></div>`;
   }
   function fallbackCopy(t) {
@@ -1739,7 +1930,7 @@
       if (n === 1) return actions.pickDiff(UI.dev.diff);
       S = devState(n, UI.dev.diff, UI.dev.cfg); clearLog();
       UI.shadow = null; UI.scene = null; UI.msg = null; UI.menu = false; UI.shop = false; UI.clearCh = null;
-      if (n <= 5) return actions[`toCh${n}`]();
+      if (n <= 6) return actions[`toCh${n}`]();
       S.map = 'lab'; S.x = 5; S.y = 5; S.dir = 'up';
       save(); UI.screen = 'world'; render();
     },
@@ -1753,6 +1944,7 @@
       UI.screen = 'world';
       render();
       if (!S.cfg) return playScene('prologue');
+      if (S.flags.clear5 && !S.flags.ch6 && S.map !== 'lab') return message(['新しい章「第 6 章　錆びる村」が加わりました。', '研究所に入ると、第 6 章が始まります。']);
       enterScene();
     },
     pickDiff(d) {
@@ -1849,6 +2041,13 @@
       S.map = 'lab'; S.x = 5; S.y = 5; S.dir = 'up';
       save(); UI.screen = 'world'; render();
       if (!S.flags.ch5) playScene('c5_start');
+    },
+    // 第 5 章のクリア画面から：研究所で第 6 章が始まる（第 5 章のあとに研究所へ入ったときと同じ）
+    toCh6() {
+      S.ch = 6; S.hp = S.maxHp; UI.clearCh = null; clearLog();
+      S.map = 'lab'; S.x = 5; S.y = 5; S.dir = 'up';
+      save(); UI.screen = 'world'; render();
+      enterScene();
     },
     // 全章クリアのあと、その後の世界を歩く
     afterClear() { UI.clearCh = null; UI.screen = 'world'; render(); },

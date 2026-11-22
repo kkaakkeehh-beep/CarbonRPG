@@ -15,9 +15,10 @@ const DevStart = {
       'c4_shadow', 'c4_wed', 'c4_guards', 'c4_racem', 'c4_shatter', 'c4_boss', 'clear4'],
     5: ['ch5', 'c5_gesui', 'c5_boeki', 'c5_ambush', 'c5_confess', 'c5_bunEki', 'c5t_amS', 'c5_d1', 'c5t_ibu', 'c5_d2', 'c5t_amR', 'c5_d3', 'c5_d5',
       'c5_tppo', 'c5_cation', 'c5_star', 'c5_starGone', 'c5_boss', 'clear5'],
+    6: ['ch6', 'c6_elder', 'c6_tempo', 'c6_toko', 'c6_lane_in', 'c6_lane', 'c6_night', 'c6_kura', 'c6_peruo1', 'c6_slope', 'c6_boxes', 'c6_top', 'c6_boss', 'clear6'],
   },
-  lv: { 1: 3, 2: 5, 3: 7, 4: 10, 5: 11 },
-  money: { 1: 430, 2: 1130, 3: 1960, 4: 3310, 5: 3660 },
+  lv: { 1: 3, 2: 5, 3: 7, 4: 10, 5: 11, 6: 12 },
+  money: { 1: 430, 2: 1130, 3: 1960, 4: 3310, 5: 3660, 6: 4380 },
   // 最初の仲間選びで選べる 4 人（R/S は並びで決まる）
   party: ['oxy', 'azy', 'iodo', 'buto'],
   items: { coffee: 3, energy: 1, book: 1 },

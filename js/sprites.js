@@ -591,6 +591,73 @@ const Sprites = (() => {
       c.restore();
       dot(c, x, y, s, 2, 0, 1, 16, '#6e7a77'); dot(c, x, y, s, 13, 0, 1, 16, '#2a3234');
     },
+
+    // ---- 第 6 章（錆びる村） ----
+    // 日の当たる地面（木箱が乗ると、温まって割れる）
+    '陽': (c, x, y, s, tx, ty) => {
+      grassBase(c, x, y, s, tx, ty, '#6fae4a');
+      dot(c, x, y, s, 0, 0, 16, 16, 'rgba(255, 226, 120, .5)');
+      for (let i = 0; i < 3; i++) dot(c, x, y, s, 2 + Math.floor(hash(tx, ty, i + 40) * 12), 2 + Math.floor(hash(tx, ty, i + 44) * 12), 1, 1, '#fff6c8');
+    },
+    // ランプのともった柱（まわりのマスが温かい）
+    '灯': (c, x, y, s, tx, ty) => {
+      grassBase(c, x, y, s, tx, ty);
+      const g = c.createRadialGradient(x + s / 2, y + s * 0.3, 0, x + s / 2, y + s * 0.3, s * 0.7);
+      g.addColorStop(0, 'rgba(255, 200, 90, .55)'); g.addColorStop(1, 'rgba(255, 200, 90, 0)');
+      c.fillStyle = g; c.fillRect(x, y, s, s);
+      dot(c, x, y, s, 7, 6, 2, 10, '#4a3a2a'); dot(c, x, y, s, 5, 14, 6, 2, '#3a2a1a');
+      dot(c, x, y, s, 5, 1, 6, 6, '#2a2a2a'); dot(c, x, y, s, 6, 2, 4, 4, '#ffd36b'); dot(c, x, y, s, 7, 3, 2, 2, '#fff4c4');
+    },
+    // 氷室の入口（冷たくて暗い。木箱を入れると割れない）
+    '氷': (c, x, y, s) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#7f8b99');
+      for (let r = 0; r < 4; r++) dot(c, x, y, s, 0, r * 4 + 3, 16, 1, '#66717e');
+      dot(c, x, y, s, 2, 3, 12, 13, '#1c2a3e'); dot(c, x, y, s, 3, 4, 10, 12, '#243954');
+      c.strokeStyle = '#cfe8ff'; c.lineWidth = Math.max(1, s / 20);
+      for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; c.beginPath(); c.moveTo(x + s * (0.5 - 0.2 * Math.cos(a)), y + s * (0.6 - 0.2 * Math.sin(a))); c.lineTo(x + s * (0.5 + 0.2 * Math.cos(a)), y + s * (0.6 + 0.2 * Math.sin(a))); c.stroke(); }
+    },
+    // 油倉の木戸（閉じている）
+    '門': (c, x, y, s) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#4a3420');
+      for (let i = 0; i < 4; i++) dot(c, x, y, s, i * 4 + 1, 1, 3, 15, '#7a5230');
+      dot(c, x, y, s, 0, 4, 16, 2, '#3a2814'); dot(c, x, y, s, 0, 11, 16, 2, '#3a2814');
+      dot(c, x, y, s, 11, 7, 2, 2, '#c9a227');
+    },
+    // 木の柵（閉じている）
+    '柵': (c, x, y, s, tx, ty) => {
+      grassBase(c, x, y, s, tx, ty);
+      for (let i = 0; i < 3; i++) dot(c, x, y, s, 1 + i * 6, 2, 2, 13, '#8a5f33');
+      dot(c, x, y, s, 0, 5, 16, 2, '#a8763f'); dot(c, x, y, s, 0, 10, 16, 2, '#a8763f');
+    },
+    // 風車小屋の屋上のまわり：朝焼けの空と、木の手すり
+    '風': (c, x, y, s, tx, ty, nb) => {
+      const g = c.createLinearGradient(x, y, x, y + s);
+      g.addColorStop(0, ty < 2 ? '#f7c88a' : '#9ec4e8'); g.addColorStop(1, ty < 2 ? '#f4dca8' : '#c4dcf0');
+      c.fillStyle = g; c.fillRect(x, y, s, s);
+      if (hash(tx, ty) < 0.3) dot(c, x, y, s, 3, 4, 6, 2, 'rgba(255,255,255,.7)');
+      const roof = d => nb(...d) === '屋' || nb(...d) === '樽';
+      if (roof([0, 1])) { dot(c, x, y, s, 0, 11, 16, 2, '#8a5f33'); dot(c, x, y, s, 2, 9, 2, 7, '#6b4423'); dot(c, x, y, s, 12, 9, 2, 7, '#6b4423'); }
+      if (roof([0, -1])) { dot(c, x, y, s, 0, 2, 16, 2, '#8a5f33'); }
+      if (roof([1, 0])) { dot(c, x, y, s, 12, 0, 2, 16, '#8a5f33'); }
+      if (roof([-1, 0])) { dot(c, x, y, s, 2, 0, 2, 16, '#8a5f33'); }
+    },
+    // 風車小屋の屋上の板
+    '屋': (c, x, y, s, tx, ty) => {
+      dot(c, x, y, s, 0, 0, 16, 16, '#a8763f');
+      for (let i = 0; i < 4; i++) dot(c, x, y, s, 0, i * 4 + 3, 16, 1, '#80592c');
+      if (hash(tx, ty) < 0.35) dot(c, x, y, s, 3 + Math.floor(hash(tx, ty, 2) * 8), 1 + Math.floor(hash(tx, ty, 3) * 3) * 4, 3, 1, '#6b4423');
+    },
+    // スチレンの樽（ふたが半分開いている）
+    '樽': (c, x, y, s) => {
+      TILE['屋'](c, x, y, s, 0, 0);
+      dot(c, x, y, s, 2, 3, 12, 13, '#8a5f33'); dot(c, x, y, s, 2, 6, 12, 1, '#5e3d1f'); dot(c, x, y, s, 2, 12, 12, 1, '#5e3d1f');
+      dot(c, x, y, s, 3, 1, 10, 3, '#d8ecf4'); dot(c, x, y, s, 3, 1, 5, 2, '#6b4423');
+    },
+    // 村の西の藪（第 6 章で、油の小道への抜け道になる）
+    '藪': (c, x, y, s, tx, ty) => {
+      grassBase(c, x, y, s, tx, ty);
+      for (let i = 0; i < 4; i++) circle(c, x, y, s, 3 + i * 3.4, 7 + (i % 2) * 3, 3.4, '#2d6b2f', '#1e4d22');
+    },
   };
   // 鏡の広間の格子（閉じている）
   function mirrorGate(c, x, y, s, tx, ty) {
@@ -627,7 +694,8 @@ const Sprites = (() => {
   const SOLID = new Set(['T', '~', 'M', 'r', '#', 'B', 'S', 'F', 'W', 'R', 'h', 'E', 'O', 'K', 'G', 'X', 'L', 'k', '|', 'Y',
     'Z', 'I', 'J', 'V', 'N', 'U', 'P', 'A', 't', 'y', 'e', 'a',
     'x', 'H', '`', 'C', '1', '"', '7', '+', 'v', 'j', '!', '[', ']', '}', ':', '^', '@', '?',
-    '(', '0', '4', '5', '6', '/', "'"]);
+    '(', '0', '4', '5', '6', '/', "'",
+    '灯', '氷', '門', '柵', '風', '樽', '藪']);
 
   // nb(dx, dy) はとなりのタイルの文字を返す（マップの外は木とみなす）
   function drawTile(ctx, ch, x, y, s, tx, ty, nb = () => '.') { (TILE[ch] || TILE['.'])(ctx, x, y, s, tx, ty, nb); }
@@ -1144,7 +1212,78 @@ const Sprites = (() => {
     lockR(c, x, y, s) { lockDoor(c, x, y, s, '#ff9ec4', true); },
     lockIbu(c, x, y, s) { lockDoor(c, x, y, s, '#9aa0aa', true); },
     lockOwn(c, x, y, s) { lockDoor(c, x, y, s, '#ffe066', null); },
+
+    // ---- 第 6 章 ----
+    // ペルオ（過酸化ベンゾイル）：白い服の細い若者。胸に O–O、体にひび
+    peruo(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#eef0f4', hair: '#c9ced8', skin: '#f4e6d6' });
+      dot(c, x, y, s, 4, 8, 1, 6, '#c9ced8'); dot(c, x, y, s, 11, 8, 1, 6, '#c9ced8');
+      circle(c, x, y, s, 6.6, 10.5, 1.3, '#ff7b72', '#8a1d18'); circle(c, x, y, s, 9.4, 10.5, 1.3, '#ff7b72', '#8a1d18');   // O–O
+      dot(c, x, y, s, 7.6, 10.2, 0.8, 0.6, '#8a1d18');
+      c.strokeStyle = '#7a8090'; c.lineWidth = Math.max(1, s / 24);
+      c.beginPath(); c.moveTo(x + s * 0.62, y + s * 0.14); c.lineTo(x + s * 0.55, y + s * 0.3); c.lineTo(x + s * 0.6, y + s * 0.42); c.stroke();
+    },
+    // ペルオ（朝日を浴びて、ひびが全身に広がった姿）
+    peruoCrack(c, x, y, s) {
+      c.save(); c.shadowColor = '#ffe08a'; c.shadowBlur = s / 3; CHAR.peruo(c, x, y, s); c.restore();
+      c.strokeStyle = '#ffb347'; c.lineWidth = Math.max(1, s / 20);
+      c.beginPath();
+      c.moveTo(x + s * 0.3, y + s * 0.55); c.lineTo(x + s * 0.42, y + s * 0.7); c.lineTo(x + s * 0.36, y + s * 0.86);
+      c.moveTo(x + s * 0.7, y + s * 0.52); c.lineTo(x + s * 0.6, y + s * 0.66); c.lineTo(x + s * 0.68, y + s * 0.8);
+      c.moveTo(x + s * 0.45, y + s * 0.2); c.lineTo(x + s * 0.38, y + s * 0.32); c.stroke();
+    },
+    // トコ（α-トコフェロール）：薬草屋の女の人。髪に、クロマンの環の髪飾り
+    toko(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#7a9a4a', hair: '#8a5a2a', long: true, dress: true });
+      dot(c, x, y, s, 6, 9, 4, 5, '#f4efe0');                                                                 // 前かけ
+      const pts = [...Array(6)].map((_, i) => [11 + 1.8 * Math.cos(Math.PI / 6 + i * Math.PI / 3), 2.2 + 1.8 * Math.sin(Math.PI / 6 + i * Math.PI / 3)]);
+      poly(c, x, y, s, pts, '#ffe9a8', '#b08d2a');
+      circle(c, x, y, s, 13.6, 4.2, 0.9, '#ff7b72');                                                         // フェノールの OH
+    },
+    // 菓子屋のおばあさん（ベンズアルデヒド。アーモンドの香り）
+    candy(c, x, y, s) {
+      person(c, x, y, s, { cloth: '#c98a5a', hair: '#e0e0e0' });
+      dot(c, x, y, s, 5, 9, 6, 5, '#f8f0e0');
+      poly(c, x, y, s, [[8, 9.5], [10, 11.5], [8, 13.5], [6, 11.5]], '#b07a4a', '#6b4423');                  // アーモンド
+    },
+    // 灯台守の使いの子（手紙の入ったかばん）
+    messenger(c, x, y, s) {
+      c.save(); c.translate(x + s * 0.15, y + s * 0.3); person(c, 0, 0, s * 0.7, { cloth: '#5a8ad8', hair: '#3a2a1a' }); c.restore();
+      dot(c, x, y, s, 9, 10, 4, 3, '#a8763f'); dot(c, x, y, s, 9.5, 9.5, 3, 1, '#f4f4f4');
+    },
+    // 油の小道の住人。胸の印で、何の分子かがわかる
+    laneBis(c, x, y, s) { laneRes(c, x, y, s, '#e0b030', 'C=C'); },
+    laneAld(c, x, y, s) { laneRes(c, x, y, s, '#e07aa8', 'CHO'); },
+    laneEth(c, x, y, s) { laneRes(c, x, y, s, '#6ab0d8', 'O'); },
+    laneAlk(c, x, y, s) { laneRes(c, x, y, s, '#b8b8b8', 'CH₂'); },
+    laneMeth(c, x, y, s) { laneRes(c, x, y, s, '#4a4f5e', 'CH₄'); },
+    laneBenz(c, x, y, s) { laneRes(c, x, y, s, '#e9e2c9', '⬡'); },
+    laneWater(c, x, y, s) { laneRes(c, x, y, s, '#e05a50', 'H₂O'); },
+    // ペルオのかけらの入った木箱
+    crate6(c, x, y, s) {
+      dot(c, x, y, s, 1, 3, 14, 12, '#9a6a3a'); dot(c, x, y, s, 1, 3, 14, 1, '#b98a52'); dot(c, x, y, s, 1, 9, 14, 1, '#6b4423');
+      dot(c, x, y, s, 7, 3, 1, 12, '#6b4423');
+      poly(c, x, y, s, [[3, 4], [5, 1], [6, 4]], '#f4f4f4', '#9aa0aa'); poly(c, x, y, s, [[10, 4], [12, 0.5], [13, 4]], '#f4f4f4', '#9aa0aa');
+    },
+    // 連鎖を運ぶペルオキシルラジカル（ROO•）と、古いヒドロペルオキシド（ROOH）
+    peroxyl(c, x, y, s) {
+      blob(c, x, y, s, '#c9a0e8');
+      circle(c, x, y, s, 5, 3.5, 2.2, '#ff7b72', '#8a1d18'); circle(c, x, y, s, 10, 3.5, 2.2, '#ff7b72', '#8a1d18');
+      c.save(); c.shadowColor = '#ffe066'; c.shadowBlur = s / 4; circle(c, x, y, s, 13.5, 1.8, 1.1, '#ffe066'); c.restore();
+    },
+    hydroperox(c, x, y, s) {
+      blob(c, x, y, s, '#d8c48a');
+      circle(c, x, y, s, 5, 3.5, 2.2, '#ff7b72', '#8a1d18'); circle(c, x, y, s, 10, 3.5, 2.2, '#ff7b72', '#8a1d18');
+      circle(c, x, y, s, 13.6, 2.4, 1.3, '#f4f4f4', '#777');
+    },
   };
+  // 油の小道の住人（人の形。胸に印）
+  function laneRes(c, x, y, s, col, mark) {
+    person(c, x, y, s, { cloth: col, hair: '#5a3a1e' });
+    dot(c, x, y, s, 4.5, 9, 7, 3.6, 'rgba(255,255,255,.85)');
+    c.fillStyle = '#1a1a1a'; c.font = `bold ${Math.round(s * (mark.length > 2 ? 0.17 : 0.22))}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(mark, x + s * 0.5, y + s * 0.67); c.textBaseline = 'alphabetic';
+  }
   function pea(c, x, y, s, right) {
     c.save(); c.translate(x + s * 0.12, y + s * 0.22);
     person(c, 0, 0, s * 0.76, right ? { cloth: '#ff9ec4', hair: '#5a3a1e', long: true, dress: true } : { cloth: '#79c0ff', hair: '#5a3a1e' });
