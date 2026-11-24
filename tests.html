@@ -194,7 +194,7 @@
       'c5_tppo', 'c5_cation', 'c5_star', 'c5_boss'];
     const c5Steps = c5Order.map((_, i) => Object.fromEntries([...c3Order, ...c4Order, ...c5Order.slice(0, i + 1)].map(k => [k, true])));
     // 第 6 章の進み具合
-    const c6Order = ['clear5', 'ch6', 'c6_elder', 'c6_tempo', 'c6_toko', 'c6_lane_in', 'c6_lane', 'c6_night', 'c6_kura', 'c6_peruo1', 'c6_slope', 'c6_boxes', 'c6_top', 'c6_boss'];
+    const c6Order = ['clear5', 'ch6', 'c6_elder', 'c6_tempo', 'c6_toko', 'c6_lane_in', 'c6_lane', 'c6_chika_in', 'c6_chika', 'c6_kuramae_in', 'c6_kuramae', 'c6_night', 'c6_kura', 'c6_peruo1', 'c6_slope', 'c6_boxes', 'c6_top', 'c6_boss'];
     const c6Steps = c6Order.map((_, i) => Object.fromEntries([...c3Order, ...c4Order, ...c5Order, ...c6Order.slice(0, i + 1)].map(k => [k, true])));
     const flagSets = [{}, flagsAll, { ...flagsAll, night: true }, { night: true }, { c2_lens: true }, { c2_clue2: true }, ...c3Steps, ...c4Steps, ...c5Steps, ...c6Steps];
     for (const [id, m] of Object.entries(Maps.MAPS)) {
@@ -468,69 +468,105 @@
       check('第 5 章を終えたセーブから、第 6 章が始まる', !bad.length, bad.join('\n'));
     }
 
-    // ---- 第 6 章：油の小道の連鎖は、正しく止めれば止まり、止めなければ止まらない ----
+    // ---- 第 6 章：連鎖を止める 3 か所。考えれば止められて、でたらめでは止まらない ----
     {
-      const L = Maps.LANE, R = L.residents, bad = [];
-      const elig = Object.keys(R).filter(id => L.RANK[R[id].type] && id !== L.start);
-      const ok = prot => L.simulate(prot, null).length <= L.limit;
-      if (ok([])) bad.push('何もしなくても止まる');
-      if (elig.some(id => ok([id]))) bad.push(`BHT 1 本で止まる（${elig.filter(id => ok([id])).join(', ')}）`);
-      const pairs = elig.flatMap((a, i) => elig.slice(i + 1).map(b => [a, b])).filter(ok);
-      if (!pairs.length) bad.push('BHT 2 本では止まらない');
-      if (!ok(['M7', 'S3'])) bad.push('連鎖を運ぶ人のとなり 2 人（M7・S3）を守っても止まらない');
-      // 連鎖の行き先が、同じ取られやすさの 2 人のどちらかで迷わない（BHT 2 本までのどの置き方でも）
-      const tie = prot => { const cons = [L.start]; let car = L.start;
-        for (;;) { const c = L.nb(car).filter(id => L.RANK[R[id].type] && !cons.includes(id) && !prot.includes(id)); if (!c.length) return false;
-          const r = Math.min(...c.map(id => L.RANK[R[id].type])); if (c.filter(id => L.RANK[R[id].type] === r).length > 1) return true;
-          car = c.find(id => L.RANK[R[id].type] === r); cons.push(car); } };
-      const sets = [[], ...elig.map(a => [a]), ...elig.flatMap((a, i) => elig.slice(i + 1).map(b => [a, b]))];
-      if (sets.some(tie)) bad.push(`行き先で迷う置き方がある: ${sets.filter(tie).map(p => p.join('+') || '（なし）').join(' / ')}`);
-      // 住人は通れる場所に立ち、話す言葉がある
-      for (const [id, r] of Object.entries(R)) { const ch = Maps.MAPS.lane.grid[r.y][r.x]; if (ch !== '.' || !r.talk.length || !Sprites.CHAR_IDS.includes(r.sprite)) bad.push(`${id} の場所・台詞・絵`); }
-      // テンポ（となりの住人を守る）と BHT 1 本でも止められる場所がある
-      const spots = []; for (let y = 2; y <= 8; y++) for (let x = 1; x <= 17; x++) if (!Object.values(R).some(r => r.x === x && r.y === y)) spots.push([x, y]);
-      if (!elig.some(a => spots.some(t => L.simulate([a], t).length <= L.limit))) bad.push('テンポと BHT 1 本では止められない');
-      const rate = elig.flatMap((a, i) => elig.slice(i + 1).flatMap((b, j) => elig.slice(i + j + 2).map(c => [a, b, c]))), good = rate.filter(ok).length;
-      check(`第6章：油の小道の連鎖を止められる（BHT 2 本の正解 ${pairs.length} 通り、でたらめに 3 本置いて止まるのは ${Math.round(good / rate.length * 100)}%）`, !bad.length && good / rate.length < 0.5, bad.join('\n'));
+      const CH = Maps.CHAIN, want = { lane: [1, 1], chika: [2, 6], kuramae: [1, 4] };
+      for (const [key, A] of Object.entries(CH.areas)) {
+        const bad = [], m = Maps.MAPS[A.map], f = Object.fromEntries([A.after, 'ch6'].map(k => [k, true]));
+        const clone = st => ({ red: [...st.red], ex: [...st.ex], prot: { ...st.prot }, b: st.b, t: st.t });
+        const moves = st => Object.keys(A.nodes).flatMap(id => CH.open(A, st, id) ? ['b', 't'].filter(v => st[v] && CH.fits(A, id, v)).map(v => [id, v]) : []);
+        // すべての渡し方を調べる：止まる渡し方の数・「!」の相手にでたらめに渡して止まる割合
+        let wins = 0, total = 0;
+        const naive = st => { const ms = moves(st), th = CH.threat(A, st), pick = ms.filter(([id]) => th.includes(id)), use = pick.length ? pick : ms; let p = 0;
+          for (const mv of use) { const s2 = clone(st), r = CH.give(A, s2, ...mv); p += r.result ? (r.result === 'win' ? 1 : 0) : naive(s2); } return p / use.length; };
+        const all = st => { for (const mv of moves(st)) { const s2 = clone(st), r = CH.give(A, s2, ...mv); if (r.result) { total++; if (r.result === 'win') wins++; } else all(s2); } };
+        const st0 = CH.init(A);
+        all(st0);
+        const pn = naive(st0);
+        if (wins < want[key][0] || wins > want[key][1]) bad.push(`止まる渡し方が ${wins} 通り（${want[key].join('〜')} 通りのはず）`);
+        if (pn > 0.55) bad.push(`「!」の相手にでたらめに渡しても ${Math.round(pn * 100)}% 止まる`);
+        if (wins / total > 0.08) bad.push(`でたらめでも ${Math.round(wins / total * 100)}% の渡し方で止まる`);
+        // 小瓶を渡さずに放っておくと、止まらない
+        const idle = clone(st0); while (CH.live(A, idle) && idle.red.length <= A.limit) CH.breathe(A, idle);
+        if (idle.red.length <= A.limit) bad.push('放っておいても止まる');
+        // 前庭：小瓶の種類を気にしなくてよければ、止まる渡し方がずっと多い（種類を見分ける意味がある）
+        if (key === 'kuramae') {
+          const B = { ...A, nodes: Object.fromEntries(Object.entries(A.nodes).map(([k, n]) => [k, { ...n, air: true }])), bht: A.bht + A.tempo, tempo: 0 };
+          let w2 = 0; const all2 = st => { for (const id of Object.keys(B.nodes)) { if (!CH.open(B, st, id) || !st.b) continue; const s2 = clone(st), r = CH.give(B, s2, id, 'b'); if (r.result) w2 += r.result === 'win'; else all2(s2); } };
+          all2(CH.init(B));
+          if (w2 < wins * 3) bad.push(`小瓶の種類を気にしなくても ${w2} 通りしかない`);
+        }
+        // 相手は床の上に立ち、絵と言葉がある。はじまり以外は、入口から歩いて話しかけられる（テンポとトコの立つ場所を通らずに）
+        const stand = Object.values(A.stand), cell = (x, y) => (m.grid[y] && m.grid[y][x]) || 'T';
+        const blocked = (x, y) => Sprites.SOLID.has(cell(x, y)) || A.nodes[x + ',' + y] || stand.some(([a, b]) => a === x && b === y) || (m.events || []).some(e => e.x === x && e.y === y && e.on === 'bump' && (!e.when || e.when(f)));
+        const start = { lane: [17, 5], chika: [15, 3], kuramae: [15, 5] }[key];
+        const seen = new Set([start.join()]), q = [start];
+        for (let i = 0; i < q.length; i++) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = q[i][0] + dx, ny = q[i][1] + dy; if (!seen.has(nx + ',' + ny) && !blocked(nx, ny)) { seen.add(nx + ',' + ny); q.push([nx, ny]); } }
+        for (const [id, n] of Object.entries(A.nodes)) {
+          const [x, y] = id.split(',').map(Number);
+          if (Sprites.SOLID.has(cell(x, y)) || !n.talk.length || !Sprites.CHAR_IDS.includes(n.sprite)) bad.push(`${id} の場所・台詞・絵`);
+          if (n.kind !== 'S' && ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has((x + dx) + ',' + (y + dy)))) bad.push(`${n.name}（${id}）に話しかけられない`);
+        }
+        for (const [x, y] of stand) if (Sprites.SOLID.has(cell(x, y)) || A.nodes[x + ',' + y]) bad.push(`テンポかトコの立つ場所 (${x},${y})`);
+        if (!Story.SCENES[A.done]) bad.push(`止まったあとの場面 ${A.done} がない`);
+        check(`第6章：連鎖を止める（${m.name}。止まる渡し方 ${wins}/${total} 通り、「!」の相手にでたらめに渡して止まるのは ${Math.round(pn * 100)}%）`, !bad.length, bad.join('\n'));
+      }
     }
 
-    // ---- 第 6 章：風車小屋への坂の木箱を、割らずに全部氷室へ入れられる ----
+    // ---- 第 6 章：風車小屋への坂。青い札の箱を日よけにすれば、白い札の箱を全部氷室へ入れられる ----
     {
-      const m = Maps.MAPS.slope, H = m.grid.length, bad = [], f = { c6_peruo1: true };
+      const SL = Maps.SLOPE, m = Maps.MAPS.slope, W = m.grid[0].length, Hh = m.grid.length, bad = [], f = { c6_peruo1: true };
       const cell = (x, y) => (m.grid[y] && m.grid[y][x]) || 'T';
-      const block = (x, y) => (m.events || []).some(e => e.x === x && e.y === y && e.on === 'bump' && (!e.when || e.when(f)));
-      const wall = (x, y) => Sprites.SOLID.has(cell(x, y)) || block(x, y);
-      // 押す回数で幅優先に探す（カーボの位置は、押さずに歩いて行ける範囲の代表のマスにまとめる）
-      const c0 = Maps.SLOPE.crates.map(p => p.join()).sort().join('|');
-      const reach = (p, set) => { const seen = new Set([p.join()]), q = [p];
-        for (let i = 0; i < q.length; i++) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = q[i][0] + dx, ny = q[i][1] + dy, k = nx + ',' + ny;
-          if (!seen.has(k) && !wall(nx, ny) && !set.has(k)) { seen.add(k); q.push([nx, ny]); } }
-        return seen; };
-      const canon = (p, set) => [...reach(p, set)].sort()[0];
-      const seen = new Set([canon([9, 3], new Set(c0.split('|'))) + '/' + c0]), q = [[[9, 3], c0, 0]];
-      let found = null;
-      for (let qi = 0; qi < q.length; qi++) {
-        const [p, cs, n] = q[qi];
-        if (!cs) { found = n; break; }
-        const set = new Set(cs.split('|')), area = reach(p, set);
-        for (const k of set) {
-          const [x, y] = k.split(',').map(Number);
-          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-            if (!area.has((x - dx) + ',' + (y - dy))) continue;
-            const bx = x + dx, by = y + dy, bk = bx + ',' + by, ns = new Set(set); ns.delete(k);
-            if (cell(bx, by) !== '氷') { if (wall(bx, by) || set.has(bk) || Maps.SLOPE.hot(m, bx, by)) continue; ns.add(bk); }
-            const cs2 = [...ns].sort().join('|'), kk = canon([x, y], ns) + '/' + cs2;
-            if (!seen.has(kk)) { seen.add(kk); q.push([[x, y], cs2, n + 1]); }
+      const standAt = Object.values(m.stand).map(p => p.join());
+      // 箱の通れないマス：かたい地形・出口（step の出来事）・テンポとトコの立つ場所。カーボの通れないマス：かたい地形・氷室・テンポとトコ
+      const evAt = (x, y) => (m.events || []).some(e => e.x === x && e.y === y && (!e.when || e.when(f)));
+      const crateWall = (x, y) => Sprites.SOLID.has(cell(x, y)) && cell(x, y) !== '氷' || evAt(x, y) || standAt.includes(x + ',' + y);
+      const walkWall = (x, y) => Sprites.SOLID.has(cell(x, y)) || standAt.includes(x + ',' + y);
+      function solve(crates0, opt = {}) {
+        const P = (x, y) => y * W + x, X = i => i % W, Y = i => (i / W) | 0;
+        const sunny = (i, occ) => cell(X(i), Y(i)) === '陽' && !(cell(X(i) + 1, Y(i)) === 'T' || (!opt.noShade && occ.has(i + 1)));
+        const hot = i => SL.hot(m, X(i), Y(i));
+        const reach = (p, occ) => { const sn = new Set([p]), q = [p]; let mn = p;
+          for (let h = 0; h < q.length; h++) for (const d of [1, -1, W, -W]) { const n = q[h] + d; if (sn.has(n) || walkWall(X(n), Y(n)) || occ.has(n)) continue; sn.add(n); q.push(n); if (n < mn) mn = n; }
+          return { sn, mn }; };
+        const B0 = crates0.filter(c => c.k === 'B').map(c => P(c.x, c.y)).sort((a, b) => a - b), D0 = crates0.filter(c => c.k === 'D').map(c => P(c.x, c.y)).sort((a, b) => a - b);
+        const start = P(10, 2), key = (B, D, mn) => B.join() + '|' + D.join() + '|' + mn;
+        let fr = [[B0, D0, start]], depth = 0; const seen = new Set([key(B0, D0, reach(start, new Set([...B0, ...D0])).mn)]);
+        while (fr.length) {
+          const nf = [];
+          for (const [B, D, p] of fr) {
+            if (!B.length) return depth;
+            const occ = new Set([...B, ...D]), { sn } = reach(p, occ);
+            for (const [arr, isB] of [[B, true], [D, false]]) for (const c of arr) for (const d of [1, -1, W, -W]) {
+              const t = c + d;
+              if (!sn.has(c - d) || occ.has(t) || crateWall(X(t), Y(t))) continue;
+              const ice = cell(X(t), Y(t)) === '氷';
+              if (ice && !isB) continue;
+              const nB = isB ? (ice ? B.filter(i => i !== c) : B.map(i => i === c ? t : i).sort((a, b) => a - b)) : B;
+              const nD = isB ? D : D.map(i => i === c ? t : i).sort((a, b) => a - b);
+              const o2 = new Set([...nB, ...nD]);
+              if (nB.some(i => hot(i) || sunny(i, o2))) continue;
+              const k = key(nB, nD, reach(c, o2).mn);
+              if (seen.has(k)) continue;
+              seen.add(k); nf.push([nB, nD, c]);
+            }
+            if (seen.size > 2.5e6) return 'capped';
           }
+          fr = nf; depth++;
         }
+        return null;
       }
-      if (found === null) bad.push('割らずに全部入れられない');
-      else if (found < 30) bad.push(`簡単すぎる（${found} 回押せば終わる）`);
-      // 箱のはじめの場所は、温かくない
-      for (const [x, y] of Maps.SLOPE.crates) if (Maps.SLOPE.hot(m, x, y) || wall(x, y)) bad.push(`箱 (${x},${y}) のはじめの場所`);
-      // 日なたを避けずにまっすぐ下へ押すと、割れる（影を通る意味がある）
-      for (const [x] of Maps.SLOPE.crates) { let y = 2; while (!wall(x, y + 1) && !Maps.SLOPE.hot(m, x, y + 1) && cell(x, y + 1) !== '氷') y++; if (cell(x, y + 1) === '氷') bad.push(`箱 x=${x} は、まっすぐ下へ押すだけで入る`); }
-      check(`第6章：坂の木箱を、割らずに全部氷室へ入れられる（いちばん少なくて ${found} 回押す）`, !bad.length, bad.join('\n'));
+      const cr = SL.init(), n = solve(cr);
+      if (n === null || n === 'capped') bad.push('割らずに全部入れられない');
+      else if (n < 35) bad.push(`簡単すぎる（${n} 回押せば終わる）`);
+      if (solve(cr.filter(c => c.k === 'B')) !== null) bad.push('青い札の箱がなくても解ける');
+      if (solve(cr, { noShade: true }) !== null) bad.push('木箱が影を落とさなくても解ける（日よけにする意味がない）');
+      // ゲームの決まり（SLOPE.sunny・breaks）と、ここでの決まりが同じ
+      if (!SL.sunny(m, [], 1, 5) || SL.sunny(m, [{ x: 2, y: 5, done: false }], 1, 5)) bad.push('日なたと影の決まり');
+      if (!SL.breaks(m, [], { x: 1, y: 7, k: 'B', done: false }) || SL.breaks(m, [], { x: 1, y: 7, k: 'D', done: false })) bad.push('ランプのそばで割れる決まり');
+      for (const c of cr) if (SL.breaks(m, cr, c) || Sprites.SOLID.has(cell(c.x, c.y))) bad.push(`箱 (${c.x},${c.y}) のはじめの場所`);
+      for (const id of ['crateBPO', 'crateDTBP', 'tempo', 'toko']) if (!Sprites.CHAR_IDS.includes(id)) bad.push(`絵 ${id} がない`);
+      check(`第6章：坂の白い札の木箱を、青い札の箱を日よけにして、割らずに全部氷室へ入れられる（いちばん少なくて ${n} 回押す）`, !bad.length, bad.join('\n'));
     }
 
     // ---- 第 5 章：分液区の 3 つの部屋が、どれも解ける（pH の決まりと、扉の前に鍵の住人を立たせられること） ----

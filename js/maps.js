@@ -119,78 +119,124 @@ const Maps = (() => {
       if (!f.c6_elder) return G('村の様子を見て回り、長老ベンゼンにも話を聞く', ['town', 16, 4]);
       if (!f.c6_tempo) return G('研究所へ戻って、教授に知らせる', ['town', 5, 11], ['lab', 5, 3]);
       if (!f.c6_toko) return G('村の南の薬草屋へ', ['town', 15, 11]);
-      if (!f.c6_lane) return G('村の西の、油の小道で連鎖を止める', ['town', 0, 12], ['nomichi', 0, 4], ['lane', 3, 5]);
-      if (!f.c6_night) return G('研究所のベッドで、夜まで休む', ['nomichi', 15, 4], ['town', 5, 11], ['lab', 9, 1]);
-      if (!f.c6_peruo1) return G('夜の油倉へ', ['town', 0, 12], ['nomichi', 0, 4], ['lane', 0, 5], ['kura', 2, 4]);
-      if (!f.c6_boxes) return G('木箱を、坂の下の氷室へ運ぶ', ['slope', 4, 10], ['slope', 5, 10]);
+      if (!f.c6_lane) return G('村の西の、油の小道で連鎖を止める', ['town', 0, 12], ['nomichi', 0, 4], ['lane', 8, 4]);
+      if (!f.c6_chika) return G('小道の奥から、地下の油蔵へ', ['lane', 0, 5], ['chika', 5, 2]);
+      if (!f.c6_kuramae) return G('油倉の前庭の樽を止める', ['chika', 0, 3], ['kuramae', 8, 3]);
+      if (!f.c6_night) return G('研究所のベッドで、夜まで休む', ['kuramae', 16, 2], ['nomichi', 15, 4], ['town', 5, 11], ['lab', 9, 1]);
+      if (!f.c6_peruo1) return G('夜の油倉へ', ['town', 0, 12], ['nomichi', 0, 4], ['lane', 0, 5], ['kuramae', 8, 1], ['kura', 2, 4]);
+      if (!f.c6_boxes) return G('白い札の木箱を、坂の下の氷室へ運ぶ', ['slope', 4, 10], ['slope', 5, 10]);
       return G('風車小屋の上へ', ['slope', 5, 0], ['slope', 6, 0], ['fusha', 4, 2]);
     }
     return null;
   }
 
-  // ---- 第 6 章：油の小道（連鎖を止める） ----
-  // 住人は 3 列（北・中・南）× 4 段。油のしみた跡でとなりどうしがつながり、連鎖は跡をたどって、となりの住人のうち、いちばん水素の取られやすい人へうつる
-  // rank: 取られやすさ（小さいほど取られやすい）。null は連鎖がうつらない住人
-  const LANE = {
-    entry: [17, 5], start: 'M3', limit: 3, bht: 3,
-    RANK: { bis: 1, ald: 2, eth: 3, alk: 4 },
-    residents: {
-      N3: { x: 3, y: 2, type: 'meth', sprite: 'laneMeth', name: 'メタンのガス灯守り',
-        talk: ['メタンのガス灯守り「わしの水素は 4 本とも、炭素にがっちりつかまっとる。ラジカルが来ても、わしからは取れんよ」'] },
-      N7: { x: 7, y: 2, type: 'water', sprite: 'laneWater', name: '井戸の水番',
-        talk: ['井戸の水番「水の O–H は、とても強いのさ。連鎖のほうから、よけていくよ」'] },
-      N11: { x: 11, y: 2, type: 'ald', sprite: 'laneAld', name: 'デカナールの香水売り',
-        talk: ['デカナールの香水売り「わたしの端には、アルデヒドの C–H があるの。……空気の中に置いておくと、すぐ酸っぱくなっちゃう」'] },
-      N15: { x: 15, y: 2, type: 'benz', sprite: 'laneBenz', name: 'ベンゼンの行商人',
-        talk: ['ベンゼンの行商人「芳香環の C–H は、強いんだ。長老さまと同じでね。連鎖は、ぼくの前を素通りするよ」'] },
-      M3: { x: 3, y: 5, type: 'bis', sprite: 'laneBis', name: 'リノール酸のランプ油売り',
-        talk: ['リノール酸のランプ油売り「……体が、熱い。わたしの水素、2 つの二重結合にはさまれてるの。……取られちゃった」', '（この人が、いま連鎖を運んでいる。となりの人のうち、いちばん水素の取られやすい人へ、うつろうとしている）'] },
-      M7: { x: 7, y: 5, type: 'bis', sprite: 'laneBis', name: 'アマニ油の絵描き',
-        talk: ['アマニ油の絵描き「油絵の具はね、空気で酸化されて固まるの。わたしの CH₂ は、2 つの二重結合にはさまれてるのよ。いちばん取られやすいところ」'] },
-      M11: { x: 11, y: 5, type: 'eth', sprite: 'laneEth', name: 'ジエチルエーテルの薬屋',
-        talk: ['ジエチルエーテルの薬屋「酸素のとなりの CH₂ は、少し取られやすい。古いエーテルには過酸化物ができるからね。……でも、二重結合の人ほどじゃない」'] },
-      M15: { x: 15, y: 5, type: 'alk', sprite: 'laneAlk', name: 'パラフィンのろうそく屋',
-        talk: ['パラフィンのろうそく屋「わしはただのアルカンじゃ。CH₂ ばかり。取られんことはないが、最後のほうじゃな」'] },
-      S3: { x: 3, y: 8, type: 'alk', sprite: 'laneAlk', name: 'ヘキサンの洗い屋',
-        talk: ['ヘキサンの洗い屋「おれは CH₂ と CH₃ だけのアルカンさ。二重結合も酸素もない。取られやすさで言えば、いちばん後ろだね」'] },
-      S7: { x: 7, y: 8, type: 'bis', sprite: 'laneBis', name: 'ベニバナ油の料理人',
-        talk: ['ベニバナ油の料理人「うちの油は、リノール酸がたっぷり。二重結合にはさまれた CH₂ が、いくつもあるんだ」'] },
-      S11: { x: 11, y: 8, type: 'eth', sprite: 'laneEth', name: 'ジイソプロピルエーテルの番頭',
-        talk: ['ジイソプロピルエーテルの番頭「エーテルの中でも、わたしは過酸化物ができやすいほうでね。酸素のとなりの C–H が狙われるのさ」'] },
-      S15: { x: 15, y: 8, type: 'ald', sprite: 'laneAld', name: 'ヘキサナールの草刈り',
-        talk: ['ヘキサナールの草刈り「刈った草のにおい、わかる？ アルデヒドなんだ。端の C–H が、わりと取られやすいよ」'] },
+  // ---- 第 6 章：連鎖を止める（油の小道・地下の油蔵・油倉の前庭） ----
+  // 小瓶を 1 本渡すたびに、連鎖が「ひと息」広がる。歩いているあいだは広がらない
+  // ひと息ごとに、赤い人（樽）に肩がふれている相手へうつる。kind：W 弱い水素（次のひと息でうつる）、
+  // M 少し強い水素（赤い相手にふれて 2 回目のひと息でうつる）、I うつらない（壁になる）、S はじまり（はじめから赤い）
+  // air：空気がある相手には BHT、ない相手にはテンポの小瓶（TEMPO）だけが効く
+  const BARREL = {
+    W: { name: 'スチレンの樽', talk: ['スチレンの樽だ。ビニル基を持つモノマー。温まると、ひとりでに重合を始める。'] },
+    S: { name: 'スチレンの樽', talk: ['スチレンの樽だ。中で、重合が始まっている。ふたのすき間から、熱気が上がる。'] },
+    M: { name: 'メタクリル酸メチルの樽', talk: ['メタクリル酸メチルの樽だ。スチレンより、ひとりでには重合しにくい。温まるのに、少し時間がかかりそうだ。'] },
+    I: { name: 'トルエンの樽', talk: ['トルエンの樽だ。重合はしない溶媒。熱が来ても、ここで止まる。'] },
+  };
+  const CHAIN = {
+    vial: { b: 'BHT の小瓶', t: 'テンポの小瓶' },
+    areas: {
+      // 5-1 油の小道（人。空気あり）
+      lane: {
+        map: 'lane', flag: 'c6_lane', after: 'c6_toko', bht: 2, tempo: 0, limit: 2, people: true, done: 'c6_lane_done',
+        stand: { tempo: [16, 4], toko: [16, 6] },
+        nodes: {
+          '8,4': { kind: 'S', sprite: 'oilLamp', name: 'ランプ油売り',
+            talk: ['あつい……。わしの水素は、2 つの二重結合のあいだにある。いちばん、取られやすいんじゃ……'] },
+          '8,3': { kind: 'W', sprite: 'oilPainter', name: 'アマニ油の絵描き',
+            talk: ['絵の具はね、空気で酸化して乾くの。だから、酸化は嫌いじゃない。……でも、わたしまで乾くのは嫌。', 'わたしの水素は、二重結合にはさまれてるの。それも、2 か所。となりの料理人さんとは、いつも肩がくっついちゃう。'] },
+          '9,3': { kind: 'W', sprite: 'oilCook', name: 'ベニバナ油の料理人',
+            talk: ['うちの油は、二重結合にはさまれた水素がたっぷりでね。揚げ物にはいいんだが。'] },
+          '10,3': { kind: 'W', sprite: 'oilJoiner', name: 'クルミ油の家具職人',
+            talk: ['クルミの油で、家具をみがくんだ。乾くと固い膜になる。……人がかたまるのは困るな。'] },
+          '7,4': { kind: 'W', sprite: 'oilFisher', name: '干物屋のおじいさん',
+            talk: ['わしの脂は、二重結合だらけじゃ。誰より、取られやすい。', 'じゃが、わしのまわりには、ランプ油売りのほかに誰もおらん。干物は、ひとりで干すもんじゃ。'] },
+          '9,4': { kind: 'I', sprite: 'oilGas', name: 'メタンのガス灯守り',
+            talk: ['ぼくの水素は、取られないよ。ここに立ってれば、壁のかわりになる。'] },
+          '8,5': { kind: 'M', sprite: 'oilOlive', name: 'オリーブ油売り',
+            talk: ['わたしの二重結合は、1 つだけ。となりの水素は、リノール酸さんほど取られやすくないわ。……ひと息くらいは、もつと思う。'] },
+          '8,6': { kind: 'W', sprite: 'oilSun', name: 'ヒマワリ油の種屋',
+            talk: ['オリーブさんの向こうに、ぼくらがいる。……オリーブさんが頼りだ。'] },
+          '9,6': { kind: 'W', sprite: 'oilPerilla', name: 'エゴマ油の炒り屋',
+            talk: ['ヒマワリさんと、背中あわせなの。わたしの油も、二重結合にはさまれた水素だらけ。'] },
+        },
+      },
+      // 5-2 地下の油蔵（樽。空気なし）
+      chika: {
+        map: 'chika', flag: 'c6_chika', after: 'c6_lane', bht: 0, tempo: 3, limit: 5, done: 'c6_chika_done',
+        stand: { tempo: [12, 5], toko: [11, 5] },
+        origin: [2, 2], rows: ['wwwswwmwimwww', 'wwwwwiwwwiwww'],
+      },
+      // 5-3 油倉の前庭（樽。大文字はふたの開いた樽＝空気あり、小文字はふたの閉じた樽＝空気なし）
+      kuramae: {
+        map: 'kuramae', flag: 'c6_kuramae', after: 'c6_chika', bht: 1, tempo: 2, limit: 6, done: 'c6_kuramae_done',
+        stand: { tempo: [13, 6], toko: [14, 6] },
+        origin: [2, 3], rows: ['WWWIWWSwwwwww', 'WWWWWWwMwiwww'],
+      },
     },
-    // となりどうしの住人をつなぐ、油の跡
-    edges: [],
-    // 住人が置かれた場所の決まり（テスト用）：連鎖の行き先が同じ取られやすさで迷わない
   };
-  for (const r of ['N', 'M', 'S']) for (const [a, b] of [[3, 7], [7, 11], [11, 15]]) LANE.edges.push([r + a, r + b]);
-  for (const x of [3, 7, 11, 15]) LANE.edges.push(['N' + x, 'M' + x], ['M' + x, 'S' + x]);
-  LANE.nb = id => LANE.edges.filter(e => e.includes(id)).map(e => e[0] === id ? e[1] : e[0]);
-  // 連鎖を 1 つ進める。うつる先がなければ null
-  LANE.next = (car, cons, safe) => {
-    const R = LANE.residents, rk = id => LANE.RANK[R[id].type];
-    const c = LANE.nb(car).filter(id => rk(id) && !cons.includes(id) && !safe(id));
-    if (!c.length) return null;
-    return c.sort((a, b) => rk(a) - rk(b) || (a < b ? -1 : 1))[0];
+  // 樽の並びから、樽を作る
+  for (const A of Object.values(CHAIN.areas)) {
+    if (!A.rows) continue;
+    A.nodes = {};
+    A.rows.forEach((row, dy) => [...row].forEach((c, dx) => {
+      const k = c.toUpperCase(), air = c === k, B = BARREL[k];
+      A.nodes[(A.origin[0] + dx) + ',' + (A.origin[1] + dy)] = { kind: k, air, sprite: 'barrel' + k + (air ? 'Open' : 'Shut'), name: B.name,
+        talk: [...B.talk, air ? '（ふたが開いている。中に空気が入っている）' : '（ふたが閉じている。中の空気は少ない）'], barrel: true };
+    }));
+  }
+  for (const A of Object.values(CHAIN.areas)) for (const n of Object.values(A.nodes)) if (n.air === undefined) n.air = true;
+  CHAIN.byMap = id => Object.keys(CHAIN.areas).find(k => CHAIN.areas[k].map === id);
+  CHAIN.nb = (A, id) => { const [x, y] = id.split(',').map(Number); return [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => (x + dx) + ',' + (y + dy)).filter(k => A.nodes[k]); };
+  CHAIN.init = A => ({ red: Object.keys(A.nodes).filter(k => A.nodes[k].kind === 'S'), ex: [], prot: {}, b: A.bht, t: A.tempo });
+  // うつる相手か（うつらない相手・赤い相手・小瓶を持っている相手は、もううつらない）
+  CHAIN.open = (A, st, id) => A.nodes[id].kind !== 'I' && !st.red.includes(id) && !st.prot[id];
+  const touchesRed = (A, st, id) => CHAIN.nb(A, id).some(k => st.red.includes(k));
+  // ひと息：新しく赤くなった相手を返し、st を書きかえる
+  CHAIN.breathe = (A, st) => {
+    const caught = [], ex = [...st.ex];
+    for (const id of Object.keys(A.nodes)) {
+      if (!CHAIN.open(A, st, id) || !touchesRed(A, st, id)) continue;
+      if (A.nodes[id].kind === 'M' && !st.ex.includes(id)) ex.push(id); else caught.push(id);
+    }
+    st.red = st.red.concat(caught); st.ex = ex.filter(id => !st.red.includes(id));
+    return caught;
   };
-  LANE.init = () => ({ bht: LANE.bht, prot: [], run: false, car: LANE.start, cons: [LANE.start], tempo: [LANE.entry[0] + 1, LANE.entry[1]] });
-  // BHT とテンポで守った住人を除いて、最後まで走らせる（テスト用）
-  LANE.simulate = (prot, tempo) => {
-    const R = LANE.residents, safe = id => prot.includes(id) || (tempo && Math.abs(R[id].x - tempo[0]) + Math.abs(R[id].y - tempo[1]) === 1);
-    const cons = [LANE.start];
-    for (let car = LANE.start, n; (n = LANE.next(car, cons, safe));) { cons.push(n); car = n; }
-    return cons;
+  // 次のひと息でうつる相手（「!」を出す）
+  CHAIN.threat = (A, st) => Object.keys(A.nodes).filter(id => CHAIN.open(A, st, id) && touchesRed(A, st, id) && (A.nodes[id].kind !== 'M' || st.ex.includes(id)));
+  // まだ広がる先があるか
+  CHAIN.live = (A, st) => Object.keys(A.nodes).some(id => CHAIN.open(A, st, id) && touchesRed(A, st, id));
+  // 小瓶が合うか（空気のある相手には BHT、ない相手にはテンポの小瓶）
+  CHAIN.fits = (A, id, v) => (v === 'b') === A.nodes[id].air;
+  // 小瓶を渡して、ひと息。小瓶がなくなったら、止まるまで一気に進める。結果：'win' | 'lose' | null（続く）
+  CHAIN.give = (A, st, id, v) => {
+    st.prot[id] = v; st[v]--;
+    const caught = [CHAIN.breathe(A, st)];
+    if (st.red.length <= A.limit && CHAIN.live(A, st) && !st.b && !st.t) while (CHAIN.live(A, st) && st.red.length <= A.limit) caught.push(CHAIN.breathe(A, st));
+    return { caught, result: st.red.length > A.limit ? 'lose' : !CHAIN.live(A, st) ? 'win' : null };
   };
 
-  // ---- 第 6 章：風車小屋への坂（木箱を氷室へ。日なたとランプのとなりでは、箱が割れる） ----
+  // ---- 第 6 章：風車小屋への坂（白い札の木箱を、坂の下の氷室へ） ----
+  // B：過酸化ベンゾイル（ペルオのかけら）。日なたとランプのとなりで割れる。D：ジ-tert-ブチルペルオキシド。割れない
+  // 朝日は東から差す。木と木箱の西どなりのマスは、影になる（岩は低くて、影を落とさない）
   const SLOPE = {
-    crates: [[3, 2], [5, 2], [7, 2]],
-    hot(m, x, y) {
-      const ch = (xx, yy) => m.grid[yy] && m.grid[yy][xx];
-      return ch(x, y) === '陽' || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => ch(x + dx, y + dy) === '灯');
+    crates: [{ x: 2, y: 2, k: 'B' }, { x: 5, y: 2, k: 'B' }, { x: 8, y: 2, k: 'B' }, { x: 5, y: 3, k: 'D' }],
+    hot(m, x, y) { const ch = (xx, yy) => m.grid[yy] && m.grid[yy][xx]; return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => ch(x + dx, y + dy) === '灯'); },
+    // 日の当たるマスか（crates：いまある木箱）
+    sunny(m, crates, x, y) {
+      if (!m.grid[y] || m.grid[y][x] !== '陽') return false;
+      return !(m.grid[y][x + 1] === 'T' || crates.some(c => !c.done && c.x === x + 1 && c.y === y));
     },
-    init: () => SLOPE.crates.map(([x, y]) => ({ x, y, done: false })),
+    breaks(m, crates, c) { return c.k === 'B' && !c.done && (SLOPE.hot(m, c.x, c.y) || SLOPE.sunny(m, crates, c.x, c.y)); },
+    init: () => SLOPE.crates.map(c => ({ ...c, done: false })),
   };
 
   // ---- 第 5 章：分液区（有機層と水層の 2 枚のマップ。pH で、酸と塩基の住人が層を移る） ----
@@ -1499,25 +1545,61 @@ const Maps = (() => {
         'TTTTTTTTTTTTTTTTTTT',
       ],
       onEnter: { flag: 'c6_lane_in', when: f => f.c6_toko, scene: 'c6_lane_in' },
-      // 油倉への木戸は、連鎖を止めると開く
+      // 地下の油蔵への戸は、小道の連鎖を止めると開く。前庭を片づけたあとは、地下を通らずに前庭へ出られる
       passable: { '門': f => f.c6_lane },
       openTile: { '門': ',' },
-      blockedText: { '門': '油倉の木戸だ。油がべっとりついて、開かない。……先に、小道の連鎖を止めよう。' },
-      // 住人どうしをつなぐ油の跡（住人は game.js が出す）
-      paint(g, T) {
-        g.save(); g.strokeStyle = 'rgba(120, 84, 30, .55)'; g.lineWidth = T * 0.22; g.lineCap = 'round';
-        for (const [a, b] of LANE.edges) {
-          const A = LANE.residents[a], B = LANE.residents[b];
-          g.beginPath(); g.moveTo((A.x + 0.5) * T, (A.y + 0.5) * T); g.lineTo((B.x + 0.5) * T, (B.y + 0.5) * T); g.stroke();
-        }
-        g.restore();
-      },
+      blockedText: { '門': '地下の油蔵への戸だ。……先に、小道の連鎖を止めよう。' },
       events: [
         { x: 18, y: 5, on: 'step', warp: { map: 'nomichi', x: 1, y: 4, dir: 'right' } },
-        // 夜だけ、油倉に入れる（ペルオのあとは、いつでも）
-        { x: 0, y: 5, on: 'step', when: f => f.c6_lane && (f.c6_night || f.c6_peruo1), warp: { map: 'kura', x: 9, y: 4, dir: 'left' } },
-        { x: 0, y: 5, on: 'step', when: f => f.c6_lane && !f.c6_night && !f.c6_peruo1, text: ['油倉は、しんとしている。', 'トコ「夜になると、においが強くなるの。……研究所のベッドで、夜まで休みましょう」'] },
-        { x: 17, y: 3, sprite: 'toko', on: 'bump', when: f => f.c6_toko && !f.c6_lane, laneReset: true },
+        { x: 0, y: 5, on: 'step', when: f => f.c6_lane && !f.c6_kuramae, warp: { map: 'chika', x: 15, y: 3, dir: 'left' } },
+        { x: 0, y: 5, on: 'step', when: f => f.c6_kuramae, warp: { map: 'kuramae', x: 15, y: 2, dir: 'left' } },
+      ],
+    },
+    chika: {
+      name: '地下の油蔵', ch: 6, night6: true, bgm: 'waste',
+      grid: [
+        '#################',
+        '#wwwwwwwwwwwwwww#',
+        '#wwwwwwwwwwwwwww#',
+        '門wwwwwwwwwwwwwww>',
+        '#wwwwwwwwwwwwwww#',
+        '#wwwwwwwwwwwwwww#',
+        '#################',
+      ],
+      onEnter: { flag: 'c6_chika_in', when: f => f.c6_lane, scene: 'c6_chika_in' },
+      passable: { '門': f => f.c6_chika },
+      openTile: { '門': '>' },
+      blockedText: { '門': '上の前庭へ続く階段の戸だ。……先に、樽の重合を止めよう。' },
+      events: [
+        { x: 16, y: 3, on: 'step', warp: { map: 'lane', x: 1, y: 5, dir: 'right' } },
+        { x: 0, y: 3, on: 'step', when: f => f.c6_chika, warp: { map: 'kuramae', x: 15, y: 5, dir: 'left' } },
+        { x: 15, y: 1, sprite: 'n2keeper', on: 'bump', scene: f => f.c6_chika ? 'c6_keeper_after' : 'c6_keeper' },
+      ],
+    },
+    kuramae: {
+      name: '油倉の前庭', ch: 6, night6: true,
+      grid: [
+        'RRRRRRRRRRRRRRRRR',
+        'hhhhhhhh門hhhhhhhh',
+        'T...............柵',
+        'T...............T',
+        'T...............T',
+        'T...............>',
+        'T...............T',
+        'TTTTTTTTTTTTTTTTT',
+      ],
+      onEnter: { flag: 'c6_kuramae_in', when: f => f.c6_chika, scene: 'c6_kuramae_in' },
+      // 油倉の戸は、夜だけ開く。小道へ抜ける木戸は、前庭の樽を止めると開く
+      passable: { '門': f => f.c6_kuramae && (f.c6_night || f.c6_peruo1), '柵': f => f.c6_kuramae },
+      openTile: { '柵': ',' },
+      blockedText: {
+        '門': f => f.c6_kuramae ? ['油倉の戸だ。しんとしている。', 'トコ「昼のあいだは、出てこないわ。……研究所のベッドで、夜まで休みましょう」'] : '油倉の戸だ。……先に、前庭の樽を止めよう。',
+        '柵': '小道へ抜ける木戸だ。……先に、前庭の樽を止めよう。',
+      },
+      events: [
+        { x: 16, y: 5, on: 'step', warp: { map: 'chika', x: 1, y: 3, dir: 'right' } },
+        { x: 16, y: 2, on: 'step', when: f => f.c6_kuramae, warp: { map: 'lane', x: 1, y: 5, dir: 'right' } },
+        { x: 8, y: 1, on: 'step', when: f => f.c6_kuramae && (f.c6_night || f.c6_peruo1), warp: { map: 'kura', x: 5, y: 6, dir: 'up' } },
       ],
     },
     kura: {
@@ -1527,48 +1609,49 @@ const Maps = (() => {
         '#XXwwXwwXX#',
         '#wwwwwwwww#',
         '#wwXwwwXww#',
-        '門wwwwwwwww,',
+        '門wwwwwwwww#',
         '#wXXwwwXXw#',
         '#wwwwwwwww#',
-        '###########',
+        '#####,#####',
       ],
       onEnter: { flag: 'c6_kura', when: f => f.c6_night && !f.c6_peruo1, scene: 'c6_kura' },
       passable: { '門': f => f.c6_peruo1 },
       openTile: { '門': ',' },
       blockedText: { '門': '裏口の戸だ。……今は、開かない。' },
       events: [
-        { x: 10, y: 4, on: 'step', warp: { map: 'lane', x: 1, y: 5, dir: 'right' } },
-        { x: 0, y: 4, on: 'step', when: f => f.c6_peruo1, warp: { map: 'slope', x: 9, y: 3, dir: 'left' } },
+        { x: 5, y: 7, on: 'step', warp: { map: 'kuramae', x: 8, y: 2, dir: 'down' } },
+        { x: 0, y: 4, on: 'step', when: f => f.c6_peruo1, warp: { map: 'slope', x: 10, y: 2, dir: 'left' } },
         { x: 2, y: 4, sprite: 'peruo', on: 'bump', when: f => !f.c6_peruo1, scene: 'c6_kura' },
       ],
     },
     slope: {
       name: '風車小屋への坂', ch: 6,
       grid: [
-        'TTTTT柵柵TTTT',
-        'T.........T',
-        'T.........T',
-        'T.........,',
-        'T陽陽陽.T陽陽.TT',
-        'T.........T',
-        'T陽.T陽陽.T陽陽T',
-        'T.........T',
-        'T..T..灯...T',
-        'T.........T',
-        'TTTT氷氷TTTTT',
+        'TTTTT柵柵TTTTT',
+        'T.........T.',
+        'T..........,',
+        'T.........T.',
+        'TT.TTT.TT.TT',
+        '岩陽陽陽陽陽陽陽陽陽岩T',
+        'TT.TTT.TTTTT',
+        'T.灯.......TT',
+        'T.........TT',
+        '岩陽陽陽陽陽陽陽陽陽岩T',
+        'TTTT氷氷TTTTTT',
       ],
       onEnter: { flag: 'c6_slope', when: f => f.c6_peruo1, scene: 'c6_slope' },
-      // 全部の箱を氷室に入れると、風車小屋への柵が開く
+      // 白い札の箱を全部氷室に入れると、風車小屋への柵が開く
       passable: { '柵': f => f.c6_boxes },
       openTile: { '柵': ',' },
-      blockedText: { '柵': '木の柵だ。木箱をみんな氷室に入れたら、通してもらおう。', '氷': '氷室の入口だ。中は、冷たくて暗い。（木箱を押して入れる）' },
+      blockedText: { '柵': '木の柵だ。白い札の木箱をみんな氷室に入れたら、通してもらおう。', '氷': '氷室の入口だ。中は、冷たくて暗い。（白い札の木箱を押して入れる）', '岩': '低い岩だ。朝日が、その上を越えて差しこんでいる。' },
       inspect: { '灯': 'ランプがともっている。まわりが、ほんのり温かい。' },
       events: [
-        { x: 10, y: 3, on: 'step', warp: { map: 'kura', x: 1, y: 4, dir: 'right' } },
+        { x: 11, y: 2, on: 'step', warp: { map: 'kura', x: 1, y: 4, dir: 'right' } },
         { x: 5, y: 0, on: 'step', when: f => f.c6_boxes, warp: { map: 'fusha', x: 4, y: 5, dir: 'up' } },
         { x: 6, y: 0, on: 'step', when: f => f.c6_boxes, warp: { map: 'fusha', x: 5, y: 5, dir: 'up' } },
-        { x: 9, y: 9, sprite: 'toko', on: 'bump', when: f => f.c6_peruo1 && !f.c6_boss, slopeReset: true },
       ],
+      // テンポとトコは、坂の入口に立つ
+      stand: { tempo: [11, 1], toko: [11, 3] },
     },
     fusha: {
       name: '風車小屋の上', ch: 6, bgm: f => f.c6_boss ? 'town' : 'tower',
@@ -1591,5 +1674,5 @@ const Maps = (() => {
     },
   };
 
-  return { MAPS, pillarsLit, goalOf, EXTRACT, LANE, SLOPE };
+  return { MAPS, pillarsLit, goalOf, EXTRACT, CHAIN, SLOPE };
 })();

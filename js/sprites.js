@@ -653,6 +653,12 @@ const Sprites = (() => {
       dot(c, x, y, s, 2, 3, 12, 13, '#8a5f33'); dot(c, x, y, s, 2, 6, 12, 1, '#5e3d1f'); dot(c, x, y, s, 2, 12, 12, 1, '#5e3d1f');
       dot(c, x, y, s, 3, 1, 10, 3, '#d8ecf4'); dot(c, x, y, s, 3, 1, 5, 2, '#6b4423');
     },
+    // 坂の低い岩（朝日が上を越えて差しこむ。影を落とさない）
+    '岩': (c, x, y, s, tx, ty) => {
+      grassBase(c, x, y, s, tx, ty, '#6fae4a');
+      dot(c, x, y, s, 0, 0, 16, 16, 'rgba(255, 226, 120, .35)');
+      circle(c, x, y, s, 8, 10.5, 5, '#9aa0a6', '#5f656b'); circle(c, x, y, s, 6.5, 9, 1.6, '#c4c9ce');
+    },
     // 村の西の藪（第 6 章で、油の小道への抜け道になる）
     '藪': (c, x, y, s, tx, ty) => {
       grassBase(c, x, y, s, tx, ty);
@@ -695,7 +701,7 @@ const Sprites = (() => {
     'Z', 'I', 'J', 'V', 'N', 'U', 'P', 'A', 't', 'y', 'e', 'a',
     'x', 'H', '`', 'C', '1', '"', '7', '+', 'v', 'j', '!', '[', ']', '}', ':', '^', '@', '?',
     '(', '0', '4', '5', '6', '/', "'",
-    '灯', '氷', '門', '柵', '風', '樽', '藪']);
+    '灯', '氷', '門', '柵', '風', '樽', '藪', '岩']);
 
   // nb(dx, dy) はとなりのタイルの文字を返す（マップの外は木とみなす）
   function drawTile(ctx, ch, x, y, s, tx, ty, nb = () => '.') { (TILE[ch] || TILE['.'])(ctx, x, y, s, tx, ty, nb); }
@@ -1251,19 +1257,38 @@ const Sprites = (() => {
       c.save(); c.translate(x + s * 0.15, y + s * 0.3); person(c, 0, 0, s * 0.7, { cloth: '#5a8ad8', hair: '#3a2a1a' }); c.restore();
       dot(c, x, y, s, 9, 10, 4, 3, '#a8763f'); dot(c, x, y, s, 9.5, 9.5, 3, 1, '#f4f4f4');
     },
-    // 油の小道の住人。胸の印で、何の分子かがわかる
-    laneBis(c, x, y, s) { laneRes(c, x, y, s, '#e0b030', 'C=C'); },
-    laneAld(c, x, y, s) { laneRes(c, x, y, s, '#e07aa8', 'CHO'); },
-    laneEth(c, x, y, s) { laneRes(c, x, y, s, '#6ab0d8', 'O'); },
-    laneAlk(c, x, y, s) { laneRes(c, x, y, s, '#b8b8b8', 'CH₂'); },
-    laneMeth(c, x, y, s) { laneRes(c, x, y, s, '#4a4f5e', 'CH₄'); },
-    laneBenz(c, x, y, s) { laneRes(c, x, y, s, '#e9e2c9', '⬡'); },
-    laneWater(c, x, y, s) { laneRes(c, x, y, s, '#e05a50', 'H₂O'); },
-    // ペルオのかけらの入った木箱
-    crate6(c, x, y, s) {
-      dot(c, x, y, s, 1, 3, 14, 12, '#9a6a3a'); dot(c, x, y, s, 1, 3, 14, 1, '#b98a52'); dot(c, x, y, s, 1, 9, 14, 1, '#6b4423');
-      dot(c, x, y, s, 7, 3, 1, 12, '#6b4423');
-      poly(c, x, y, s, [[3, 4], [5, 1], [6, 4]], '#f4f4f4', '#9aa0aa'); poly(c, x, y, s, [[10, 4], [12, 0.5], [13, 4]], '#f4f4f4', '#9aa0aa');
+    // 油の小道の住人。胸の印は、二重結合の数（取られやすい水素のヒント）
+    oilLamp(c, x, y, s) { oilRes(c, x, y, s, { cloth: '#e0b030', hair: '#5a3a1e', mark: 'C=C×2' }); dot(c, x, y, s, 12, 9, 3, 4, '#ffd36b'); dot(c, x, y, s, 12.5, 8, 2, 1, '#4a3a2a'); },
+    oilPainter(c, x, y, s) { oilRes(c, x, y, s, { cloth: '#7a6ab8', hair: '#3a2a1a', long: true, mark: 'C=C×3' }); dot(c, x, y, s, 4, 0.5, 8, 2, '#c0392b'); dot(c, x, y, s, 13, 8, 1, 6, '#a8763f'); dot(c, x, y, s, 12.5, 7, 2, 1.5, '#4a9be8'); },
+    oilCook(c, x, y, s) { oilRes(c, x, y, s, { cloth: '#f0f0f0', hair: '#5a3a1e', mark: 'C=C×2' }); dot(c, x, y, s, 4.5, -0.5, 7, 3, '#ffffff'); dot(c, x, y, s, 4.5, 2, 7, 1, '#d8d8d8'); },
+    oilJoiner(c, x, y, s) { oilRes(c, x, y, s, { cloth: '#8a5f33', hair: '#2a1a0a', mark: 'C=C×2' }); dot(c, x, y, s, 1.5, 9, 2, 5, '#6b4423'); },
+    oilFisher(c, x, y, s) { oilRes(c, x, y, s, { cloth: '#3f6f8f', hair: '#e8e8e8', mark: 'C=C×6' }); dot(c, x, y, s, 11.5, 10, 4, 2, '#c9d3e6'); dot(c, x, y, s, 15, 9.5, 1, 3, '#c9d3e6'); },
+    oilGas(c, x, y, s) { oilRes(c, x, y, s, { cloth: '#4a4f5e', hair: '#2a2a2a', mark: 'CH₄' }); dot(c, x, y, s, 13, 3, 1, 11, '#2a2a2a'); circle(c, x, y, s, 13.5, 3, 1.6, '#8fd0ff', '#2f5f8f'); },
+    oilOlive(c, x, y, s) { oilRes(c, x, y, s, { cloth: '#7f9a3a', hair: '#5a3a1e', long: true, mark: 'C=C×1' }); circle(c, x, y, s, 13, 11, 1.4, '#3f5a1a'); },
+    oilSun(c, x, y, s) { oilRes(c, x, y, s, { cloth: '#e8c030', hair: '#7a4a1e', mark: 'C=C×2' }); circle(c, x, y, s, 13.2, 3.5, 2, '#ffd84a', '#c08a10'); circle(c, x, y, s, 13.2, 3.5, 0.8, '#6b4423'); },
+    oilPerilla(c, x, y, s) { oilRes(c, x, y, s, { cloth: '#5a8a5a', hair: '#3a2a1a', long: true, mark: 'C=C×3' }); },
+    // 地下の油蔵の蔵番（窒素）
+    n2keeper(c, x, y, s) { oilRes(c, x, y, s, { cloth: '#5a6a8a', hair: '#9aa0aa', mark: 'N≡N' }); dot(c, x, y, s, 12.5, 6, 1, 8, '#c9a227'); circle(c, x, y, s, 13, 5.5, 1.3, '#c9a227'); },
+    // 樽（W スチレン・S 重合の始まった樽・M メタクリル酸メチル・I トルエン。Open はふたが開いている）
+    barrelWOpen(c, x, y, s) { barrel(c, x, y, s, '#5fae5f', 'St', true); },
+    barrelWShut(c, x, y, s) { barrel(c, x, y, s, '#5fae5f', 'St', false); },
+    barrelSOpen(c, x, y, s) { barrel(c, x, y, s, '#5fae5f', 'St', true); },
+    barrelSShut(c, x, y, s) { barrel(c, x, y, s, '#5fae5f', 'St', false); },
+    barrelMOpen(c, x, y, s) { barrel(c, x, y, s, '#5f8fd8', 'MMA', true); },
+    barrelMShut(c, x, y, s) { barrel(c, x, y, s, '#5f8fd8', 'MMA', false); },
+    barrelIOpen(c, x, y, s) { barrel(c, x, y, s, '#a0a4aa', 'Tol', true); },
+    barrelIShut(c, x, y, s) { barrel(c, x, y, s, '#a0a4aa', 'Tol', false); },
+    // 坂の木箱：白い札は過酸化ベンゾイル（ペルオのかけら）、青い札はジ-tert-ブチルペルオキシド
+    crateBPO(c, x, y, s) {
+      crateBase(c, x, y, s);
+      dot(c, x, y, s, 3, 6, 10, 5, '#f8f8f8'); dot(c, x, y, s, 3, 6, 10, 1, '#c9ced8');
+      poly(c, x, y, s, [[4, 4], [5.5, 1], [7, 4]], '#f4f4f4', '#9aa0aa'); poly(c, x, y, s, [[9.5, 4], [11, 0.5], [12.5, 4]], '#f4f4f4', '#9aa0aa');
+      dot(c, x, y, s, 5, 8, 6, 1, '#8a1d18');
+    },
+    crateDTBP(c, x, y, s) {
+      crateBase(c, x, y, s);
+      dot(c, x, y, s, 3, 6, 10, 5, '#4a7ab0'); dot(c, x, y, s, 3, 6, 10, 1, '#2f5a8a');
+      dot(c, x, y, s, 5, 8, 6, 1, '#e8f4ff');
     },
     // 連鎖を運ぶペルオキシルラジカル（ROO•）と、古いヒドロペルオキシド（ROOH）
     peroxyl(c, x, y, s) {
@@ -1278,11 +1303,29 @@ const Sprites = (() => {
     },
   };
   // 油の小道の住人（人の形。胸に印）
-  function laneRes(c, x, y, s, col, mark) {
-    person(c, x, y, s, { cloth: col, hair: '#5a3a1e' });
-    dot(c, x, y, s, 4.5, 9, 7, 3.6, 'rgba(255,255,255,.85)');
-    c.fillStyle = '#1a1a1a'; c.font = `bold ${Math.round(s * (mark.length > 2 ? 0.17 : 0.22))}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText(mark, x + s * 0.5, y + s * 0.67); c.textBaseline = 'alphabetic';
+  function oilRes(c, x, y, s, o) {
+    person(c, x, y, s, { cloth: o.cloth, hair: o.hair, long: o.long, dress: o.long });
+    const w = o.mark.length > 3 ? 11 : 7;
+    dot(c, x, y, s, 8 - w / 2, 9, w, 3.6, 'rgba(255,255,255,.88)');
+    c.fillStyle = '#1a1a1a'; c.font = `bold ${Math.round(s * (o.mark.length > 3 ? 0.15 : 0.2))}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(o.mark, x + s * 0.5, y + s * 0.68); c.textBaseline = 'alphabetic';
+  }
+  function barrel(c, x, y, s, col, label, open) {
+    dot(c, x, y, s, 2, 3, 12, 13, '#8a5f33'); dot(c, x, y, s, 1.5, 5, 13, 9, '#9a6a3a');
+    dot(c, x, y, s, 1.5, 5, 13, 1, '#5e3d1f'); dot(c, x, y, s, 1.5, 13, 13, 1, '#5e3d1f');
+    dot(c, x, y, s, 3.5, 7.5, 9, 4, col);
+    c.fillStyle = '#10181a'; c.font = `bold ${Math.round(s * (label.length > 2 ? 0.17 : 0.21))}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(label, x + s * 0.5, y + s * 0.6); c.textBaseline = 'alphabetic';
+    if (open) {
+      dot(c, x, y, s, 3, 1.5, 10, 2.5, '#2a3a3a'); dot(c, x, y, s, 4, 2, 8, 1, '#5a7a7a');      // 中の液が見える
+      poly(c, x, y, s, [[9, 1.5], [15, -0.5], [15.5, 1], [10, 3]], '#a8763f', '#6b4423');        // ずらしたふた
+    } else {
+      dot(c, x, y, s, 2.5, 1, 11, 3, '#a8763f'); dot(c, x, y, s, 2.5, 3.5, 11, 0.8, '#6b4423'); dot(c, x, y, s, 7, 1.5, 2, 1, '#c9a227');
+    }
+  }
+  function crateBase(c, x, y, s) {
+    dot(c, x, y, s, 1, 3, 14, 12, '#9a6a3a'); dot(c, x, y, s, 1, 3, 14, 1, '#b98a52'); dot(c, x, y, s, 1, 14, 14, 1, '#6b4423');
+    dot(c, x, y, s, 1, 3, 1, 12, '#6b4423'); dot(c, x, y, s, 14, 3, 1, 12, '#6b4423');
   }
   function pea(c, x, y, s, right) {
     c.save(); c.translate(x + s * 0.12, y + s * 0.22);

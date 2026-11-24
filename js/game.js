@@ -186,7 +186,7 @@
       if (MAPS[S.map].ch === 3) return 'kingdom';
       return 'town';
     }
-    if (UI.screen === 'ending') return 'mirror';
+    if (UI.screen === 'ending') return UI.pic ? null : 'mirror';
     if (UI.screen === 'over' || UI.screen === 'clear') return null;
     return 'town';
   }
@@ -440,8 +440,8 @@
   // 第 2 章は昼と夜、第 3 章は残っている柱の数をマップ名に添える
   const mapTitle = () => tr(map().name) + (map().ch === 2 ? (S.flags.night ? T('（夜）') : T('（昼）'))
     : map().ch === 3 && !S.flags.c3_boss ? T('　柱 {0}/6', Maps.pillarsLit(S.flags))
-    : S.map === 'lane' && S.flags.c6_toko && !S.flags.c6_lane ? T('　BHT {0}　のまれた人 {1}/{2}', c6().bht, c6().cons.length, Maps.LANE.limit)
-    : S.map === 'slope' && !S.flags.c6_boxes ? T('　氷室 {0}/{1}', box().filter(b => b.done).length, box().length)
+    : chainOn() ? chainHud()
+    : S.map === 'slope' && S.flags.c6_peruo1 && !S.flags.c6_boxes ? T('　氷室 {0}/{1}', box().filter(b => b.done).length, box().filter(b => b.k === 'B').length)
     : night6() ? T('（夜）') : '');
   // いまの目的（どこへ行けばよいかを HUD に出す）
   const goalText = () => { const g = Maps.goalOf(S.flags, S.map); return g ? tr(g.t) : ''; };
@@ -666,7 +666,7 @@
     const tl = I18N.scene(id);
     let k = 0;
     const steps = SCENES[id].map(x => { const y = { ...x }; if (typeof x.t === 'string') { if (tl && tl[k] != null) y.tt = tl[k]; y.k = k++; } return y; });
-    UI.scene = { id, steps: steps.filter(x => (!x.need || S.party.includes(x.need)) && (!x.if || x.if(S.flags))), i: 0, onDone };
+    UI.scene = { id, steps: steps.filter(x => (!x.need || S.party.includes(x.need)) && (!x.needNot || !S.party.includes(x.needNot)) && (!x.if || x.if(S.flags))), i: 0, onDone };
     UI.held = null;
     runCommands();
   }
@@ -697,7 +697,8 @@
         sc.steps.splice(sc.i, 1, { t: had ? '（飽和食塩水を入れた。泡のかたまりが、すっと消えた。（塩析））' : '（飽和食塩水を入れた。……泡は、もともとたまっていなかった）' });
         continue;
       }
-      if (st.do === 'ending') { sc.i++; UI.screen = 'ending'; render(); return; }
+      if (st.do === 'ending') { sc.i++; UI.pic = null; UI.screen = 'ending'; render(); return; }
+      if (st.do === 'pic') { sc.i++; UI.pic = st.id; UI.screen = 'ending'; render(); return; }
       if (st.do === 'clear') {
         sc.i++; UI.scene = null;
         const ch = st.ch || MAPS[S.map].ch || 1;
@@ -765,7 +766,7 @@
     if (p) return p(S.flags);
     return !Sprites.SOLID.has(ch);
   }
-  const activeEvents = () => (map().events || []).filter(e => !e.when || e.when(S.flags)).concat(resEvents(), laneEvents());
+  const activeEvents = () => (map().events || []).filter(e => !e.when || e.when(S.flags)).concat(resEvents(), chainEvents(), palEvents());
 
   // ---- 第 5 章：分液区 ----
   const ex = () => { if (!S.c5x) S.c5x = Maps.EXTRACT.init(); return S.c5x; };
@@ -894,105 +895,177 @@
   }
   const eventAt = (x, y, on) => activeEvents().find(e => e.x === x && e.y === y && (!on || e.on === on));
 
-  // ---- 第 6 章：油の小道（連鎖を止める） ----
-  // 準備のあいだは、住人に BHT の小瓶を渡せる（返してもらうこともできる）。テンポはカーボの 1 歩うしろをついてくる
-  // 顔の赤い住人に話しかけて連鎖を動かすと、テンポはその場に残り、カーボが 1 歩進むたびに連鎖が 1 回うつる
-  const c6 = () => { if (!S.c6) S.c6 = Maps.LANE.init(); return S.c6; };
-  const laneOn = () => S.map === 'lane' && S.flags.c6_toko && !S.flags.c6_lane;
-  function laneEvents() {
-    if (S.map !== 'lane' || !S.flags.ch6) return [];
-    return Object.entries(Maps.LANE.residents).map(([id, r]) => ({ x: r.x, y: r.y, sprite: r.sprite, on: 'bump', lane: id }));
+  // ---- 第 6 章：連鎖を止める（油の小道・地下の油蔵・油倉の前庭） ----
+  // 小瓶を 1 本渡すたびに、連鎖が「ひと息」広がる。歩いたり話を聞いたりしているあいだは、広がらない
+  const CH = Maps.CHAIN;
+  const chainKey = () => CH.byMap(S.map);
+  const chainArea = () => { const k = chainKey(); return k ? CH.areas[k] : null; };
+  // その場所の仕掛けが動いているか（前の場所を片づけたあとで、まだ止めていない）
+  const chainOn = () => { const A = chainArea(); return !!(A && S.flags[A.after] && !S.flags[A.flag]); };
+  const chainSt = () => { const k = chainKey(); S.c6c = S.c6c || {}; if (!S.c6c[k]) S.c6c[k] = CH.init(CH.areas[k]); return S.c6c[k]; };
+  function chainEvents() {
+    const A = chainArea();
+    if (!A || !S.flags.ch6) return [];
+    return Object.entries(A.nodes).map(([id, n]) => { const [x, y] = id.split(',').map(Number); return { x, y, sprite: n.sprite, on: 'bump', chain: id }; });
   }
-  const laneSafe = st => id => { const r = Maps.LANE.residents[id], t = st.tempoAt; return st.prot.includes(id) || (t && Math.abs(r.x - t[0]) + Math.abs(r.y - t[1]) === 1); };
-  function laneTalk(id) {
-    const L = Maps.LANE, r = L.residents[id], st = c6(), lines = r.talk;
+  const UNIT = A => A.people ? { caught: 'のまれた', who: '人' } : { caught: '固まりはじめた', who: '樽' };
+  const nodeName = n => tr(n.name);
+  // 連鎖の数の表示（マップ名のとなり）
+  function chainHud() {
+    const A = chainArea(), st = chainSt(), v = [];
+    if (A.bht) v.push(T('BHT {0}', st.b));
+    if (A.tempo) v.push(T('テンポの小瓶 {0}', st.t));
+    return '　' + v.join('　') + '　' + T(A.people ? 'のまれた人 {0}/{1}' : '固まった樽 {0}/{1}', st.red.length, A.limit);
+  }
+  function chainTalk(id) {
+    const A = chainArea(), n = A.nodes[id], st = chainSt(), name = nodeName(n);
+    const lines = n.barrel ? n.talk.slice() : n.talk.map(t => say(name, tr(t).replace(/。$/, '')));
     UI.held = null;
-    if (!laneOn()) return message(id === L.start && S.flags.c6_lane ? say(tr(r.name), tr('……熱が、引いたみたい。ありがとう')) : lines.slice(0, 1));
-    const give = () => { st.prot.push(id); st.bht--; save(); Sound.se('heal'); refreshHud(); message(T('{0}に、BHT の小瓶を渡した。（残り {1}）', tr(r.name), st.bht), () => laneCheckStop()); };
-    if (st.run) {
-      if (id === st.car) return message('（この人が、いま連鎖を運んでいる。まわりの人を守って、うつる先をなくそう）');
-      if (st.cons.includes(id)) return message(T('{0}は、連鎖にのまれてしまった。', tr(r.name)));
-      if (st.prot.includes(id)) return message(T('{0}は、BHT の小瓶を持っている。', tr(r.name)));
-      if (st.bht > 0) { UI.choice = [{ t: T('BHT の小瓶を渡す（残り {0}）', st.bht), fn: give }, { t: 'やめておく' }]; return renderOverlay(); }
+    if (!chainOn()) {
+      if (S.flags[A.flag]) return message(n.barrel ? T('{0}だ。熱は、もう引いている。', name) : say(name, tr(n.kind === 'S' ? '……熱が、引いた。ありがとう' : n.kind === 'I' ? 'ぼくは、ずっと平気だったよ' : 'ふう……。助かったよ')));
       return message(lines.slice(0, 1));
     }
-    if (id === st.car) return message(lines, () => { UI.choice = [{ t: '連鎖を動かす（準備ができた）', fn: laneStart }, { t: 'まだ準備する' }]; renderOverlay(); });
-    if (st.prot.includes(id)) return message([...lines, '（BHT の小瓶を持っている）'], () => {
-      UI.choice = [{ t: '小瓶を返してもらう', fn: () => { st.prot.splice(st.prot.indexOf(id), 1); st.bht++; save(); refreshHud(); message(T('小瓶を返してもらった。（残り {0}）', st.bht)); } }, { t: 'そのまま持っていてもらう' }];
-      renderOverlay();
-    });
-    if (st.bht > 0) return message(lines, () => { UI.choice = [{ t: T('BHT の小瓶を渡す（残り {0}）', st.bht), fn: give }, { t: 'やめておく' }]; renderOverlay(); });
-    return message([...lines, '（BHT の小瓶は、もう残っていない。誰かに返してもらうこともできる）']);
+    if (st.red.includes(id)) return message([...lines.slice(0, 1), n.kind === 'S' ? (A.people ? '（この人が、いま連鎖を運んでいる）' : '（この樽から、重合が始まっている）') : T('（{0}は、連鎖に{1}しまった）', name, A.people ? 'のまれて' : '巻きこまれて')]);
+    if (st.prot[id]) return message([...lines, T('（{0}を持っている）', tr(CH.vial[st.prot[id]]))]);
+    if (n.kind === 'I') return message([...lines, A.people ? '（この人には、連鎖はうつらない）' : '（この樽には、連鎖はうつらない）']);
+    const opts = [];
+    const verb = n.barrel ? '入れる' : '渡す';
+    if (st.b) opts.push({ t: T('BHT の小瓶を{0}（残り {1}）', tr(verb), st.b), fn: () => chainGive(id, 'b') });
+    if (st.t) opts.push({ t: T('テンポの小瓶を{0}（残り {1}）', tr(verb), st.t), fn: () => chainGive(id, 't') });
+    if (!opts.length) return message(lines);
+    opts.push({ t: 'やめておく' });
+    message(lines, () => { UI.choice = opts; renderOverlay(); });
   }
-  function laneStart() {
-    const st = c6();
-    st.run = true; st.tempoAt = [...st.tempo]; save(); Sound.se('transform'); refreshHud();
-    message(['（連鎖が、動きだした！）', 'テンポ「わしは、ここに残るぞ。……カーボが 1 歩進むたびに、連鎖が 1 回うつる」'], () => laneCheckStop());
-  }
-  // 連鎖のうつる先がなければ、止まった
-  function laneCheckStop() {
-    const st = c6();
-    if (!st.run || Maps.LANE.next(st.car, st.cons, laneSafe(st))) return false;
-    st.run = false; save(); UI.held = null;
-    playScene('c6_lane_done', () => refreshHud());
-    return true;
-  }
-  // カーボが 1 歩進んだ：準備のあいだはテンポがついてくる。連鎖が動いていれば、1 回うつる
-  function laneStep(ox, oy) {
-    if (!laneOn()) return false;
-    const st = c6(), L = Maps.LANE;
-    if (!st.run) { st.tempo = [ox, oy]; return false; }
-    const n = L.next(st.car, st.cons, laneSafe(st));
-    if (!n) return laneCheckStop();
-    st.car = n; st.cons.push(n); Sound.se('ng'); refreshHud();
-    if (st.cons.length > L.limit) {
-      UI.held = null; save();
-      message([T('{0}にも、連鎖がうつった。', tr(L.residents[n].name)), '連鎖にのまれた人が、多すぎる……！', 'トコ「いったん、戻りましょう。……みんなの手当てをして、やり直しよ」'], () => laneReset(true));
-      return true;
+  function chainGive(id, v) {
+    const A = chainArea(), n = A.nodes[id], st = chainSt(), name = nodeName(n);
+    // 合わない小瓶は、トコかテンポが止める（小瓶は減らない。連鎖も進まない）
+    if (!CH.fits(A, id, v)) {
+      return message(v === 'b'
+        ? ['トコ「待って。' + (n.barrel ? 'その樽はふたが閉まっていて、中に酸素がほとんどないの' : 'そこには、酸素がないの') + '。わたしの BHT は、酸素のラジカルにしか効かないわ」']
+        : ['テンポ「待つんじゃ。' + (n.barrel ? 'その樽はふたが開いておる。中の連鎖は、もう酸素のラジカルになっておる' : 'ここは空気の中じゃ。連鎖は、酸素のラジカルで進んでおる') + '。わしの一族では、捕まえきれん」']);
     }
-    flash(T('{0}に、連鎖がうつった（{1}/{2}）', tr(L.residents[n].name), st.cons.length, L.limit), 'bad');
-    return laneCheckStop();
-  }
-  function laneReset(toEntry) {
-    S.c6 = Maps.LANE.init();
-    if (toEntry) { [S.x, S.y] = Maps.LANE.entry; S.dir = 'left'; UI.move = null; }
-    save(); render();
-  }
-  function askLaneReset() {
-    UI.held = null;
-    if (c6().run) return message('トコ「連鎖が動いているあいだは、わたしも手が出せないの。……あと少し、がんばって」');
-    message('トコ「BHT の小瓶を、みんなに返してもらって、はじめからやり直す？」', () => {
-      UI.choice = [{ t: 'はじめからやり直す', fn: () => { laneReset(true); message('（BHT の小瓶を、みんなから返してもらった）'); } }, { t: 'このまま続ける' }];
-      renderOverlay();
+    const before = st.red.length;
+    const res = CH.give(A, st, id, v);
+    save(); Sound.se('heal'); refreshHud();
+    const U = UNIT(A), lines = [T(n.barrel ? '{0}に、{1}を入れた。' : '{0}に、{1}を渡した。', name, tr(CH.vial[v]))];
+    // うつった相手の名前（樽は種類ごとに数える）
+    const names = c => {
+      if (!A.people) { const cnt = {}; c.forEach(k => { const nm = nodeName(A.nodes[k]); cnt[nm] = (cnt[nm] || 0) + 1; }); return Object.entries(cnt).map(([nm, k]) => k > 1 ? T('{0} {1} つ', nm, k) : nm).join('・'); }
+      return c.map(k => nodeName(A.nodes[k])).join('・');
+    };
+    res.caught.forEach((c, i) => {
+      if (i === 1) lines.push('（小瓶は、もう残っていない。連鎖は、止まるところまで一気に進む……）');
+      lines.push(c.length ? T('（ひと息。{0}に、連鎖がうつった）', names(c)) : A.people ? '（ひと息。……誰にも、うつらなかった）' : '（ひと息。……どの樽にも、うつらなかった）');
     });
+    if (st.red.length > before) Sound.se('ng');
+    if (res.result === 'lose') {
+      lines.push(T('{0}{1}が、多すぎる……！（{2}/{3}）', tr(U.caught), tr(U.who), st.red.length, A.limit));
+      lines.push(A.people ? 'トコ「いったん、みんなの手当てをして、やり直しましょう」' : 'テンポ「いったん冷やして、やり直しじゃ」');
+      return message(lines, () => chainReset());
+    }
+    if (res.result === 'win') return message(lines, () => playScene(A.done, () => { save(); refreshHud(); }));
+    message(lines);
+  }
+  function chainReset() {
+    const k = chainKey(); S.c6c[k] = CH.init(CH.areas[k]);
+    save(); refreshHud(); render();
+    message(chainArea().people ? '（トコがみんなに紅茶を配って、はじめに戻った）' : '（樽を冷やして、はじめに戻った）');
+  }
+  // テンポとトコ：第 6 章のあいだ、カーボのうしろを歩く。仕掛けの場所では、入口に立つ
+  const pals = () => S.flags.ch6 && !S.flags.c6_boss ? ['tempo', 'toko'].filter(id => S.flags['c6_' + id]) : [];
+  const standAt = () => chainOn() ? chainArea().stand : S.map === 'slope' && S.flags.c6_peruo1 && !S.flags.c6_boxes ? map().stand : null;
+  function palEvents() {
+    const st = standAt();
+    return st ? pals().map(id => ({ x: st[id][0], y: st[id][1], sprite: id, on: 'bump', pal: id })) : [];
+  }
+  const HINT = {
+    lane: ['テンポ「「!」の出ている人は、次のひと息でうつる。……じゃが、その先に誰がおるかも、見ておくんじゃ」', 'テンポ「二重結合が 1 つだけの人は、ひと息ぶん、もちこたえる。急ぐのは、どちらかの？」'],
+    chika: ['テンポ「トルエンの樽は、壁になる。半分だけの壁でも、残りの半分をふさげば、そこで止まる」', 'テンポ「メタクリル酸メチルの樽は、ひと息ぶん遅い。その遅れを、うまく使うんじゃ」'],
+    kuramae: ['テンポ「ふたの開いた樽にはトコの BHT、閉じた樽にはわしの一族じゃ。数が足りるように、どこでふさぐかを先に決めるんじゃ」', 'テンポ「「!」が出てからでは、間に合わんこともある。先回りして渡してもよいのじゃぞ」'],
+    slope: ['テンポ「朝日は東から差しておる。木と木箱の西どなりは、影になるの」', 'テンポ「青い札の箱は、日なたに置いても割れん。……日よけになると思わんか」'],
+  };
+  function palTalk(id) {
+    UI.held = null;
+    const k = S.map === 'slope' ? 'slope' : chainKey();
+    if (id === 'tempo') return message(HINT[k]);
+    if (k === 'slope') return askSlopeReset();
+    message('トコ「はじめから、やり直す？」', () => { UI.choice = [{ t: 'はじめからやり直す', fn: chainReset }, { t: 'このまま続ける' }]; renderOverlay(); });
+  }
+  // カーボの歩いたあとを、テンポとトコがたどる（ぶつからない）
+  function palStep(ox, oy) {
+    UI.trailFrom = UI.trail ? UI.trail.slice() : null;
+    UI.trail = [[ox, oy], ...(UI.trail || [[ox, oy]])].slice(0, 2);
+  }
+  function drawPals(camX, camY, colors) {
+    const ids = pals();
+    if (!ids.length || standAt()) return;
+    if (!UI.trail) { UI.trail = [[S.x, S.y], [S.x, S.y]]; UI.trailFrom = null; }
+    const t = UI.move ? Math.min(1, (performance.now() - UI.move.t0) / STEP_MS) : 1;
+    ids.slice().reverse().forEach(id => {
+      const i = ids.indexOf(id), p = UI.trail[i] || UI.trail[UI.trail.length - 1], q = (UI.trailFrom && UI.move && UI.trailFrom[i]) || p;
+      const x = q[0] + (p[0] - q[0]) * t, y = q[1] + (p[1] - q[1]) * t;
+      Sprites.drawChar(ctx, id, (x - camX) * TILE, (y - camY) * TILE, TILE, { colors });
+    });
+  }
+  // 連鎖の印：赤い相手、次のひと息でうつる相手（!）、小瓶を持っている相手
+  function drawChain(camX, camY) {
+    if (!chainArea() || !chainOn()) return;
+    const A = chainArea(), st = chainSt(), th = CH.threat(A, st), t = performance.now() / 1000;
+    for (const id of Object.keys(A.nodes)) {
+      const [x, y] = id.split(',').map(Number), px = (x - camX) * TILE, py = (y - camY) * TILE;
+      if (st.red.includes(id)) {
+        ctx.fillStyle = `rgba(255, 70, 50, ${0.28 + 0.12 * Math.sin(t * 5)})`; ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
+        ctx.strokeStyle = `rgba(255, 90, 60, ${0.6 + 0.3 * Math.sin(t * 5)})`; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
+      } else if (st.ex.includes(id)) {
+        ctx.fillStyle = 'rgba(255, 150, 60, .22)'; ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
+      }
+      if (st.prot[id]) {
+        const blue = st.prot[id] === 'b';
+        ctx.fillStyle = '#e8f4ff'; ctx.fillRect(px + TILE - 9, py + 1, 7, 10);
+        ctx.fillStyle = blue ? '#4a7ab0' : '#3aa08a'; ctx.fillRect(px + TILE - 8, py + 5, 5, 5);
+        ctx.fillStyle = '#2a3a4a'; ctx.fillRect(px + TILE - 8, py, 5, 2);
+      }
+      if (th.includes(id) && !busy()) {
+        const bob = reduceMotion ? 0 : Math.round(Math.sin(t * 6) * 1.5);
+        ctx.save(); ctx.font = `bold ${Math.round(TILE * 0.45)}px sans-serif`; ctx.textAlign = 'center';
+        ctx.lineWidth = 3; ctx.strokeStyle = '#3a0a00'; ctx.strokeText('!', px + TILE / 2, py + TILE * 0.32 + bob);
+        ctx.fillStyle = '#ffd75e'; ctx.fillText('!', px + TILE / 2, py + TILE * 0.32 + bob); ctx.restore();
+      }
+    }
   }
 
-  // ---- 第 6 章：風車小屋への坂（木箱を押して氷室へ） ----
-  const box = () => { if (!S.c6box) S.c6box = Maps.SLOPE.init(); return S.c6box; };
+  // ---- 第 6 章：風車小屋への坂（白い札の木箱を、坂の下の氷室へ） ----
+  const SL = Maps.SLOPE;
+  const box = () => { if (!S.c6box || !S.c6box.every(b => b.k)) S.c6box = SL.init(); return S.c6box; };
   const crateAt = (x, y) => S.map === 'slope' ? box().find(b => !b.done && b.x === x && b.y === y) : null;
   // 割れた箱は、はじめの場所に戻す（ほかの箱やカーボがいたら、坂の上の空いている場所へ）
   function crateHome(b) {
-    const i = box().indexOf(b), [hx, hy] = Maps.SLOPE.crates[i];
-    const free = (x, y) => !box().some(o => o !== b && !o.done && o.x === x && o.y === y) && !(S.x === x && S.y === y) && passableTile(tileAt(x, y)) && !eventAt(x, y, 'bump');
-    const spots = [[hx, hy], ...[1, 2, 3].flatMap(y => [...Array(9)].map((_, k) => [k + 1, y]))];
+    const i = box().indexOf(b), h = SL.crates[i];
+    const free = (x, y) => !box().some(o => o !== b && !o.done && o.x === x && o.y === y) && !(S.x === x && S.y === y) && passableTile(tileAt(x, y)) && !eventAt(x, y);
+    const spots = [[h.x, h.y], ...[1, 2, 3].flatMap(y => [...Array(9)].map((_, k) => [k + 1, y]))];
     const p = spots.find(([x, y]) => free(x, y));
     if (p) [b.x, b.y] = p;
   }
   function pushCrate(b, dx, dy) {
     const bx = b.x + dx, by = b.y + dy, ch = tileAt(bx, by);
     if (ch === '氷') {
+      if (b.k === 'D') { UI.held = null; message('トコ「青い札の箱は、冷やさなくても平気よ。氷室は、白い札の箱のためにあけておきましょう」'); return false; }
       b.done = true;
-      const n = box().filter(o => o.done).length;
+      const all = box().filter(o => o.k === 'B'), n = all.filter(o => o.done).length;
       Sound.se('chest'); save(); refreshHud();
-      if (n === box().length) { UI.held = null; playScene('c6_boxes_done', () => refreshHud()); }
-      else flash(T('木箱を氷室に入れた（{0}/{1}）', n, box().length));
+      if (n === all.length) { UI.held = null; playScene('c6_boxes_done', () => refreshHud()); }
+      else flash(T('白い札の木箱を、氷室に入れた（{0}/{1}）', n, all.length));
       return true;
     }
-    if (!passableTile(ch) || crateAt(bx, by) || eventAt(bx, by, 'bump')) return false;
+    if (!passableTile(ch) || crateAt(bx, by) || eventAt(bx, by)) return false;
     b.x = bx; b.y = by;
-    if (Maps.SLOPE.hot(map(), bx, by)) {
+    // 動かした箱のほかに、日よけがなくなって日に当たる箱もある
+    const broken = box().filter(o => SL.breaks(map(), box(), o));
+    if (broken.length) {
       UI.held = null; Sound.se('hurt');
-      message(['木箱が温まって、中のかけらが割れた！', '（つんとしたにおいが広がる。……箱は、坂の上に戻された）'], () => { crateHome(b); save(); });
+      const where = broken.some(o => SL.hot(map(), o.x, o.y)) ? 'ランプのそばで' : '日に当たって';
+      message([T('白い札の木箱が{0}温まり、中のかけらが割れた！', tr(where)), broken.length > 1 ? T('（{0} 箱。つんとしたにおいが広がる。……箱は、坂の上に戻された）', broken.length) : '（つんとしたにおいが広がる。……箱は、坂の上に戻された）'],
+        () => { broken.forEach(o => { o.x = -1; }); broken.forEach(crateHome); save(); });
     }
     save();
     return true;
@@ -1001,9 +1074,20 @@
     UI.held = null;
     if (S.flags.c6_boxes) return message('トコ「氷室の中は、冷たくて暗いわ。……ペルオさんのかけらは、もう割れない」');
     message('トコ「箱を、みんな坂の上に戻しましょうか？（氷室に入れた箱は、そのまま）」', () => {
-      UI.choice = [{ t: '戻してもらう', fn: () => { box().filter(b => !b.done).forEach(b => { b.x = -1; }); box().filter(b => !b.done).forEach(crateHome); save(); render(); message('（木箱を、坂の上に戻した）'); } }, { t: 'このまま続ける' }];
+      UI.choice = [{ t: '戻してもらう', fn: () => { slopeHome(); save(); render(); message('（木箱を、坂の上に戻した）'); } }, { t: 'このまま続ける' }];
       renderOverlay();
     });
+  }
+  function slopeHome() { const bs = box().filter(b => !b.done); bs.forEach(b => { b.x = -1; }); bs.forEach(crateHome); }
+  // 坂：日なたのうち、木と木箱の影になっているマスを暗くする。ランプのとなりは赤く。木箱を描く
+  function drawSlope(camX, camY) {
+    const m = map(), bs = box();
+    for (let y = 0; y < m.grid.length; y++) for (let x = 0; x < m.grid[y].length; x++) {
+      const px = (x - camX) * TILE, py = (y - camY) * TILE;
+      if (m.grid[y][x] === '陽' && !SL.sunny(m, bs, x, y)) { ctx.fillStyle = 'rgba(20, 40, 30, .42)'; ctx.fillRect(px, py, TILE, TILE); }
+      if (SL.hot(m, x, y) && !Sprites.SOLID.has(m.grid[y][x])) { ctx.fillStyle = 'rgba(255, 170, 70, .32)'; ctx.fillRect(px, py, TILE, TILE); }
+    }
+    for (const b of bs) if (!b.done) Sprites.drawChar(ctx, b.k === 'B' ? 'crateBPO' : 'crateDTBP', (b.x - camX) * TILE, (b.y - camY) * TILE, TILE);
   }
 
   function mapCanvas() {
@@ -1131,8 +1215,9 @@
         Sprites.drawChar(ctx, 'shadow', (ox - camX) * TILE, (oy - camY) * TILE, TILE, { colors });
       }
     }
-    if (S.map === 'lane') drawLane(camX, camY, colors);
-    if (S.map === 'slope') for (const b of box()) if (!b.done) Sprites.drawChar(ctx, 'crate6', (b.x - camX) * TILE, (b.y - camY) * TILE, TILE);
+    drawChain(camX, camY);
+    if (S.map === 'slope') drawSlope(camX, camY);
+    drawPals(camX, camY, colors);
     Sprites.drawChar(ctx, 'hero', (hx - camX) * TILE, (hy - camY) * TILE, TILE, { colors, dir: S.dir });
     drawGoalMarks(camX, camY);
     // 分液区：いまどちらの層にいるかを、左上に出す
@@ -1143,31 +1228,6 @@
       ctx.fillStyle = 'rgba(0, 0, 0, .65)'; ctx.fillRect(bx, 4, tw + 14, 24);
       ctx.fillStyle = m.layer === 'org' ? '#ffe28a' : '#9fd0ff'; ctx.textBaseline = 'middle'; ctx.fillText(label, bx + 7, 16.5);
       ctx.restore();
-    }
-  }
-  // 油の小道：連鎖を運んでいる人は赤く、のまれた人は灰色に。BHT を持っている人には小瓶の印。テンポも描く
-  function drawLane(camX, camY, colors) {
-    if (!S.flags.ch6) return;
-    const st = c6(), on = laneOn(), t = performance.now() / 1000;
-    for (const [id, r] of Object.entries(Maps.LANE.residents)) {
-      const px = (r.x - camX) * TILE, py = (r.y - camY) * TILE;
-      if (on && id === st.car) {
-        ctx.save(); ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = `rgba(255, 70, 50, ${0.25 + 0.12 * Math.sin(t * 5)})`; ctx.fillRect(px + 6, py + 2, TILE - 12, TILE * 0.45); ctx.restore();
-        ctx.strokeStyle = `rgba(255, 90, 60, ${0.6 + 0.3 * Math.sin(t * 5)})`; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
-      } else if (on && st.cons.includes(id)) {
-        ctx.fillStyle = 'rgba(60, 60, 70, .55)'; ctx.fillRect(px, py, TILE, TILE);
-      }
-      if (on && st.prot.includes(id)) {
-        ctx.fillStyle = '#e8f4ff'; ctx.fillRect(px + TILE - 9, py + 1, 7, 10); ctx.fillStyle = '#4a7ab0'; ctx.fillRect(px + TILE - 8, py + 5, 5, 5); ctx.fillStyle = '#2a3a4a'; ctx.fillRect(px + TILE - 8, py, 5, 2);
-      }
-      if (on && st.run && st.tempoAt && Math.abs(r.x - st.tempoAt[0]) + Math.abs(r.y - st.tempoAt[1]) === 1) {
-        ctx.strokeStyle = 'rgba(120, 230, 200, .8)'; ctx.lineWidth = 2; ctx.strokeRect(px + 3, py + 3, TILE - 6, TILE - 6);
-      }
-    }
-    if (on && S.flags.c6_tempo) {
-      const [tx, ty] = st.run ? st.tempoAt : st.tempo;
-      Sprites.drawChar(ctx, 'tempo', (tx - camX) * TILE, (ty - camY) * TILE, TILE, { colors });
     }
   }
   // 目的の場所に、上下に揺れる黄色い矢印を出す（会話中は出さない）
@@ -1227,13 +1287,12 @@
     S.x = nx; S.y = ny;
     moveShadow(dx, dy);
     moveFollower(ox, oy);
-    UI.laneFrom = [ox, oy];
+    palStep(ox, oy);
   }
 
   function afterStep() {
     syncShadow();
     if (checkMirror()) return;
-    if (UI.laneFrom) { const [ox, oy] = UI.laneFrom; UI.laneFrom = null; if (laneStep(ox, oy)) return; }
     const ev = eventAt(S.x, S.y, 'step');
     if (ev) { UI.held = null; return trigger(ev); }
     const enc = map().encounters;
@@ -1258,7 +1317,7 @@
     if (ins) {
       if (ins.rest) {
         S.hp = S.maxHp; save(); refreshHud(); Sound.se('heal');
-        if (S.flags.c6_lane && !S.flags.c6_night) return playScene('c6_night', () => render());
+        if (S.flags.c6_kuramae && !S.flags.c6_night) return playScene('c6_night', () => render());
         return message(['ベッドで仮眠をとった。', 'HP が全回復した。（セーブしました）']);
       }
       return message(ins);
@@ -1267,9 +1326,8 @@
 
   function trigger(ev) {
     if (ev.res) return talkResident(ev.res);
-    if (ev.lane) return laneTalk(ev.lane);
-    if (ev.laneReset) return askLaneReset();
-    if (ev.slopeReset) return askSlopeReset();
+    if (ev.chain) return chainTalk(ev.chain);
+    if (ev.pal) return palTalk(ev.pal);
     if (openWithFollower(ev)) return;
     if (ev.pump) return askPump(ev);
     if (ev.ladder) return askLadder();
@@ -1301,9 +1359,10 @@
     S.map = w.map; S.x = w.x; S.y = w.y; S.dir = w.dir || S.dir;
     if (MAPS[S.map].layer && !MAPS[from].layer) enterDistrict();
     if (MAPS[from].layer && !MAPS[S.map].layer && S.c5x) S.c5x.follow = null;
-    if (S.map === 'lane' && from !== 'lane' && !S.flags.c6_lane) S.c6 = Maps.LANE.init();
-    if (S.map === 'slope' && from !== 'slope' && !S.flags.c6_boxes) { box().filter(b => !b.done).forEach(b => { b.x = -1; }); box().filter(b => !b.done).forEach(crateHome); }
-    UI.move = null; UI.steps = 0; UI.shadow = null;
+    // 連鎖の仕掛けは、入りなおすとはじめから。坂の箱は、坂の上に戻す
+    if (from !== S.map && chainOn()) { S.c6c = S.c6c || {}; S.c6c[chainKey()] = CH.init(chainArea()); }
+    if (S.map === 'slope' && from !== 'slope' && !S.flags.c6_boxes) slopeHome();
+    UI.move = null; UI.steps = 0; UI.shadow = null; UI.trail = null;
     save();
     render();
     enterScene();
@@ -1804,7 +1863,64 @@
 
   // ---- 最後の一枚絵：棚に並んだ 2 本の瓶。文字はアルファベットと数字だけ ----
   function vEnding() {
-    return `<div class="ending" data-act="endingNext"><canvas id="endcv" width="960" height="600" role="img" aria-label="(${S.cfg})-carbo / (${opp(S.cfg)})-obrac"></canvas><div class="end-next">▶</div></div>`;
+    const label = UI.pic ? T(PIC_LABEL[UI.pic]) : `(${S.cfg})-carbo / (${opp(S.cfg)})-obrac`;
+    return `<div class="ending" data-act="endingNext"><canvas id="endcv" width="960" height="600" role="img" aria-label="${esc(label)}"></canvas><div class="end-next">▶</div></div>`;
+  }
+  const PIC_LABEL = { c6_shards: '朝日の中に、白いかけらが舞っている', c6_poly: '樽の中の、透明なかたまり' };
+  // 第 6 章のシーン 9 の一枚絵（文字は入れない）
+  function drawPic(g, W, H, id) {
+    const rnd = (i, k = 0) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
+    if (id === 'c6_shards') {
+      // 朝焼けの空、昇る日、風車の羽根の影、屋上の板。白いかけらが光の中に舞う。人の形は、もうない
+      const sky = g.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, '#f6b26b'); sky.addColorStop(0.55, '#fbe0a8'); sky.addColorStop(1, '#fff3d6');
+      g.fillStyle = sky; g.fillRect(0, 0, W, H);
+      const sun = g.createRadialGradient(W * 0.78, H * 0.62, 4, W * 0.78, H * 0.62, H * 0.55);
+      sun.addColorStop(0, 'rgba(255, 255, 240, 1)'); sun.addColorStop(0.12, 'rgba(255, 244, 200, .9)'); sun.addColorStop(1, 'rgba(255, 220, 150, 0)');
+      g.fillStyle = sun; g.fillRect(0, 0, W, H);
+      g.save(); g.translate(W * 0.2, H * 0.42); g.rotate(0.35); g.fillStyle = 'rgba(90, 60, 40, .55)';
+      for (let i = 0; i < 4; i++) { g.rotate(Math.PI / 2); g.fillRect(-6, 0, 12, H * 0.5); g.fillRect(6, H * 0.12, 22, H * 0.36); }
+      g.restore();
+      g.fillStyle = 'rgba(70, 45, 30, .7)'; g.beginPath(); g.arc(W * 0.2, H * 0.42, 9, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#8a5f33'; g.fillRect(0, H * 0.8, W, H * 0.2);
+      for (let i = 0; i < 4; i++) g.fillStyle = '#6b4423', g.fillRect(0, H * 0.8 + i * 15 + 6, W, 2);
+      g.fillStyle = '#5e3d1f'; g.fillRect(0, H * 0.8, W, 3);
+      for (let i = 0; i < 70; i++) {
+        const x = W * (0.25 + 0.7 * rnd(i)), y = H * (0.08 + 0.75 * rnd(i, 1)), r = 2 + 4 * rnd(i, 2), a = rnd(i, 3) * Math.PI;
+        g.save(); g.translate(x, y); g.rotate(a);
+        g.fillStyle = `rgba(255, 255, 255, ${0.55 + 0.45 * rnd(i, 4)})`; g.strokeStyle = 'rgba(190, 196, 210, .8)'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(-r, r * 0.6); g.lineTo(0, -r); g.lineTo(r * 0.8, r * 0.4); g.closePath(); g.fill(); g.stroke();
+        if (rnd(i, 5) < 0.2) { g.fillStyle = 'rgba(255, 250, 220, .9)'; g.fillRect(-0.5, -r * 1.8, 1, r * 3.6); g.fillRect(-r * 1.8, -0.5, r * 3.6, 1); }
+        g.restore();
+      }
+      return;
+    }
+    // 屋根裏の窓からの光。樽の中の透明なかたまり。その奥に、つながった鎖の影
+    g.fillStyle = '#2a1e14'; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(255, 236, 190, .22)';
+    g.beginPath(); g.moveTo(W * 0.12, 0); g.lineTo(W * 0.32, 0); g.lineTo(W * 0.68, H); g.lineTo(W * 0.36, H); g.closePath(); g.fill();
+    g.fillStyle = '#fbe6b8'; g.fillRect(W * 0.12, 8, W * 0.2, 34);
+    g.fillStyle = '#5e3d1f'; g.fillRect(W * 0.12, 24, W * 0.2, 3); g.fillRect(W * 0.215, 8, 3, 34);
+    // 樽（ふくらんだ胴・たが）。ふたは、そばに立てかけてある
+    const cx = W * 0.5, top = H * 0.36, rw = W * 0.17, rh = rw * 0.34, bot = H * 0.98;
+    g.fillStyle = '#6b4423';
+    g.beginPath(); g.moveTo(cx - rw, top); g.quadraticCurveTo(cx - rw * 1.18, (top + bot) / 2, cx - rw * 0.95, bot);
+    g.lineTo(cx + rw * 0.95, bot); g.quadraticCurveTo(cx + rw * 1.18, (top + bot) / 2, cx + rw, top); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(40, 24, 10, .6)'; g.lineWidth = 1;
+    for (let k = -3; k <= 3; k++) { g.beginPath(); g.moveTo(cx + k * rw / 3.5, top); g.quadraticCurveTo(cx + k * rw / 3.0, (top + bot) / 2, cx + k * rw / 3.6, bot); g.stroke(); }
+    g.strokeStyle = '#3a2a1a'; g.lineWidth = 4;
+    for (const t of [0.22, 0.75]) { const y = top + (bot - top) * t; g.beginPath(); g.ellipse(cx, y, rw * 1.12, rh * 0.8, 0, 0, Math.PI); g.stroke(); }
+    g.fillStyle = '#8a5f33'; g.save(); g.translate(cx + rw * 1.6, H * 0.62); g.rotate(-0.25); g.beginPath(); g.ellipse(0, 0, rw * 0.42, rw * 0.95, 0, 0, Math.PI * 2); g.fill(); g.restore();
+    // 口：上からのぞくと、透明で硬いかたまり。光が当たって、奥に鎖のような影が見える気がする
+    g.fillStyle = '#4a2f18'; g.beginPath(); g.ellipse(cx, top, rw + 3, rh + 3, 0, 0, Math.PI * 2); g.fill();
+    const glass = g.createRadialGradient(cx - rw * 0.3, top - rh * 0.3, 2, cx, top, rw);
+    glass.addColorStop(0, 'rgba(255, 255, 255, .95)'); glass.addColorStop(0.35, 'rgba(214, 236, 250, .85)'); glass.addColorStop(1, 'rgba(150, 180, 205, .9)');
+    g.fillStyle = glass; g.beginPath(); g.ellipse(cx, top, rw, rh, 0, 0, Math.PI * 2); g.fill();
+    g.save(); g.beginPath(); g.ellipse(cx, top, rw - 2, rh - 2, 0, 0, Math.PI * 2); g.clip();
+    g.strokeStyle = 'rgba(110, 140, 170, .35)'; g.lineWidth = 1;
+    for (let k = -8; k <= 8; k++) { const x = cx + k * 7, y = top + Math.sin(k * 0.9) * rh * 0.45; g.beginPath(); g.ellipse(x, y, 4.2, 2.2, k % 2 ? 0.6 : -0.6, 0, Math.PI * 2); g.stroke(); }
+    g.restore();
+    g.strokeStyle = 'rgba(255, 255, 255, .8)'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(cx, top, rw, rh, 0, Math.PI * 1.05, Math.PI * 1.6); g.stroke();
   }
   function drawEnding() {
     const c = document.getElementById('endcv');
@@ -1812,6 +1928,7 @@
     const g = c.getContext('2d'), W = c.width / 2, H = c.height / 2;
     g.imageSmoothingEnabled = false;
     g.setTransform(2, 0, 0, 2, 0, 0);
+    if (UI.pic) return drawPic(g, W, H, UI.pic);
     // 朝の光の研究所の壁と、窓の光
     const bg = g.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0, '#f7e7c4'); bg.addColorStop(1, '#d9c39a');
@@ -2052,7 +2169,7 @@
     // 全章クリアのあと、その後の世界を歩く
     afterClear() { UI.clearCh = null; UI.screen = 'world'; render(); },
     // 最後の一枚絵から、クリア画面へ
-    endingNext() { UI.screen = 'world'; render(); runCommands(); },
+    endingNext() { UI.screen = 'world'; UI.pic = null; render(); runCommands(); },
     practice() {
       const ids = shuffle(Object.keys(S.notebook)).slice(0, 10);
       if (ids.length) startBattle('practice', false, ids);
